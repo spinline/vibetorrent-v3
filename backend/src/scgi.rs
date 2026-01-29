@@ -1,11 +1,13 @@
-use bytes::{BufMut, Bytes, BytesMut};
+use bytes::Bytes;
 use std::collections::HashMap;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::UnixStream;
 
 #[derive(Debug)]
 pub enum ScgiError {
+    #[allow(dead_code)]
     Io(std::io::Error),
+    #[allow(dead_code)]
     Protocol(String),
 }
 
@@ -30,7 +32,7 @@ impl ScgiRequest {
         }
     }
 
-    pub fn header(mut self, key: &str, value: &str) -> Self {
+    pub fn _header(mut self, key: &str, value: &str) -> Self {
         self.headers.insert(key.to_string(), value.to_string());
         self
     }

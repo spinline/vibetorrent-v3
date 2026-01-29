@@ -11,10 +11,9 @@ mod xmlrpc;
 use clap::Parser;
 use rust_embed::RustEmbed;
 use axum::{
-    body::Body,
-    extract::{Path, State},
+    extract::State,
     http::{header, StatusCode, Uri},
-    response::{IntoResponse, Response},
+    response::IntoResponse,
     routing::{get, post},
     Router, Json,
 };

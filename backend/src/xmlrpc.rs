@@ -1,7 +1,7 @@
 use crate::scgi::{send_request, ScgiRequest};
 use quick_xml::events::Event;
 use quick_xml::reader::Reader;
-use serde::Deserialize;
+
 
 // Simple helper to build an XML-RPC method call
 pub fn build_method_call(method: &str, params: &[&str]) -> String {
@@ -159,7 +159,7 @@ pub fn parse_string_response(xml: &str) -> Result<String, String> {
             }
             Ok(Event::End(ref e)) => {
                 if e.name().as_ref() == b"string" {
-                     inside_string = false;
+                     // inside_string = false;
                      // Assuming only one string in the response which matters
                     break;
                 }

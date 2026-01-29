@@ -1,6 +1,6 @@
 use axum::response::sse::{Event, Sse};
 use futures::stream::{self, Stream};
-use std::{convert::Infallible, time::Duration};
+use std::convert::Infallible;
 use tokio_stream::StreamExt;
 use crate::models::{AppEvent, Torrent};
 use crate::xmlrpc::{RtorrentClient, parse_multicall_response};
@@ -10,11 +10,6 @@ fn parse_size(s: &str) -> i64 {
     s.parse().unwrap_or(0)
 }
 
-fn parse_float(s: &str) -> f64 {
-    // rTorrent usually returns integers for bytes done etc. 
-    // We might need to handle empty strings.
-    s.parse().unwrap_or(0.0)
-}
 
 pub async fn fetch_torrents(client: &RtorrentClient) -> Result<Vec<Torrent>, String> {
     // d.multicall2("", "main", ...)

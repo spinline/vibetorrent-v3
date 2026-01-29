@@ -38,9 +38,16 @@ jobs:
     - name: Build Backend (MIPS)
       env:
         RUSTUP_TOOLCHAIN: nightly
+        CROSS_NO_WARNINGS: 0
       run: |
         cd backend
         cross build --target mips-unknown-linux-musl --release -Z build-std=std,panic_abort
+
+    - name: Debug - List Files
+      run: |
+        echo "Listing target directory..."
+        find backend/target -maxdepth 5 || true
+        ls -R backend/target/mips-unknown-linux-musl/release || true
 
     - name: Upload Binary
       uses: actions/upload-artifact@v4

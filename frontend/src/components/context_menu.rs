@@ -11,7 +11,9 @@ pub fn ContextMenu(
     let handle_action = move |action: &str| {
         let hash = torrent_hash.clone();
         let action_str = action.to_string();
-        let close = on_close.clone();
+        
+        // Optimistic UI: Close immediately
+        on_close.call(());
         
         spawn_local(async move {
             let body = serde_json::json!({
@@ -22,11 +24,9 @@ pub fn ContextMenu(
             let _ = Request::post("/api/torrents/action")
                 .header("Content-Type", "application/json")
                 .body(body.to_string())
-                .unwrap() // Unwrap the Result<RequestBuilder, JsValue>
+                .unwrap()
                 .send()
                 .await;
-                
-            close.call(());
         });
     };
 

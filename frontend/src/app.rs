@@ -192,7 +192,7 @@ pub fn App() -> impl IntoView {
     };
 
     let filter_btn_class = move |status: Option<TorrentStatus>| {
-        let (base_bg, _, _, _, text_sec, hover, _) = get_theme_classes();
+        let (_base_bg, _, _, _, text_sec, hover, _) = get_theme_classes();
         let base = "block px-4 py-2 rounded-xl transition-all duration-200 text-left w-full flex items-center gap-3 border";
         let active = filter_status.get() == status;
         if active {
@@ -214,7 +214,7 @@ pub fn App() -> impl IntoView {
     
     // Sidebar Content Logic
     let sidebar_content = move || {
-        let (_, _, _, text_pri, text_sec, _, border) = get_theme_classes();
+        let (_, _, _, _text_pri, text_sec, _, border) = get_theme_classes();
         view! {
             <div class="mb-10 px-2 flex items-center gap-3">
                  <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/30">

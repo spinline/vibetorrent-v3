@@ -1,7 +1,6 @@
 mod app;
 mod models;
 mod components;
-use components::context_menu::ContextMenu;
 
 use leptos::*;
 use wasm_bindgen::prelude::*;

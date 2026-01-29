@@ -1,6 +1,5 @@
 use leptos::*;
 use gloo_net::http::Request;
-use crate::models::Torrent;
 
 #[component]
 pub fn ContextMenu(

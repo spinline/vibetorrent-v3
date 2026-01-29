@@ -46,11 +46,11 @@ jobs:
     - name: Debug - List Files
       run: |
         echo "Listing target directory..."
-        find backend/target -maxdepth 5 || true
-        ls -R backend/target/mips-unknown-linux-musl/release || true
+        find target -maxdepth 5 || true
+        ls -R target/mips-unknown-linux-musl/release || true
 
     - name: Upload Binary
       uses: actions/upload-artifact@v4
       with:
         name: vibetorrent-mips
-        path: backend/target/mips-unknown-linux-musl/release/backend
+        path: target/mips-unknown-linux-musl/release/backend

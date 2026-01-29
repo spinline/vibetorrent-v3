@@ -71,7 +71,32 @@ use tokio::sync::watch;
 use std::sync::Arc;
 use std::time::Duration;
 
-/* ... add_torrent_handler ... */
+#[derive(Deserialize)]
+struct AddTorrentRequest {
+    uri: String,
+}
+
+async fn add_torrent_handler(
+    State(state): State<AppState>,
+    Json(payload): Json<AddTorrentRequest>,
+) -> StatusCode {
+    println!("Received add_torrent request. URI length: {}", payload.uri.len());
+    let client = xmlrpc::RtorrentClient::new(&state.scgi_socket_path);
+    match client.call("load.start", &["", &payload.uri]).await {
+        Ok(response) => {
+            println!("rTorrent response to load.start: {}", response);
+            if response.contains("faultCode") {
+                eprintln!("rTorrent returned fault: {}", response);
+                return StatusCode::INTERNAL_SERVER_ERROR;
+            }
+            StatusCode::OK
+        },
+        Err(e) => {
+            eprintln!("Failed to add torrent: {}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        }
+    }
+}
 
 #[tokio::main]
 async fn main() {

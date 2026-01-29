@@ -1,0 +1,7 @@
+/target
+**/.DS_Store
+*.log
+result.xml
+**/node_modules
+frontend/dist
+backend.log

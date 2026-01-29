@@ -1,0 +1,45 @@
+name: Build MIPS Binary
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: mips-unknown-linux-musl
+
+    - name: Install Trunk
+      uses: jetli/trunk-action@v0.4.0
+      with:
+        version: 'latest'
+
+    - name: Build Frontend
+      run: |
+        cd frontend
+        trunk build --release
+
+    - name: Install Cross
+      run: cargo install cross
+
+    - name: Build Backend (MIPS)
+      run: |
+        cd backend
+        cross build --target mips-unknown-linux-musl --release
+
+    - name: Upload Binary
+      uses: actions/upload-artifact@v3
+      with:
+        name: vibetorrent-mips
+        path: backend/target/mips-unknown-linux-musl/release/backend

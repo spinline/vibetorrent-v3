@@ -364,7 +364,7 @@ pub fn App() -> impl IntoView {
 
                     // MAIN CONTENT
                     <main class="flex-1 h-screen overflow-y-auto overflow-x-hidden relative pb-24 md:pb-0">
-                        <header class={format!("sticky top-0 z-10 border-b px-6 py-4 flex justify-between items-center {}", sidebar_bg)}>
+                        <header class={format!("fixed top-0 left-0 right-0 md:sticky md:top-0 z-40 border-b px-6 py-4 flex justify-between items-center transition-colors duration-300 {}", sidebar_bg)}>
                             <div class="flex items-center gap-3">
                                  <button class={format!("md:hidden p-1 -ml-2 hover:opacity-80 {}", text_sec)} on:click=move |_| set_show_mobile_sidebar.set(true)>
                                     <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
@@ -419,7 +419,7 @@ pub fn App() -> impl IntoView {
                             </div>
                         </header>
 
-                        <div class="p-6 max-w-7xl mx-auto animate-in fade-in duration-500">
+                        <div class="p-6 max-w-7xl mx-auto animate-in fade-in duration-500 pt-[88px] md:pt-6">
                             {move || if active_tab.get() == "settings" {
                                 view! {
                                     <div class="space-y-8">

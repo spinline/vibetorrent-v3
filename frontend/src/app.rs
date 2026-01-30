@@ -1,5 +1,5 @@
 use leptos::*;
-use shared::{Torrent, AppEvent, TorrentStatus, Theme, TorrentUpdate};
+use shared::{Torrent, AppEvent, TorrentStatus, Theme};
 use crate::components::context_menu::ContextMenu;
 use gloo_net::eventsource::futures::EventSource;
 use futures::StreamExt;

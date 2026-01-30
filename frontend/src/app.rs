@@ -45,6 +45,20 @@ pub fn App() -> impl IntoView {
         }
     });
 
+    // Mobile Sidebar Scroll Lock
+    create_effect(move |_| {
+        if let Some(doc) = window().document() {
+            if let Some(body) = doc.body() {
+                let style = body.style();
+                if show_mobile_sidebar.get() {
+                    let _ = style.set_property("overflow", "hidden");
+                } else {
+                    let _ = style.remove_property("overflow");
+                }
+            }
+        }
+    });
+
     // Context Menu Signals
     let (cm_visible, set_cm_visible) = create_signal(false);
     let (cm_pos, set_cm_pos) = create_signal((0, 0));

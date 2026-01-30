@@ -35,12 +35,15 @@ pub enum AppEvent {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TorrentUpdate {
     pub hash: String,
+    pub name: Option<String>,
+    pub size: Option<i64>,
     pub down_rate: Option<i64>,
     pub up_rate: Option<i64>,
     pub percent_complete: Option<f64>,
     pub completed: Option<i64>,
     pub eta: Option<i64>,
     pub status: Option<TorrentStatus>,
+    pub error_message: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

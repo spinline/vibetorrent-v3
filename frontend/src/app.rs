@@ -128,12 +128,15 @@ pub fn App() -> impl IntoView {
                                      AppEvent::Update(diff) => {
                                          set_torrents.update(|list| {
                                              if let Some(target) = list.iter_mut().find(|t| t.hash == diff.hash) {
+                                                 if let Some(v) = diff.name { target.name = v; }
+                                                 if let Some(v) = diff.size { target.size = v; }
                                                  if let Some(v) = diff.down_rate { target.down_rate = v; }
                                                  if let Some(v) = diff.up_rate { target.up_rate = v; }
                                                  if let Some(v) = diff.percent_complete { target.percent_complete = v; }
                                                  if let Some(v) = diff.completed { target.completed = v; }
                                                  if let Some(v) = diff.eta { target.eta = v; }
                                                  if let Some(v) = diff.status { target.status = v; }
+                                                 if let Some(v) = diff.error_message { target.error_message = v; }
                                              }
                                          });
                                      }
@@ -435,8 +438,8 @@ pub fn App() -> impl IntoView {
                                             </thead>
                                             <tbody class={format!("divide-y {}", border)}>
                                                 <For
-                                                    each=move || processed_torrents.get()
-                                                    key=|t| format!("{}-{}-{}-{}-{}-{}", t.hash, t.down_rate, t.up_rate, t.percent_complete, t.eta, t.error_message)
+                                                each=move || processed_torrents.get()
+                                                    key=|t| format!("{}-{}-{:?}-{}-{}-{}-{}", t.hash, t.name, t.status, t.down_rate, t.up_rate, t.percent_complete, t.error_message)
                                                     children=move |torrent| {
                                                         let status_color = match torrent.status {
                                                             TorrentStatus::Downloading => "text-blue-500 bg-blue-500/10 border-blue-500/20",
@@ -515,7 +518,7 @@ pub fn App() -> impl IntoView {
                                     <div class="md:hidden space-y-4">
                                         <For
                                             each=move || processed_torrents.get()
-                                            key=|t| format!("{}-{}-{}-{}-{}-{}", t.hash, t.down_rate, t.up_rate, t.percent_complete, t.eta, t.error_message)
+                                            key=|t| format!("{}-{}-{:?}-{}-{}-{}-{}", t.hash, t.name, t.status, t.down_rate, t.up_rate, t.percent_complete, t.error_message)
                                             children=move |torrent| {
                                                 let status_color = match torrent.status {
                                                     TorrentStatus::Downloading => "text-blue-500",

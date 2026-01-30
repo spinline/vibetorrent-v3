@@ -32,16 +32,27 @@ pub fn diff_torrents(old: &[Torrent], new: &[Torrent]) -> Vec<AppEvent> {
         
         let mut update = TorrentUpdate {
             hash: new_t.hash.clone(),
+            name: None,
+            size: None,
             down_rate: None,
             up_rate: None,
             percent_complete: None,
             completed: None,
             eta: None,
             status: None,
+            error_message: None,
         };
         
         let mut has_changes = false;
 
+        if old_t.name != new_t.name {
+            update.name = Some(new_t.name.clone());
+            has_changes = true;
+        }
+        if old_t.size != new_t.size {
+            update.size = Some(new_t.size);
+            has_changes = true;
+        }
         if old_t.down_rate != new_t.down_rate {
             update.down_rate = Some(new_t.down_rate);
             has_changes = true;
@@ -65,6 +76,10 @@ pub fn diff_torrents(old: &[Torrent], new: &[Torrent]) -> Vec<AppEvent> {
         }
         if old_t.status != new_t.status {
             update.status = Some(new_t.status.clone());
+            has_changes = true;
+        }
+        if old_t.error_message != new_t.error_message {
+            update.error_message = Some(new_t.error_message.clone());
             has_changes = true;
         }
 

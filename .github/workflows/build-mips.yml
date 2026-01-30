@@ -5,6 +5,9 @@ on:
     branches: [ "main" ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 env:
   CARGO_TERM_COLOR: always
 
@@ -60,8 +63,18 @@ jobs:
         find target -maxdepth 5 || true
         ls -R target/mips-unknown-linux-musl/release || true
 
-    - name: Upload Binary
-      uses: actions/upload-artifact@v4
+    - name: Rename Binary
+      run: mv target/mips-unknown-linux-musl/release/backend target/mips-unknown-linux-musl/release/vibetorrent-mips
+
+    - name: Generate Tag
+      id: tag
+      run: echo "release_tag=release-$(date +'%Y%m%d-%H%M')" >> $GITHUB_OUTPUT
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
       with:
-        name: vibetorrent-mips
-        path: target/mips-unknown-linux-musl/release/backend
+        tag_name: ${{ steps.tag.outputs.release_tag }}
+        name: Release ${{ steps.tag.outputs.release_tag }}
+        files: target/mips-unknown-linux-musl/release/vibetorrent-mips
+        draft: false
+        prerelease: false

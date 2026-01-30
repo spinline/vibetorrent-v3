@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Torrent {
     pub hash: String,
     pub name: String,
@@ -13,12 +13,6 @@ pub struct Torrent {
     pub status: TorrentStatus,
     pub error_message: String,
     pub added_date: i64,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct TorrentActionRequest {
-    pub hash: String,
-    pub action: String, // "start", "stop", "delete"
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
@@ -34,24 +28,31 @@ pub enum TorrentStatus {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(tag = "type", content = "data")]
 pub enum AppEvent {
-    FullList(Vec<Torrent>, u64),
+    FullList(Vec<Torrent>, u64), // u64 is likely free_space_bytes
     Update(TorrentUpdate),
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TorrentUpdate {
     pub hash: String,
-    // Optional fields for partial updates
     pub down_rate: Option<i64>,
     pub up_rate: Option<i64>,
     pub percent_complete: Option<f64>,
+    pub completed: Option<i64>,
+    pub eta: Option<i64>,
+    pub status: Option<TorrentStatus>,
 }
 
-use tokio::sync::watch;
-use std::sync::Arc;
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct TorrentActionRequest {
+    pub hash: String,
+    pub action: String, // "start", "stop", "delete"
+}
 
-#[derive(Clone)]
-pub struct AppState {
-    pub tx: Arc<watch::Sender<Vec<Torrent>>>,
-    pub scgi_socket_path: String,
+// Added Theme here to separate it from backend logic but allow frontend usage via shared
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+pub enum Theme {
+    Midnight,
+    Light,
+    Amoled,
 }

@@ -1,5 +1,5 @@
 use leptos::*;
-use crate::models::{Torrent, AppEvent, TorrentStatus, Theme};
+use shared::{Torrent, AppEvent, TorrentStatus, Theme, TorrentUpdate};
 use crate::components::context_menu::ContextMenu;
 use gloo_net::eventsource::futures::EventSource;
 use futures::StreamExt;
@@ -120,9 +120,23 @@ pub fn App() -> impl IntoView {
                         let data = msg.data().as_string().unwrap();
                         match serde_json::from_str::<AppEvent>(&data) {
                             Ok(event) => {
-                                 if let AppEvent::FullList(list, ts) = event {
-                                     set_torrents.set(list);
-                                     set_last_updated.set(ts);
+                                 match event {
+                                     AppEvent::FullList(list, ts) => {
+                                         set_torrents.set(list);
+                                         set_last_updated.set(ts);
+                                     }
+                                     AppEvent::Update(diff) => {
+                                         set_torrents.update(|list| {
+                                             if let Some(target) = list.iter_mut().find(|t| t.hash == diff.hash) {
+                                                 if let Some(v) = diff.down_rate { target.down_rate = v; }
+                                                 if let Some(v) = diff.up_rate { target.up_rate = v; }
+                                                 if let Some(v) = diff.percent_complete { target.percent_complete = v; }
+                                                 if let Some(v) = diff.completed { target.completed = v; }
+                                                 if let Some(v) = diff.eta { target.eta = v; }
+                                                 if let Some(v) = diff.status { target.status = v; }
+                                             }
+                                         });
+                                     }
                                  }
                             }
                             Err(e) => {

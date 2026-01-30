@@ -2,7 +2,7 @@ use axum::response::sse::{Event, Sse};
 use futures::stream::{self, Stream};
 use std::convert::Infallible;
 use tokio_stream::StreamExt;
-use crate::models::{AppEvent, Torrent};
+use shared::{AppEvent, Torrent, TorrentStatus};
 use crate::xmlrpc::{RtorrentClient, parse_multicall_response};
 
 // Helper (should be moved to utils)
@@ -64,15 +64,15 @@ pub async fn fetch_torrents(client: &RtorrentClient) -> Result<Vec<Torrent>, Str
                         
                         // Status Logic
                         let status = if !message.is_empty() {
-                            crate::models::TorrentStatus::Error
+                            TorrentStatus::Error
                         } else if is_hashing != 0 {
-                            crate::models::TorrentStatus::Checking
+                            TorrentStatus::Checking
                         } else if state == 0 {
-                            crate::models::TorrentStatus::Paused
+                            TorrentStatus::Paused
                         } else if is_complete != 0 {
-                            crate::models::TorrentStatus::Seeding
+                            TorrentStatus::Seeding
                         } else {
-                            crate::models::TorrentStatus::Downloading
+                            TorrentStatus::Downloading
                         };
                         
                         // ETA Logic (seconds)
@@ -110,7 +110,7 @@ pub async fn fetch_torrents(client: &RtorrentClient) -> Result<Vec<Torrent>, Str
 }
 
 use axum::extract::State;
-use crate::models::AppState;
+use crate::AppState; // Import from crate root
 
 pub async fn sse_handler(
     State(state): State<AppState>,
@@ -132,19 +132,25 @@ pub async fn sse_handler(
     let initial_stream = stream::once(async { Ok::<Event, Infallible>(initial_event) });
     
     // Stream that waits for subsequent changes
-    let update_stream = stream::unfold(state.tx.subscribe(), |mut rx| async move {
-         if let Err(_) = rx.changed().await {
-            return None;
+    // Stream that waits for subsequent changes via Broadcast channel
+    let rx = state.event_bus.subscribe();
+    let update_stream = stream::unfold(rx, |mut rx| async move {
+        match rx.recv().await {
+            Ok(event) => {
+                match serde_json::to_string(&event) {
+                    Ok(json) => Some((Ok::<Event, Infallible>(Event::default().data(json)), rx)),
+                    Err(e) => {
+                        tracing::warn!("Failed to serialize SSE event: {}", e);
+                        Some((Ok::<Event, Infallible>(Event::default().comment("error")), rx))
+                    },
+                }
+            },
+            Err(e) => {
+                // If channel closed or lagged, close stream so client reconnects and gets fresh state
+                tracing::warn!("SSE Broadcast channel error (lagged/closed): {}", e);
+                None
+            }
         }
-        let torrents = rx.borrow().clone();
-        // println!("Broadcasting SSE update with {} items", torrents.len());
-        let timestamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
-        let event_data = AppEvent::FullList(torrents, timestamp);
-        
-         match serde_json::to_string(&event_data) {
-            Ok(json) => Some((Ok::<Event, Infallible>(Event::default().data(json)), rx)),
-            Err(_) => Some((Ok::<Event, Infallible>(Event::default().comment("error")), rx)),
-         }
     });
     
     Sse::new(initial_stream.chain(update_stream))

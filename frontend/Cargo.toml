@@ -19,3 +19,4 @@ uuid = { version = "1", features = ["v4", "js"] }
 futures = "0.3"
 chrono = { version = "0.4", features = ["serde"] }
 web-sys = { version = "0.3", features = ["Window", "Storage"] }
+shared = { path = "../shared" }

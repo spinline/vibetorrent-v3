@@ -132,7 +132,7 @@ pub async fn system_call(
     }
     xml.push_str("</params></methodCall>");
 
-    println!("Sending XML-RPC Payload: {}", xml); // Debug logging
+    tracing::debug!("Sending XML-RPC Payload: {}", xml);
 
     let req = ScgiRequest::new().body(xml.clone().into_bytes());
     let response_bytes = send_request(socket_path, req).await?;

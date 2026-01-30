@@ -1,12 +1,7 @@
-
-mod models;
+mod diff;
 mod scgi;
 mod sse;
 mod xmlrpc;
-
-// fixup modules
-// remove mm if I didn't create it? I didn't. 
-// I will structure modules correctly.
 
 use clap::Parser;
 use rust_embed::RustEmbed;
@@ -17,10 +12,28 @@ use axum::{
     routing::{get, post},
     Router, Json,
 };
-use tower_http::cors::CorsLayer;
+use tower_http::{
+    cors::CorsLayer,
+    trace::TraceLayer,
+    compression::{CompressionLayer, CompressionLevel},
+};
+use axum::{
+    error_handling::HandleErrorLayer,
+    BoxError,
+};
+use tower::ServiceBuilder;
 use serde::Deserialize;
 use std::net::SocketAddr;
-use crate::models::AppState;
+use shared::{Torrent, TorrentActionRequest, AppEvent}; // shared crates imports
+use tokio::sync::{watch, broadcast};
+use std::sync::Arc;
+
+#[derive(Clone)]
+pub struct AppState {
+    pub tx: Arc<watch::Sender<Vec<Torrent>>>,
+    pub event_bus: broadcast::Sender<AppEvent>,
+    pub scgi_socket_path: String,
+}
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -66,8 +79,6 @@ async fn static_handler(uri: Uri) -> impl IntoResponse {
     }
 }
 
-use tokio::sync::watch;
-use std::sync::Arc;
 use std::time::Duration;
 
 #[derive(Deserialize)]
@@ -79,19 +90,19 @@ async fn add_torrent_handler(
     State(state): State<AppState>,
     Json(payload): Json<AddTorrentRequest>,
 ) -> StatusCode {
-    println!("Received add_torrent request. URI length: {}", payload.uri.len());
+    tracing::info!("Received add_torrent request. URI length: {}", payload.uri.len());
     let client = xmlrpc::RtorrentClient::new(&state.scgi_socket_path);
     match client.call("load.start", &["", &payload.uri]).await {
         Ok(response) => {
-            println!("rTorrent response to load.start: {}", response);
+            tracing::debug!("rTorrent response to load.start: {}", response);
             if response.contains("faultCode") {
-                eprintln!("rTorrent returned fault: {}", response);
+                tracing::error!("rTorrent returned fault: {}", response);
                 return StatusCode::INTERNAL_SERVER_ERROR;
             }
             StatusCode::OK
         },
         Err(e) => {
-            eprintln!("Failed to add torrent: {}", e);
+            tracing::error!("Failed to add torrent: {}", e);
             StatusCode::INTERNAL_SERVER_ERROR
         }
     }
@@ -99,36 +110,79 @@ async fn add_torrent_handler(
 
 #[tokio::main]
 async fn main() {
-    // initialize tracing
-    tracing_subscriber::fmt::init();
+    // initialize tracing with env filter (default to info)
+    tracing_subscriber::fmt()
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env()
+            .add_directive(tracing::Level::INFO.into()))
+        .init();
     
     // Parse CLI Args
     let args = Args::parse();
-    println!("Starting VibeTorrent Backend...");
-    println!("Socket: {}", args.socket);
-    println!("Port: {}", args.port);
+    tracing::info!("Starting VibeTorrent Backend...");
+    tracing::info!("Socket: {}", args.socket);
+    tracing::info!("Port: {}", args.port);
     
-    // Channel for torrent list updates
+    // Channel for latest state (for new clients)
     let (tx, _rx) = watch::channel(vec![]);
     let tx = Arc::new(tx);
+
+    // Channel for Events (Diffs)
+    let (event_bus, _) = broadcast::channel::<AppEvent>(1024);
     
     let app_state = AppState {
         tx: tx.clone(),
+        event_bus: event_bus.clone(),
         scgi_socket_path: args.socket.clone(),
     };
 
     // Spawn background task to poll rTorrent
     let tx_clone = tx.clone();
+    let event_bus_tx = event_bus.clone();
     let socket_path = args.socket.clone(); // Clone for background task
+
     tokio::spawn(async move {
         let client = xmlrpc::RtorrentClient::new(&socket_path);
+        let mut previous_torrents: Vec<Torrent> = Vec::new();
+
         loop {
             match sse::fetch_torrents(&client).await {
-                Ok(torrents) => {
-                    let _ = tx_clone.send(torrents);
+                Ok(new_torrents) => {
+                    // 1. Update latest state (always)
+                    let _ = tx_clone.send(new_torrents.clone());
+
+                    // 2. Calculate Diff and Broadcasting
+                    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
+
+                    let mut structural_change = false;
+                    if previous_torrents.len() != new_torrents.len() {
+                        structural_change = true;
+                    } else {
+                        // Check for order/hash change
+                        for (i, t) in new_torrents.iter().enumerate() {
+                            if previous_torrents[i].hash != t.hash {
+                                structural_change = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if structural_change {
+                         // Structural change -> Send FullList
+                         let _ = event_bus_tx.send(AppEvent::FullList(new_torrents.clone(), now));
+                    } else {
+                        // Same structure -> Calculate partial updates
+                        let updates = diff::diff_torrents(&previous_torrents, &new_torrents);
+                        if !updates.is_empty() {
+                            for update in updates {
+                                let _ = event_bus_tx.send(update);
+                            }
+                        }
+                    }
+
+                    previous_torrents = new_torrents;
                 }
                 Err(e) => {
-                    eprintln!("Error fetching torrents in background: {}", e);
+                    tracing::error!("Error fetching torrents in background: {}", e);
                 }
             }
             tokio::time::sleep(Duration::from_secs(1)).await;
@@ -140,20 +194,29 @@ async fn main() {
         .route("/api/torrents/add", post(add_torrent_handler))
         .route("/api/torrents/action", post(handle_torrent_action))
         .fallback(static_handler) // Serve static files for everything else
+        .layer(TraceLayer::new_for_http())
+        .layer(CompressionLayer::new()
+            .br(false)
+            .gzip(true)
+            .quality(CompressionLevel::Fastest))
+        .layer(ServiceBuilder::new()
+            .layer(HandleErrorLayer::new(handle_timeout_error))
+            .layer(tower::timeout::TimeoutLayer::new(Duration::from_secs(30)))
+        )
         .layer(CorsLayer::permissive())
         .with_state(app_state);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], args.port));
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
-    println!("Backend listening on {}", addr);
+    tracing::info!("Backend listening on {}", addr);
     axum::serve(listener, app).await.unwrap();
 }
 
 async fn handle_torrent_action(
     State(state): State<AppState>,
-    Json(payload): Json<models::TorrentActionRequest>,
+    Json(payload): Json<TorrentActionRequest>,
 ) -> impl IntoResponse {
-    println!("Received action: {} for hash: {}", payload.action, payload.hash);
+    tracing::info!("Received action: {} for hash: {}", payload.action, payload.hash);
     
     // Special handling for delete_with_data
     if payload.action == "delete_with_data" {
@@ -170,14 +233,14 @@ async fn handle_torrent_action(
             Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to parse path: {}", e)).into_response(),
         };
         
-        println!("Attempting to delete torrent and data at path: {}", path);
+        tracing::info!("Attempting to delete torrent and data at path: {}", path);
         if path.trim().is_empty() || path == "/" {
              return (StatusCode::BAD_REQUEST, "Safety check failed: Path is empty or root").into_response();
         }
 
         // 2. Erase Torrent first (so rTorrent releases locks?)
         if let Err(e) = client.call("d.erase", &[&payload.hash]).await {
-             eprintln!("Failed to erase torrent entry: {}", e);
+             tracing::warn!("Failed to erase torrent entry: {}", e);
              // Proceed anyway to delete files? Maybe not.
         }
 
@@ -199,8 +262,16 @@ async fn handle_torrent_action(
     match scgi::system_call(&state.scgi_socket_path, method, vec![&payload.hash]).await {
         Ok(_) => (StatusCode::OK, "Action executed").into_response(),
         Err(e) => {
-            eprintln!("SCGI error: {:?}", e);
+            tracing::error!("SCGI error: {:?}", e);
             (StatusCode::INTERNAL_SERVER_ERROR, "Failed to execute action").into_response()
         }
+    }
+}
+
+async fn handle_timeout_error(err: BoxError) -> (StatusCode, &'static str) {
+    if err.is::<tower::timeout::error::Elapsed>() {
+        (StatusCode::REQUEST_TIMEOUT, "Request timed out")
+    } else {
+        (StatusCode::INTERNAL_SERVER_ERROR, "Unhandled internal error")
     }
 }

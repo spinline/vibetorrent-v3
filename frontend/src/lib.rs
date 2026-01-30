@@ -1,5 +1,5 @@
 mod app;
-mod models;
+// mod models; // Removed
 mod components;
 
 use leptos::*;

@@ -327,9 +327,11 @@ pub fn App() -> impl IntoView {
                     // MOBILE SIDEBAR
                     <div 
                         class={move || if show_mobile_sidebar.get() { "fixed inset-0 z-50 flex md:hidden" } else { "hidden" }}
-                        on:click=move |_| set_show_mobile_sidebar.set(false)
                     >
-                        <div class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"></div>
+                        <div 
+                            class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+                            on:click=move |_| set_show_mobile_sidebar.set(false)
+                        ></div>
                         <aside 
                             class={format!("relative w-80 max-w-[85vw] h-full shadow-2xl p-6 flex flex-col animate-in slide-in-from-left duration-300 border-r {}", sidebar_bg)}
                             on:click=move |e: web_sys::MouseEvent| e.stop_propagation()

@@ -1308,6 +1308,11 @@
     }
   }
 }
+@layer base {
+  html, body, button, a, [role="button"], input, label, select, summary, textarea {
+    touch-action: manipulation;
+  }
+}
 @property --tw-translate-x {
   syntax: "*";
   inherits: false;

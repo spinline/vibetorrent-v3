@@ -6,7 +6,7 @@ pub fn Modal(
     children: Children,
     #[prop(into)] on_confirm: Callback<()>,
     #[prop(into)] on_cancel: Callback<()>,
-    #[prop(into)] visible: Signal<bool>,
+    #[prop(into)] is_open: MaybeSignal<bool>,
     #[prop(into, default = "Confirm".to_string())] confirm_text: String,
     #[prop(into, default = "Cancel".to_string())] cancel_text: String,
     #[prop(into, default = false)] is_danger: bool,
@@ -20,7 +20,7 @@ pub fn Modal(
     let cancel_text = store_value(cancel_text);
     
     view! {
-        <Show when=move || visible.get() fallback=|| ()>
+        <Show when=move || is_open.get() fallback=|| ()>
             <div class="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-end md:items-center justify-center z-[200] animate-in fade-in duration-200 sm:p-4">
                 <div class="bg-card p-6 rounded-t-2xl md:rounded-lg w-full max-w-sm shadow-xl border border-border ring-0 transform transition-all animate-in slide-in-from-bottom-10 md:slide-in-from-bottom-0 md:zoom-in-95">
                     <h3 class="text-lg font-semibold text-card-foreground mb-4">{title.get_value()}</h3>

@@ -12,8 +12,9 @@ pub fn ContextMenu(
         let hash = torrent_hash.clone();
         let action_str = action.to_string();
         
-        on_close.call(()); // Always close menu
-        on_action.call((action_str, hash)); // Delegate
+        logging::log!("ContextMenu: Action '{}' for hash '{}'", action_str, hash);
+        on_action.call((action_str, hash)); // Delegate FIRST
+        on_close.call(()); // Close menu AFTER
     };
 
     if !visible {

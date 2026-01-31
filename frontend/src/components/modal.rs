@@ -40,7 +40,10 @@ pub fn Modal(
                             class=format!("flex-1 px-4 py-3 rounded-xl transition-all font-bold text-white shadow-lg {}", 
                                 if is_danger { "bg-red-500 hover:bg-red-600 shadow-red-500/20" } else { "bg-blue-500 hover:bg-blue-600 shadow-blue-500/20" }
                             )
-                            on:click=move |_| on_confirm.with_value(|cb| cb.call(()))
+                            on:click=move |_| {
+                                logging::log!("Modal: Confirm clicked");
+                                on_confirm.with_value(|cb| cb.call(()))
+                            }
                         >
                             {confirm_text.get_value()}
                         </button>

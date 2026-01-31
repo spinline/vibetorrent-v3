@@ -647,7 +647,9 @@ pub fn App() -> impl IntoView {
                         torrent_hash=cm_target_hash.get()
                         on_close=Callback::from(move |_| set_cm_visible.set(false))
                         on_action=Callback::from(move |(action, hash): (String, String)| {
+                            logging::log!("App: Received action '{}' for hash '{}'", action, hash);
                             if action == "delete" || action == "delete_with_data" {
+                                logging::log!("App: Showing delete modal");
                                 set_pending_action.set(Some((action, hash)));
                                 set_show_delete_modal.set(true);
                             } else {

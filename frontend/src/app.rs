@@ -398,7 +398,7 @@ pub fn App() -> impl IntoView {
                         
                         <Button 
                             variant=ButtonVariant::Ghost
-                            class={move || if active_tab.get() == "settings" { "text-primary bg-primary/10 border-primary/20" } else { "text-muted-foreground" }}
+                            class={move || if active_tab.get() == "settings" { "text-primary bg-primary/10 border-primary/20".to_string() } else { "text-muted-foreground".to_string() }}
                             on_click=Callback::from(move |_| set_active_tab.set(if active_tab.get() == "settings" { "torrents" } else { "settings" }))
                         >
                             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

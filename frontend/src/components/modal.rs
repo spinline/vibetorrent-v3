@@ -21,25 +21,26 @@ pub fn Modal(
     
     view! {
         <Show when=move || visible.get() fallback=|| ()>
-            <div class="fixed inset-0 bg-black/80 backdrop-blur-md flex items-end md:items-center justify-center z-[200] animate-in fade-in duration-200 sm:p-4">
-                <div class="bg-[#16161c] p-6 rounded-t-2xl md:rounded-2xl w-full max-w-sm shadow-2xl border border-white/10 ring-1 ring-white/5 transform transition-all animate-in slide-in-from-bottom-10 md:slide-in-from-bottom-0 md:zoom-in-95">
-                    <h3 class="text-xl font-bold text-white mb-4">{title.get_value()}</h3>
+            <div class="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-end md:items-center justify-center z-[200] animate-in fade-in duration-200 sm:p-4">
+                <div class="bg-card p-6 rounded-t-2xl md:rounded-lg w-full max-w-sm shadow-xl border border-border ring-0 transform transition-all animate-in slide-in-from-bottom-10 md:slide-in-from-bottom-0 md:zoom-in-95">
+                    <h3 class="text-lg font-semibold text-card-foreground mb-4">{title.get_value()}</h3>
                     
-                    <div class="text-gray-400 mb-8">
+                    <div class="text-muted-foreground mb-6 text-sm">
                         {child_view.with_value(|c| c.clone())}
                     </div>
                     
-                    <div class="flex gap-3">
+                    <div class="flex justify-end gap-3">
                         <button 
-                            class="flex-1 px-4 py-3 bg-white/5 hover:bg-white/10 rounded-xl transition-all font-medium text-white"
+                            class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
                             on:click=move |_| on_cancel.with_value(|cb| cb.call(()))
                         >
                             {cancel_text.get_value()}
                         </button>
                         <button 
-                            class=format!("flex-1 px-4 py-3 rounded-xl transition-all font-bold text-white shadow-lg {}", 
-                                if is_danger { "bg-red-500 hover:bg-red-600 shadow-red-500/20" } else { "bg-blue-500 hover:bg-blue-600 shadow-blue-500/20" }
-                            )
+                            class=move || crate::utils::cn(format!("inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-10 px-4 py-2 {}", 
+                                if is_danger { "bg-destructive text-destructive-foreground hover:bg-destructive/90" } 
+                                else { "bg-primary text-primary-foreground hover:bg-primary/90" }
+                            ))
                             on:click=move |_| {
                                 logging::log!("Modal: Confirm clicked");
                                 on_confirm.with_value(|cb| cb.call(()))

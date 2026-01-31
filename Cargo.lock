@@ -689,6 +689,7 @@ dependencies = [
  "serde",
  "serde_json",
  "shared",
+ "tailwind_fuse",
  "uuid",
  "wasm-bindgen",
  "web-sys",
@@ -2223,6 +2224,15 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "tailwind_fuse"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7ca71fb01735fbc6fa13e9390d7a3037dde97053c0b65c0c72c0159cd009d26b"
+dependencies = [
+ "nom",
 ]
 
 [[package]]

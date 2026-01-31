@@ -1,66 +1,41 @@
 use leptos::*;
 
-#[derive(Clone)]
-struct Torrent {
-    id: u32,
-    name: String,
-    size: String,
-    progress: f32,
-    status: String,
-    seeds: u32,
-    peers: u32,
-    down_speed: String,
-    up_speed: String,
+
+
+
+fn format_bytes(bytes: i64) -> String {
+    const UNITS: [&str; 6] = ["B", "KB", "MB", "GB", "TB", "PB"];
+    if bytes < 1024 {
+        return format!("{} B", bytes);
+    }
+    let i = (bytes as f64).log2().div_euclid(10.0) as usize;
+    format!("{:.1} {}", (bytes as f64) / 1024_f64.powi(i as i32), UNITS[i])
+}
+
+fn format_speed(bytes_per_sec: i64) -> String {
+    if bytes_per_sec == 0 {
+        return "0 B/s".to_string();
+    }
+    format!("{}/s", format_bytes(bytes_per_sec))
 }
 
 #[component]
 pub fn TorrentTable() -> impl IntoView {
-    let torrents = vec![
-        Torrent {
-            id: 1,
-            name: "Ubuntu 22.04.3 LTS".to_string(),
-            size: "4.7 GB".to_string(),
-            progress: 100.0,
-            status: "Seeding".to_string(),
-            seeds: 452,
-            peers: 12,
-            down_speed: "0 KB/s".to_string(),
-            up_speed: "1.2 MB/s".to_string(),
-        },
-        Torrent {
-            id: 2,
-            name: "Debian 12.1.0 DVD".to_string(),
-            size: "3.9 GB".to_string(),
-            progress: 45.5,
-            status: "Downloading".to_string(),
-            seeds: 120,
-            peers: 45,
-            down_speed: "4.5 MB/s".to_string(),
-            up_speed: "50 KB/s".to_string(),
-        },
-        Torrent {
-            id: 3,
-            name: "Arch Linux 2023.09.01".to_string(),
-            size: "800 MB".to_string(),
-            progress: 12.0,
-            status: "Downloading".to_string(),
-            seeds: 85,
-            peers: 20,
-            down_speed: "2.1 MB/s".to_string(),
-            up_speed: "10 KB/s".to_string(),
-        },
-         Torrent {
-            id: 4,
-            name: "Fedora Workstation 39".to_string(),
-            size: "2.1 GB".to_string(),
-            progress: 0.0,
-            status: "Paused".to_string(),
-            seeds: 0,
-            peers: 0,
-            down_speed: "0 KB/s".to_string(),
-            up_speed: "0 KB/s".to_string(),
-        },
-    ];
+    let store = use_context::<crate::store::TorrentStore>().expect("store not provided");
+
+    let filtered_torrents = move || {
+        store.torrents.get().into_iter().filter(|t| {
+            let filter = store.filter.get();
+            match filter {
+                crate::store::FilterStatus::All => true,
+                crate::store::FilterStatus::Downloading => t.status == shared::TorrentStatus::Downloading,
+                crate::store::FilterStatus::Seeding => t.status == shared::TorrentStatus::Seeding,
+                crate::store::FilterStatus::Completed => t.status == shared::TorrentStatus::Seeding || t.status == shared::TorrentStatus::Paused, // Approximate
+                crate::store::FilterStatus::Inactive => t.status == shared::TorrentStatus::Paused || t.status == shared::TorrentStatus::Error,
+                 _ => true
+            }
+        }).collect::<Vec<_>>()
+    };
 
     view! {
         <div class="overflow-x-auto h-full bg-base-100">
@@ -76,19 +51,22 @@ pub fn TorrentTable() -> impl IntoView {
                         <th class="w-24">"Size"</th>
                         <th class="w-48">"Progress"</th>
                         <th class="w-24">"Status"</th>
-                        <th class="w-20">"Seeds"</th>
-                        <th class="w-20">"Peers"</th>
+                        // <th class="w-20">"Seeds"</th> // Not available in shared::Torrent
+                        // <th class="w-20">"Peers"</th> // Not available in shared::Torrent
                         <th class="w-24">"Down Speed"</th>
                         <th class="w-24">"Up Speed"</th>
+                        <th class="w-24">"ETA"</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {torrents.into_iter().map(|t| {
-                        let progress_class = if t.progress == 100.0 { "progress-success" } else { "progress-primary" };
-                        let status_class = match t.status.as_str() {
-                            "Seeding" => "text-success",
-                            "Downloading" => "text-primary",
-                            "Paused" => "text-warning",
+                    {move || filtered_torrents().into_iter().map(|t| {
+                        let progress_class = if t.percent_complete >= 100.0 { "progress-success" } else { "progress-primary" };
+                        let status_str = format!("{:?}", t.status);
+                        let status_class = match t.status {
+                            shared::TorrentStatus::Seeding => "text-success",
+                            shared::TorrentStatus::Downloading => "text-primary",
+                            shared::TorrentStatus::Paused => "text-warning",
+                            shared::TorrentStatus::Error => "text-error",
                             _ => "text-base-content/50"
                         };
 
@@ -102,18 +80,19 @@ pub fn TorrentTable() -> impl IntoView {
                                 <td class="font-medium truncate max-w-xs" title={t.name.clone()}>
                                     {t.name}
                                 </td>
-                                <td class="opacity-80 font-mono text-[11px]">{t.size}</td>
+                                <td class="opacity-80 font-mono text-[11px]">{format_bytes(t.size)}</td>
                                 <td>
                                     <div class="flex items-center gap-2">
-                                        <progress class={format!("progress w-24 {}", progress_class)} value={t.progress} max="100"></progress>
-                                        <span class="text-[10px] opacity-70">{format!("{:.1}%", t.progress)}</span>
+                                        <progress class={format!("progress w-24 {}", progress_class)} value={t.percent_complete} max="100"></progress>
+                                        <span class="text-[10px] opacity-70">{format!("{:.1}%", t.percent_complete)}</span>
                                     </div>
                                 </td>
-                                <td class={format!("text-[11px] font-medium {}", status_class)}>{t.status}</td>
-                                <td class="text-right font-mono text-[11px] opacity-80">{t.seeds}</td>
-                                <td class="text-right font-mono text-[11px] opacity-80">{t.peers}</td>
-                                <td class="text-right font-mono text-[11px] opacity-80 text-success">{t.down_speed}</td>
-                                <td class="text-right font-mono text-[11px] opacity-80 text-primary">{t.up_speed}</td>
+                                <td class={format!("text-[11px] font-medium {}", status_class)}>{status_str}</td>
+                                // <td class="text-right font-mono text-[11px] opacity-80">-</td>
+                                // <td class="text-right font-mono text-[11px] opacity-80">-</td>
+                                <td class="text-right font-mono text-[11px] opacity-80 text-success">{format_speed(t.down_rate)}</td>
+                                <td class="text-right font-mono text-[11px] opacity-80 text-primary">{format_speed(t.up_rate)}</td>
+                                <td class="text-right font-mono text-[11px] opacity-80">{if t.eta > 0 { format!("{}s", t.eta) } else { "∞".to_string() }}</td> // Temporary ETA format
                             </tr>
                         }
                     }).collect::<Vec<_>>()}

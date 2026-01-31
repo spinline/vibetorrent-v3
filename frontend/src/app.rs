@@ -6,6 +6,8 @@ use crate::components::torrent::table::TorrentTable;
 
 #[component]
 pub fn App() -> impl IntoView {
+    crate::store::provide_torrent_store();
+
     view! {
         <div class="flex flex-col h-screen w-screen overflow-hidden bg-base-100 text-base-content text-sm select-none">
             // Toolbar at the top

@@ -2,52 +2,70 @@ use leptos::*;
 
 #[component]
 pub fn Sidebar() -> impl IntoView {
+    let store = use_context::<crate::store::TorrentStore>().expect("store not provided");
+
+    let total_count = move || store.torrents.get().len();
+    let downloading_count = move || store.torrents.get().iter().filter(|t| t.status == shared::TorrentStatus::Downloading).count();
+    let seeding_count = move || store.torrents.get().iter().filter(|t| t.status == shared::TorrentStatus::Seeding).count();
+    let completed_count = move || store.torrents.get().iter().filter(|t| t.status == shared::TorrentStatus::Seeding || t.status == shared::TorrentStatus::Paused).count();
+    let inactive_count = move || store.torrents.get().iter().filter(|t| t.status == shared::TorrentStatus::Paused || t.status == shared::TorrentStatus::Error).count();
+
+    let set_filter = move |f: crate::store::FilterStatus| {
+        store.filter.set(f);
+    };
+
+    let filter_class = move |f: crate::store::FilterStatus| {
+        if store.filter.get() == f { "active" } else { "" }
+    };
+
     view! {
         <aside class="w-64 bg-base-200 h-full flex flex-col border-r border-base-300">
             <div class="p-4">
                 <h2 class="text-xl font-bold px-4 mb-2 text-primary">"Filters"</h2>
                 <ul class="menu w-full rounded-box gap-1">
                     <li>
-                        <a class="active">
+                        <a class={move || filter_class(crate::store::FilterStatus::All)} on:click=move |_| set_filter(crate::store::FilterStatus::All)>
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
                             </svg>
                             "All"
-                            <span class="badge badge-sm badge-ghost ml-auto">"12"</span>
+                            <span class="badge badge-sm badge-ghost ml-auto">{total_count}</span>
                         </a>
                     </li>
                     <li>
-                        <a>
+                        <a class={move || filter_class(crate::store::FilterStatus::Downloading)} on:click=move |_| set_filter(crate::store::FilterStatus::Downloading)>
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
                             </svg>
                             "Downloading"
-                            <span class="badge badge-sm badge-ghost ml-auto">"4"</span>
+                            <span class="badge badge-sm badge-ghost ml-auto">{downloading_count}</span>
                         </a>
                     </li>
                     <li>
-                        <a>
+                        <a class={move || filter_class(crate::store::FilterStatus::Seeding)} on:click=move |_| set_filter(crate::store::FilterStatus::Seeding)>
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
                             </svg>
                             "Seeding"
-                            <span class="badge badge-sm badge-ghost ml-auto">"8"</span>
+                            <span class="badge badge-sm badge-ghost ml-auto">{seeding_count}</span>
                         </a>
                     </li>
                     <li>
-                        <a>
+                        <a class={move || filter_class(crate::store::FilterStatus::Completed)} on:click=move |_| set_filter(crate::store::FilterStatus::Completed)>
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                             "Completed"
+                             <span class="badge badge-sm badge-ghost ml-auto">{completed_count}</span>
                         </a>
                     </li>
                     <li>
-                        <a>
+                        <a class={move || filter_class(crate::store::FilterStatus::Inactive)} on:click=move |_| set_filter(crate::store::FilterStatus::Inactive)>
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
                             </svg>
                             "Inactive"
+                             <span class="badge badge-sm badge-ghost ml-auto">{inactive_count}</span>
                         </a>
                     </li>
                 </ul>

@@ -1,4 +1,5 @@
 use axum::response::sse::{Event, Sse};
+use axum::response::IntoResponse;
 use futures::stream::{self, Stream};
 use std::convert::Infallible;
 use tokio_stream::StreamExt;
@@ -114,7 +115,7 @@ use crate::AppState; // Import from crate root
 
 pub async fn sse_handler(
     State(state): State<AppState>,
-) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
+) -> impl axum::response::IntoResponse {
     // Get initial value synchronously (from the watch channel's current state)
     let initial_rx = state.tx.subscribe();
     let initial_torrents = initial_rx.borrow().clone();
@@ -131,7 +132,6 @@ pub async fn sse_handler(
     // Stream that yields the initial event once
     let initial_stream = stream::once(async { Ok::<Event, Infallible>(initial_event) });
     
-    // Stream that waits for subsequent changes
     // Stream that waits for subsequent changes via Broadcast channel
     let rx = state.event_bus.subscribe();
     let update_stream = stream::unfold(rx, |mut rx| async move {
@@ -153,6 +153,12 @@ pub async fn sse_handler(
         }
     });
     
-    Sse::new(initial_stream.chain(update_stream))
+    let mut response = Sse::new(initial_stream.chain(update_stream))
         .keep_alive(axum::response::sse::KeepAlive::default())
+        .into_response();
+
+    response.headers_mut().insert(axum::http::header::CACHE_CONTROL, "no-cache".parse().unwrap());
+    response.headers_mut().insert("X-Accel-Buffering", "no".parse().unwrap());
+
+    response
 }

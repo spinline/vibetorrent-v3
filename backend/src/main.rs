@@ -189,16 +189,22 @@ async fn main() {
         }
     });
 
-    let app = Router::new()
-        .route("/api/events", get(sse::sse_handler))
+    let sse_routes = Router::new()
+        .route("/api/events", get(sse::sse_handler));
+
+    let other_routes = Router::new()
         .route("/api/torrents/add", post(add_torrent_handler))
         .route("/api/torrents/action", post(handle_torrent_action))
-        .fallback(static_handler) // Serve static files for everything else
-        .layer(TraceLayer::new_for_http())
+        .fallback(static_handler)
         .layer(CompressionLayer::new()
             .br(false)
             .gzip(true)
-            .quality(CompressionLevel::Fastest))
+            .quality(CompressionLevel::Fastest));
+
+    let app = Router::new()
+        .merge(sse_routes)
+        .merge(other_routes)
+        .layer(TraceLayer::new_for_http())
         .layer(ServiceBuilder::new()
             .layer(HandleErrorLayer::new(handle_timeout_error))
             .layer(tower::timeout::TimeoutLayer::new(Duration::from_secs(30)))

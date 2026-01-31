@@ -45,7 +45,7 @@ pub fn provide_torrent_store() {
     // Initialize SSE connection
     create_effect(move |_| {
         spawn_local(async move {
-            let mut es = EventSource::new("http://localhost:3000/api/events").unwrap();
+            let mut es = EventSource::new("/api/events").unwrap();
             let mut stream = es.subscribe("message").unwrap();
 
             while let Some(Ok((_, msg))) = stream.next().await {

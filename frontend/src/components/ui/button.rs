@@ -25,7 +25,7 @@ pub enum ButtonSize {
 pub fn Button(
     #[prop(into, optional)] variant: ButtonVariant,
     #[prop(into, optional)] size: ButtonSize,
-    #[prop(into, optional)] class: String,
+    #[prop(into, optional)] class: MaybeSignal<String>,
     #[prop(into, optional)] on_click: Option<Callback<web_sys::MouseEvent>>,
     children: Children,
 ) -> impl IntoView {
@@ -49,7 +49,7 @@ pub fn Button(
 
     view! {
         <button
-            class=cn(format!("{} {} {} {}", base_classes, variant_classes, size_classes, class))
+            class=move || cn(format!("{} {} {} {}", base_classes, variant_classes, size_classes, class.get()))
             on:click=move |e| {
                 if let Some(cb) = on_click {
                     cb.call(e);

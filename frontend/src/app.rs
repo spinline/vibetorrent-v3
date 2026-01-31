@@ -622,7 +622,7 @@ pub fn App() -> impl IntoView {
                             </div>
                         </div>
                         <div class="flex gap-3">
-                            <Button class="flex-1" on_click=Callback::from(move |_| add_torrent())>
+                            <Button class="flex-1" on_click=Callback::from(move |e| add_torrent(e))>
                                 "Add Download"
                             </Button>
                         </div>

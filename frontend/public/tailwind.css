@@ -933,6 +933,9 @@
   .mb-6 {
     margin-bottom: calc(var(--spacing) * 6);
   }
+  .ml-1 {
+    margin-left: calc(var(--spacing) * 1);
+  }
   .ml-auto {
     margin-left: auto;
   }
@@ -1403,6 +1406,9 @@
   .uppercase {
     text-transform: uppercase;
   }
+  .opacity-0 {
+    opacity: 0%;
+  }
   .opacity-70 {
     opacity: 70%;
   }
@@ -1514,10 +1520,24 @@
     -webkit-user-select: none;
     user-select: none;
   }
+  .group-hover\:opacity-50 {
+    &:is(:where(.group):hover *) {
+      @media (hover: hover) {
+        opacity: 50%;
+      }
+    }
+  }
   .hover\:bg-accent {
     &:hover {
       @media (hover: hover) {
         background-color: var(--color-accent);
+      }
+    }
+  }
+  .hover\:bg-base-300 {
+    &:hover {
+      @media (hover: hover) {
+        background-color: var(--color-base-300);
       }
     }
   }

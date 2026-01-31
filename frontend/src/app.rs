@@ -1,4 +1,5 @@
 use leptos::*;
+use leptos_router::*;
 use crate::components::layout::sidebar::Sidebar;
 use crate::components::layout::toolbar::Toolbar;
 use crate::components::layout::statusbar::StatusBar;
@@ -9,22 +10,32 @@ pub fn App() -> impl IntoView {
     crate::store::provide_torrent_store();
 
     view! {
-        <div class="flex flex-col h-screen w-screen overflow-hidden bg-base-100 text-base-content text-sm select-none">
-            // Toolbar at the top
-            <Toolbar />
+        <div class="drawer lg:drawer-open">
+            <input id="my-drawer" type="checkbox" class="drawer-toggle" />
+            
+            <div class="drawer-content flex flex-col h-screen overflow-hidden bg-base-100 text-base-content text-sm select-none transition-colors duration-300">
+                // Toolbar at the top
+                <Toolbar />
 
-            <div class="flex flex-1 overflow-hidden">
-                // Sidebar on the left
-                <Sidebar />
-
-                // Main Content Area
-                <main class="flex-1 flex flex-col min-w-0 bg-base-100">
-                    <TorrentTable />
+                <main class="flex-1 flex flex-col min-w-0 bg-base-100 overflow-hidden p-4 md:p-6 space-y-6">
+                    <Router>
+                        <Routes>
+                            <Route path="/" view=move || view! { <TorrentTable /> } />
+                            <Route path="/settings" view=move || view! { <div class="p-4">"Settings Page (Coming Soon)"</div> } />
+                        </Routes>
+                    </Router>
                 </main>
+                
+                 // Status Bar at the bottom
+                <StatusBar />
             </div>
 
-            // Status Bar at the bottom
-            <StatusBar />
+            <div class="drawer-side z-40">
+                <label for="my-drawer" aria-label="close sidebar" class="drawer-overlay"></label>
+                <div class="menu p-0 min-h-full bg-base-200 text-base-content border-r border-base-300">
+                    <Sidebar />
+                </div>
+            </div>
         </div>
     }
 }

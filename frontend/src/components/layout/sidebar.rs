@@ -19,7 +19,7 @@ pub fn Sidebar() -> impl IntoView {
     };
 
     view! {
-        <aside class="w-64 bg-base-200 h-full flex flex-col border-r border-base-300">
+        <div class="w-64 h-full flex flex-col">
             <div class="p-4">
                 <h2 class="text-xl font-bold px-4 mb-2 text-primary">"Filters"</h2>
                 <ul class="menu w-full rounded-box gap-1">
@@ -78,6 +78,6 @@ pub fn Sidebar() -> impl IntoView {
                     <li><a>"Error"</a></li>
                 </ul>
             </div>
-        </aside>
+        </div>
     }
 }

@@ -106,9 +106,33 @@ pub fn TorrentTable() -> impl IntoView {
         }
     };
 
+    let (menu_visible, set_menu_visible) = create_signal(false);
+    let (menu_position, set_menu_position) = create_signal((0, 0));
+    let (active_hash, set_active_hash) = create_signal(String::new());
+
+    let handle_context_menu = move |e: web_sys::MouseEvent, hash: String| {
+        e.prevent_default();
+        set_menu_position.set((e.client_x(), e.client_y()));
+        set_active_hash.set(hash);
+        set_menu_visible.set(true);
+    };
+
+    let on_action = move |(action, hash): (String, String)| {
+        logging::log!("TorrentTable Action: {} on {}", action, hash);
+        // TODO: Implement actual store calls here (start/stop/delete)
+        match action.as_str() {
+            "start" => { /* store.start_torrent(&hash) */ },
+            "stop" => { /* store.stop_torrent(&hash) */ },
+            "delete" => { /* store.delete_torrent(&hash, false) */ },
+            "delete_with_data" => { /* store.delete_torrent(&hash, true) */ },
+            _ => {}
+        }
+        set_menu_visible.set(false);
+    };
+
     view! {
-        <div class="overflow-x-auto h-full bg-base-100">
-            <table class="table table-xs table-pin-rows w-full max-w-full">
+        <div class="overflow-x-auto h-full bg-base-100 relative"> // Added relative for positioning context if needed, though menu is fixed
+            <table class="table table-xs table-pin-rows w-full max-w-full whitespace-nowrap">
                 <thead>
                     <tr class="bg-base-200 text-base-content/70">
                         <th class="w-8">
@@ -128,8 +152,6 @@ pub fn TorrentTable() -> impl IntoView {
                          <th class="w-24 cursor-pointer hover:bg-base-300 transition-colors group select-none" on:click=move |_| handle_sort(SortColumn::Status)>
                              <div class="flex items-center">"Status" {move || sort_arrow(SortColumn::Status)}</div>
                         </th>
-                        // <th class="w-20">"Seeds"</th> // Not available in shared::Torrent
-                        // <th class="w-20">"Peers"</th> // Not available in shared::Torrent
                         <th class="w-24 cursor-pointer hover:bg-base-300 transition-colors group select-none" on:click=move |_| handle_sort(SortColumn::DownSpeed)>
                              <div class="flex items-center">"Down Speed" {move || sort_arrow(SortColumn::DownSpeed)}</div>
                         </th>
@@ -152,9 +174,16 @@ pub fn TorrentTable() -> impl IntoView {
                             shared::TorrentStatus::Error => "text-error",
                             _ => "text-base-content/50"
                         };
+                        let t_hash = t.hash.clone(); // Clone for closure using it in handler
 
                         view! {
-                            <tr class="hover group border-b border-base-200">
+                            <tr 
+                                class="hover group border-b border-base-200 cursor-context-menu"
+                                on:contextmenu={
+                                    let t_hash = t_hash.clone();
+                                    move |e: web_sys::MouseEvent| handle_context_menu(e, t_hash.clone())
+                                }
+                            >
                                 <th>
                                     <label>
                                         <input type="checkbox" class="checkbox checkbox-xs rounded-none" />
@@ -171,16 +200,22 @@ pub fn TorrentTable() -> impl IntoView {
                                     </div>
                                 </td>
                                 <td class={format!("text-[11px] font-medium {}", status_class)}>{status_str}</td>
-                                // <td class="text-right font-mono text-[11px] opacity-80">-</td>
-                                // <td class="text-right font-mono text-[11px] opacity-80">-</td>
                                 <td class="text-right font-mono text-[11px] opacity-80 text-success">{format_speed(t.down_rate)}</td>
                                 <td class="text-right font-mono text-[11px] opacity-80 text-primary">{format_speed(t.up_rate)}</td>
-                                <td class="text-right font-mono text-[11px] opacity-80">{if t.eta > 0 { format!("{}s", t.eta) } else { "∞".to_string() }}</td> // Temporary ETA format
+                                <td class="text-right font-mono text-[11px] opacity-80">{if t.eta > 0 { format!("{}s", t.eta) } else { "∞".to_string() }}</td>
                             </tr>
                         }
                     }).collect::<Vec<_>>()}
                 </tbody>
             </table>
+            
+            <crate::components::context_menu::ContextMenu
+                visible=menu_visible.get()
+                position=menu_position.get()
+                torrent_hash=active_hash.get()
+                on_close=Callback::from(move |_| set_menu_visible.set(false))
+                on_action=Callback::from(on_action)
+            />
         </div>
     }
 }

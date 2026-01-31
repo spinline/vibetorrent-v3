@@ -20,21 +20,12 @@
   <link data-trunk rel="copy-file" href="icon-192.png" />
   <script>
     (function () {
-      var t = localStorage.getItem("vibetorrent_theme");
-      var c = "#0f172a"; // Midnight (default)
-      var tc = "#94a3b8"; // Text Color (Slate 400)
+      var t = localStorage.getItem("vibetorrent_theme") || "dark";
+      if (t === "Amoled") t = "black";
+      if (t === "Light") t = "light";
+      if (t === "Dark" || t === "Midnight") t = "dark";
 
-      if (t === "Light") {
-        c = "#f9fafb"; // Gray 50
-        tc = "#111827"; // Gray 900
-      } else if (t === "Amoled") {
-        c = "#000000";
-        tc = "#e5e7eb"; // Gray 200
-      }
-
-      var s = document.createElement("style");
-      s.innerHTML = "body { background-color: " + c + "; color: " + tc + "; }";
-      document.head.appendChild(s);
+      document.documentElement.setAttribute("data-theme", t.toLowerCase());
     })();
   </script>
 </head>

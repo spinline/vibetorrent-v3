@@ -233,9 +233,32 @@ async fn handle_torrent_action(
             Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to parse path: {}", e)).into_response(),
         };
         
-        tracing::info!("Attempting to delete torrent and data at path: {}", path);
-        if path.trim().is_empty() || path == "/" {
-             return (StatusCode::BAD_REQUEST, "Safety check failed: Path is empty or root").into_response();
+        let path_buf = std::path::Path::new(&path);
+
+        // 1.5 Get Default Download Directory (Sandbox Root)
+        let root_xml = match client.call("directory.default", &[]).await {
+            Ok(xml) => xml,
+            Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to get valid download root: {}", e)).into_response(),
+        };
+        
+        let root_path_str = match xmlrpc::parse_string_response(&root_xml) {
+            Ok(p) => p,
+            Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to parse root path: {}", e)).into_response(),
+        };
+        
+        let root_path = std::path::Path::new(&root_path_str);
+
+        tracing::info!("Delete request: Path='{}', Root='{}'", path, root_path_str);
+
+        // SECURITY CHECK: Ensure path is inside root_path
+        if !path_buf.starts_with(root_path) {
+             tracing::error!("Security Risk: Attempted to delete path outside download directory: {}", path);
+             return (StatusCode::FORBIDDEN, "Security Error: Cannot delete files outside default download directory").into_response();
+        }
+        
+        // SECURITY CHECK: Ensure we are not deleting the root itself
+        if path_buf == root_path {
+             return (StatusCode::BAD_REQUEST, "Security Error: Cannot delete the download root directory itself").into_response();
         }
 
         // 2. Erase Torrent first (so rTorrent releases locks?)

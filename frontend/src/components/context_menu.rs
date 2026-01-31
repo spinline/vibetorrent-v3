@@ -1,5 +1,4 @@
 use leptos::*;
-use gloo_net::http::Request;
 
 #[component]
 pub fn ContextMenu(
@@ -7,27 +6,14 @@ pub fn ContextMenu(
     visible: bool,
     torrent_hash: String,
     on_close: Callback<()>,
+    on_action: Callback<(String, String)>, // (Action, Hash)
 ) -> impl IntoView {
     let handle_action = move |action: &str| {
         let hash = torrent_hash.clone();
         let action_str = action.to_string();
         
-        // Optimistic UI: Close immediately
-        on_close.call(());
-        
-        spawn_local(async move {
-            let body = serde_json::json!({
-                "hash": hash,
-                "action": action_str
-            });
-            
-            let _ = Request::post("/api/torrents/action")
-                .header("Content-Type", "application/json")
-                .body(body.to_string())
-                .unwrap()
-                .send()
-                .await;
-        });
+        on_close.call(()); // Always close menu
+        on_action.call((action_str, hash)); // Delegate
     };
 
     if !visible {
@@ -89,8 +75,8 @@ pub fn ContextMenu(
                         move |_| handle_action("delete_with_data")
                     }
                 >
-                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                     <span>"Delete with Data"</span>
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                    <span>"Delete with Data"</span>
                 </button>
             </div>
         </div>

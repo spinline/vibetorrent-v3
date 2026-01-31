@@ -1,6 +1,7 @@
 use leptos::*;
 use shared::{Torrent, AppEvent, TorrentStatus, Theme};
 use crate::components::context_menu::ContextMenu;
+use crate::components::modal::Modal;
 use gloo_net::eventsource::futures::EventSource;
 use futures::StreamExt;
 
@@ -63,6 +64,10 @@ pub fn App() -> impl IntoView {
     let (cm_visible, set_cm_visible) = create_signal(false);
     let (cm_pos, set_cm_pos) = create_signal((0, 0));
     let (cm_target_hash, set_cm_target_hash) = create_signal(String::new());
+    
+    // Delete Confirmation State
+    let (show_delete_modal, set_show_delete_modal) = create_signal(false);
+    let (pending_action, set_pending_action) = create_signal(Option::<(String, String)>::None); // (Action, Hash)
     
     // Debug: Last Updated Timestamp
     let (last_updated, set_last_updated) = create_signal(0u64);
@@ -641,7 +646,62 @@ pub fn App() -> impl IntoView {
                         visible=cm_visible.get()
                         torrent_hash=cm_target_hash.get()
                         on_close=Callback::from(move |_| set_cm_visible.set(false))
+                        on_action=Callback::from(move |(action, hash): (String, String)| {
+                            if action == "delete" || action == "delete_with_data" {
+                                set_pending_action.set(Some((action, hash)));
+                                set_show_delete_modal.set(true);
+                            } else {
+                                // Execute immediately for start/stop
+                                spawn_local(async move {
+                                    let body = serde_json::json!({
+                                        "hash": hash,
+                                        "action": action
+                                    });
+                                    let _ = gloo_net::http::Request::post("/api/torrents/action")
+                                        .header("Content-Type", "application/json")
+                                        .body(body.to_string())
+                                        .unwrap()
+                                        .send()
+                                        .await;
+                                });
+                            }
+                        })
                     />
+
+                    // Delete Confirmation Modal
+                    <Modal
+                        title="Confirm Deletion"
+                        visible=show_delete_modal
+                        is_danger=true
+                        confirm_text="Delete Forever"
+                        on_cancel=Callback::from(move |_| {
+                            set_show_delete_modal.set(false);
+                            set_pending_action.set(None);
+                        })
+                        on_confirm=Callback::from(move |_| {
+                            if let Some((action, hash)) = pending_action.get() {
+                                spawn_local(async move {
+                                    let body = serde_json::json!({
+                                        "hash": hash,
+                                        "action": action
+                                    });
+                                    let _ = gloo_net::http::Request::post("/api/torrents/action")
+                                        .header("Content-Type", "application/json")
+                                        .body(body.to_string())
+                                        .unwrap()
+                                        .send()
+                                        .await;
+                                });
+                            }
+                            set_show_delete_modal.set(false);
+                            set_pending_action.set(None);
+                        })
+                    >
+                        <p>"Are you definitely sure you want to delete this torrent?"</p>
+                        <Show when=move || pending_action.get().map(|(a, _)| a == "delete_with_data").unwrap_or(false)>
+                            <p class="mt-2 text-red-400 font-bold">"⚠️ This will also permanently delete the downloaded files from the disk."</p>
+                        </Show>
+                    </Modal>
                 </div>
             }
         }}

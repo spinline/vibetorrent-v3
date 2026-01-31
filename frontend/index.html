@@ -20,12 +20,16 @@
   <link data-trunk rel="copy-file" href="icon-192.png" />
   <script>
     (function () {
-      var t = localStorage.getItem("vibetorrent_theme") || "dark";
+      var localTheme = localStorage.getItem("vibetorrent_theme");
+      var t = localTheme || "dark";
       if (t === "Amoled") t = "black";
       if (t === "Light") t = "light";
       if (t === "Dark" || t === "Midnight") t = "dark";
 
       document.documentElement.setAttribute("data-theme", t.toLowerCase());
+      if (!localTheme) {
+        localStorage.setItem("vibetorrent_theme", "Dark");
+      }
     })();
   </script>
 </head>

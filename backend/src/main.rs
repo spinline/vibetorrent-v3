@@ -209,7 +209,7 @@ async fn main() {
             .layer(HandleErrorLayer::new(handle_timeout_error))
             .layer(tower::timeout::TimeoutLayer::new(Duration::from_secs(30)))
         )
-        .layer(CorsLayer::permissive())
+        .layer(CorsLayer::permissive().allow_private_network(true))
         .with_state(app_state);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], args.port));

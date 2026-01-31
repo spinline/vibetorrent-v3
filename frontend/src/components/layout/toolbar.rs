@@ -2,6 +2,8 @@ use leptos::*;
 
 #[component]
 pub fn Toolbar() -> impl IntoView {
+    let (show_add_modal, set_show_add_modal) = create_signal(false);
+
     view! {
         <div class="h-14 min-h-14 flex items-center px-4 border-b border-base-300 bg-base-100 gap-4">
             <label for="my-drawer" class="btn btn-square btn-ghost lg:hidden drawer-button">
@@ -14,7 +16,11 @@ pub fn Toolbar() -> impl IntoView {
                     </svg>
                     "Open"
                 </button>
-                <button class="join-item btn btn-sm btn-outline gap-2" title="Magnet Link">
+                <button 
+                    class="join-item btn btn-sm btn-outline gap-2" 
+                    title="Magnet Link"
+                    on:click=move |_| set_show_add_modal.set(true)
+                >
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
                     </svg>
@@ -46,6 +52,10 @@ pub fn Toolbar() -> impl IntoView {
              <div class="ml-auto flex items-center gap-2">
                  <input type="text" placeholder="Filter..." class="input input-sm input-bordered w-full max-w-xs" />
              </div>
+
+            <Show when=move || show_add_modal.get()>
+                <crate::components::torrent::add_torrent::AddTorrentModal on_close=move |_| set_show_add_modal.set(false) />
+            </Show>
         </div>
     }
 }

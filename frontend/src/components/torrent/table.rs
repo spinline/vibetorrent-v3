@@ -119,15 +119,35 @@ pub fn TorrentTable() -> impl IntoView {
 
     let on_action = move |(action, hash): (String, String)| {
         logging::log!("TorrentTable Action: {} on {}", action, hash);
-        // TODO: Implement actual store calls here (start/stop/delete)
-        match action.as_str() {
-            "start" => { /* store.start_torrent(&hash) */ },
-            "stop" => { /* store.stop_torrent(&hash) */ },
-            "delete" => { /* store.delete_torrent(&hash, false) */ },
-            "delete_with_data" => { /* store.delete_torrent(&hash, true) */ },
-            _ => {}
-        }
-        set_menu_visible.set(false);
+        set_menu_visible.set(false); // Close menu immediately
+
+        spawn_local(async move {
+            let action_req =  if action == "delete_with_data" { "delete_with_data" } else { &action };
+            
+            let req_body = shared::TorrentActionRequest {
+                hash: hash.clone(),
+                action: action_req.to_string(),
+            };
+
+            let client = gloo_net::http::Request::post("/api/torrents/action")
+                .json(&req_body);
+
+            match client {
+                Ok(req) => {
+                    match req.send().await {
+                        Ok(resp) => {
+                            if !resp.ok() {
+                                logging::error!("Failed to execute action: {} {}", resp.status(), resp.status_text());
+                            } else {
+                                logging::log!("Action {} executed successfully", action);
+                            }
+                        }
+                        Err(e) => logging::error!("Network error executing action: {}", e),
+                    }
+                }
+                Err(e) => logging::error!("Failed to serialize request: {}", e),
+            }
+        });
     };
 
     view! {
@@ -209,13 +229,15 @@ pub fn TorrentTable() -> impl IntoView {
                 </tbody>
             </table>
             
-            <crate::components::context_menu::ContextMenu
-                visible=menu_visible.get()
-                position=menu_position.get()
-                torrent_hash=active_hash.get()
-                on_close=Callback::from(move |_| set_menu_visible.set(false))
-                on_action=Callback::from(on_action)
-            />
+            <Show when=move || menu_visible.get() fallback=|| ()>
+                <crate::components::context_menu::ContextMenu
+                    visible=true
+                    position=menu_position.get()
+                    torrent_hash=active_hash.get()
+                    on_close=Callback::from(move |_| set_menu_visible.set(false))
+                    on_action=Callback::from(on_action)
+                />
+            </Show>
         </div>
     }
 }

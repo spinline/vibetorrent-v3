@@ -37,7 +37,7 @@ pub fn ContextMenu(
             on:contextmenu=move |e| e.prevent_default()
         >
             <ul class="menu bg-base-200 text-base-content rounded-box shadow-xl border border-white/5 p-2 gap-1">
-                <li class="menu-title px-4 py-1.5 text-xs opacity-60 uppercase tracking-wider font-bold">"Actions"</li>
+
                 
                 <li>
                     <button 

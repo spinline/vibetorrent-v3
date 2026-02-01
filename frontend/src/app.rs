@@ -30,8 +30,8 @@ pub fn App() -> impl IntoView {
                 <StatusBar />
             </div>
 
-            <div class="drawer-side z-40">
-                <label for="my-drawer" aria-label="close sidebar" class="drawer-overlay"></label>
+            <div class="drawer-side z-40 transition-none duration-0">
+                <label for="my-drawer" aria-label="close sidebar" class="drawer-overlay transition-none duration-0"></label>
                 <div class="menu p-0 min-h-full bg-base-200 text-base-content border-r border-base-300 transition-none duration-0">
                     <Sidebar />
                 </div>

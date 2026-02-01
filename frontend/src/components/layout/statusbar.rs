@@ -52,6 +52,11 @@ pub fn StatusBar() -> impl IntoView {
                                                         }
                                                     }
                                                 }
+
+                                                // Close the dropdown by blurring the active element
+                                                if let Some(active) = doc.active_element() {
+                                                    let _ = active.blur();
+                                                }
                                             }
                                         >
                                             {theme}

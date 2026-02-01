@@ -9,3 +9,10 @@
         @apply min-h-[100dvh] w-full overflow-hidden bg-base-100 text-base-content overscroll-y-none;
     }
 }
+
+/* Fix for iOS click/blur events */
+@media (hover: none) {
+    body {
+        cursor: pointer;
+    }
+}

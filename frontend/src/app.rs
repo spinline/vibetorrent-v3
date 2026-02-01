@@ -13,11 +13,11 @@ pub fn App() -> impl IntoView {
         <div class="drawer lg:drawer-open">
             <input id="my-drawer" type="checkbox" class="drawer-toggle" />
             
-            <div class="drawer-content flex flex-col h-screen overflow-hidden bg-base-100 text-base-content text-sm select-none">
+            <div class="drawer-content flex flex-col h-[100dvh] overflow-hidden bg-base-100 text-base-content text-sm select-none">
                 // Toolbar at the top
                 <Toolbar />
 
-                <main class="flex-1 flex flex-col min-w-0 bg-base-100 overflow-hidden space-y-6">
+                <main class="flex-1 flex flex-col min-w-0 bg-base-100 overflow-hidden">
                     <Router>
                         <Routes>
                             <Route path="/" view=move || view! { <TorrentTable /> } />

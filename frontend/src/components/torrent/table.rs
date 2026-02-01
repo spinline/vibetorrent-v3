@@ -331,12 +331,7 @@ pub fn TorrentTable() -> impl IntoView {
                     view! {
                         <div 
                             class=move || {
-                                let base = "card card-compact bg-base-100 shadow-sm border border-base-200 transition-transform active:scale-[0.99]";
-                                if is_selected_fn() {
-                                    format!("{} ring-2 ring-primary select-none", base)
-                                } else {
-                                    format!("{} select-none", base)
-                                }
+                                "card card-compact bg-base-100 shadow-sm border border-base-200 transition-transform active:scale-[0.99] select-none"
                             }
                             style="user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;"
                             on:contextmenu={

@@ -13,7 +13,4 @@ module.exports = {
     },
   },
   plugins: [],
-  daisyui: {
-    themes: ["light", "dark", "cupcake", "dracula", "cyberpunk", "emerald", "luxury", "nord", "sunset", "winter", "night", "synthwave", "retro", "forest"],
-  },
 }

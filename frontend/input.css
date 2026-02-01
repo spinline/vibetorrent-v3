@@ -1,6 +1,9 @@
 @import "tailwindcss";
 @config "./tailwind.config.js";
-@plugin "daisyui";
+
+@plugin "daisyui" {
+    themes: light, dark, cupcake, dracula, cyberpunk, emerald, luxury, nord, sunset, winter, night, synthwave, retro, forest;
+}
 
 @layer base {
 

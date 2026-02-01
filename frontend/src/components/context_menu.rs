@@ -25,7 +25,10 @@ pub fn ContextMenu(
         // Backdrop to catch clicks outside
         <div 
             class="fixed inset-0 z-[99] cursor-default" 
+            role="button"
+            tabindex="-1"
             on:click=move |_| on_close.call(())
+            on:touchstart=move |_| on_close.call(())
             on:contextmenu=move |e| e.prevent_default()
         ></div>
 

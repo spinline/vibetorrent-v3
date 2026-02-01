@@ -6,6 +6,6 @@
 
     html,
     body {
-        @apply h-full w-full overflow-hidden bg-base-100 text-base-content;
+        @apply min-h-[100dvh] w-full overflow-hidden bg-base-100 text-base-content overscroll-behavior-y-none;
     }
 }

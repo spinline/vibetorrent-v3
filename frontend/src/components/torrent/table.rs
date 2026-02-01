@@ -1,4 +1,6 @@
 use leptos::*;
+use wasm_bindgen::closure::Closure;
+use wasm_bindgen::JsCast;
 
 
 
@@ -297,9 +299,8 @@ pub fn TorrentTable() -> impl IntoView {
                                     set_menu_visible.set(true);
                                     
                                     // Haptic feedback if available
-                                    if let Ok(navigator) = window().navigator() {
-                                        let _ = navigator.vibrate_with_duration(50); 
-                                    }
+                                    let navigator = window().navigator();
+                                    let _ = navigator.vibrate_with_duration(50);
                                 }) as Box<dyn Fn()>);
                                 
                                 let id = window()

@@ -33,13 +33,15 @@ impl FilterStatus {
 pub struct TorrentStore {
     pub torrents: RwSignal<Vec<Torrent>>,
     pub filter: RwSignal<FilterStatus>,
+    pub search_query: RwSignal<String>,
 }
 
 pub fn provide_torrent_store() {
     let torrents = create_rw_signal(Vec::<Torrent>::new());
     let filter = create_rw_signal(FilterStatus::All);
+    let search_query = create_rw_signal(String::new());
 
-    let store = TorrentStore { torrents, filter };
+    let store = TorrentStore { torrents, filter, search_query };
     provide_context(store);
 
     // Initialize SSE connection

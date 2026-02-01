@@ -46,14 +46,24 @@ pub fn TorrentTable() -> impl IntoView {
     let filtered_torrents = move || {
         let mut torrents = store.torrents.get().into_iter().filter(|t| {
             let filter = store.filter.get();
-            match filter {
+            let search = store.search_query.get().to_lowercase();
+            
+            let matches_filter = match filter {
                 crate::store::FilterStatus::All => true,
                 crate::store::FilterStatus::Downloading => t.status == shared::TorrentStatus::Downloading,
                 crate::store::FilterStatus::Seeding => t.status == shared::TorrentStatus::Seeding,
                 crate::store::FilterStatus::Completed => t.status == shared::TorrentStatus::Seeding || t.status == shared::TorrentStatus::Paused, // Approximate
                 crate::store::FilterStatus::Inactive => t.status == shared::TorrentStatus::Paused || t.status == shared::TorrentStatus::Error,
-                 _ => true
-            }
+                _ => true
+            };
+
+            let matches_search = if search.is_empty() {
+                true
+            } else {
+                t.name.to_lowercase().contains(&search)
+            };
+
+            matches_filter && matches_search
         }).collect::<Vec<_>>();
 
         torrents.sort_by(|a, b| {

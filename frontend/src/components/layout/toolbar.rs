@@ -3,6 +3,7 @@ use leptos::*;
 #[component]
 pub fn Toolbar() -> impl IntoView {
     let (show_add_modal, set_show_add_modal) = create_signal(false);
+    let store = use_context::<crate::store::TorrentStore>().expect("store not provided");
 
     view! {
         <div class="navbar min-h-14 h-14 bg-base-100 p-0">
@@ -28,7 +29,31 @@ pub fn Toolbar() -> impl IntoView {
             </div>
 
             <div class="navbar-end gap-2 px-4">
-                 <input type="text" placeholder="Filter..." class="input input-sm input-bordered w-full max-w-xs" />
+                 <div class="join">
+                    <input 
+                        type="text" 
+                        placeholder="Search..." 
+                        class="input input-sm input-bordered join-item w-full max-w-xs focus:outline-none" 
+                        prop:value=move || store.search_query.get()
+                        on:input=move |ev| store.search_query.set(event_target_value(&ev))
+                        on:keydown=move |ev: web_sys::KeyboardEvent| {
+                            if ev.key() == "Escape" {
+                                store.search_query.set(String::new());
+                            }
+                        }
+                    />
+                    <Show when=move || !store.search_query.get().is_empty()>
+                        <button 
+                            class="btn btn-sm btn-ghost join-item border-base-content/20 border-l-0 px-2"
+                            title="Clear Search"
+                            on:click=move |_| store.search_query.set(String::new())
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 opacity-70">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </Show>
+                 </div>
             </div>
 
             <Show when=move || show_add_modal.get()>

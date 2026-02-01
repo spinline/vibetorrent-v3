@@ -26,9 +26,47 @@
       if (t === "Light") t = "light";
       if (t === "Dark" || t === "Midnight") t = "dark";
 
-      document.documentElement.setAttribute("data-theme", t.toLowerCase());
+      var theme = t.toLowerCase();
+      document.documentElement.setAttribute("data-theme", theme);
       if (!localTheme) {
         localStorage.setItem("vibetorrent_theme", "Dark");
+      }
+
+      var meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) {
+        var colorMap = {
+          "light": "#ffffff",
+          "cupcake": "#faf7f5",
+          "bumblebee": "#ffffff",
+          "emerald": "#ffffff",
+          "corporate": "#ffffff",
+          "synthwave": "#2d1b69",
+          "retro": "#ece3ca",
+          "cyberpunk": "#ffee00",
+          "valentine": "#f0d6e8",
+          "halloween": "#212121",
+          "garden": "#e9e7e7",
+          "forest": "#171212",
+          "aqua": "#345da7",
+          "lofi": "#ffffff",
+          "pastel": "#ffffff",
+          "fantasy": "#ffffff",
+          "wireframe": "#ffffff",
+          "black": "#000000",
+          "luxury": "#09090b",
+          "dracula": "#282a36",
+          "cmyk": "#ffffff",
+          "autumn": "#8C0327",
+          "business": "#202020",
+          "acid": "#fafafa",
+          "lemonade": "#F1F8E8",
+          "night": "#0f1729",
+          "coffee": "#20161f",
+          "winter": "#ffffff",
+          "dark": "#1d232a"
+        };
+        var color = colorMap[theme] || "#1d232a";
+        meta.setAttribute("content", color);
       }
     })();
   </script>

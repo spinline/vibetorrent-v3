@@ -3,8 +3,8 @@
     "short_name": "VibeTorrent",
     "start_url": "/",
     "display": "standalone",
-    "background_color": "#111827",
-    "theme_color": "#000000",
+    "background_color": "#1d232a",
+    "theme_color": "#1d232a",
     "orientation": "any",
     "icons": [
         {

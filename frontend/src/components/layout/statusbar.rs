@@ -40,6 +40,18 @@ pub fn StatusBar() -> impl IntoView {
                                             on:click=move |_| {
                                                 let doc = web_sys::window().unwrap().document().unwrap();
                                                 let _ = doc.document_element().unwrap().set_attribute("data-theme", theme);
+                                                
+                                                // Update theme-color meta tag to match new theme
+                                                if let Some(meta) = doc.query_selector("meta[name='theme-color']").unwrap() {
+                                                    let window = web_sys::window().unwrap();
+                                                    // Force a style recalc by reading a property or just wait for next tick?
+                                                    // Usually get_computed_style forces it.
+                                                    if let Ok(Some(style)) = window.get_computed_style(&doc.body().unwrap()) {
+                                                        if let Ok(color) = style.get_property_value("background-color") {
+                                                            let _ = meta.set_attribute("content", &color);
+                                                        }
+                                                    }
+                                                }
                                             }
                                         >
                                             {theme}

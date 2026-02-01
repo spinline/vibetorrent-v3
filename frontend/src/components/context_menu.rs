@@ -1,41 +1,3 @@
-use leptos::*;
-use leptos::html::Div;
-use wasm_bindgen::JsCast;
-
-pub fn use_click_outside(
-    target: NodeRef<Div>,
-    callback: impl Fn() + Clone + 'static,
-) {
-    create_effect(move |_| {
-        if let Some(_) = target.get() {
-            let handle_click = {
-                let callback = callback.clone();
-                let target = target.clone();
-                move |ev: web_sys::MouseEvent| {
-                    if let Some(el) = target.get() {
-                        let ev_target = ev.target().unwrap().unchecked_into::<web_sys::Node>();
-                        let el_node = el.unchecked_ref::<web_sys::Node>();
-                        if !el_node.contains(Some(&ev_target)) {
-                            callback();
-                        }
-                    }
-                }
-            };
-
-            let window = web_sys::window().unwrap();
-            let closure = wasm_bindgen::closure::Closure::<dyn FnMut(_)>::new(handle_click);
-            let _ = window.add_event_listener_with_callback("click", closure.as_ref().unchecked_ref());
-            
-            // Cleanup
-            on_cleanup(move || {
-                let window = web_sys::window().unwrap();
-                let _ = window.remove_event_listener_with_callback("click", closure.as_ref().unchecked_ref());
-            });
-        }
-    });
-}
-
-
 #[component]
 pub fn ContextMenu(
     position: (i32, i32),
@@ -53,21 +15,19 @@ pub fn ContextMenu(
         on_close.call(()); // Close menu AFTER
     };
 
-    let target = create_node_ref::<Div>();
-
-    use_click_outside(target, move || {
-        if visible {
-            on_close.call(());
-        }
-    });
-
     if !visible {
         return view! {}.into_view();
     }
 
     view! {
+        // Backdrop to catch clicks outside
         <div 
-            node_ref=target
+            class="fixed inset-0 z-[99] cursor-default" 
+            on:click=move |_| on_close.call(())
+            on:contextmenu=move |e| e.prevent_default()
+        ></div>
+
+        <div 
             class="fixed z-[100] min-w-[200px] animate-in fade-in zoom-in-95 duration-100"
             style=format!("left: {}px; top: {}px", position.0, position.1)
             on:contextmenu=move |e| e.prevent_default()

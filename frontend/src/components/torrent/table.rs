@@ -247,7 +247,7 @@ pub fn TorrentTable() -> impl IntoView {
                 </table>
             </div>
 
-            <div class="md:hidden grid grid-cols-1 gap-3 p-3 pb-20 overflow-y-auto h-full">
+            <div class="md:hidden grid grid-cols-1 content-start gap-3 p-3 pb-20 overflow-y-auto h-full">
                 {move || filtered_torrents().into_iter().map(|t| {
                     let progress_class = if t.percent_complete >= 100.0 { "progress-success" } else { "progress-primary" };
                     let status_str = format!("{:?}", t.status);
@@ -271,11 +271,12 @@ pub fn TorrentTable() -> impl IntoView {
                             class=move || {
                                 let base = "card card-compact bg-base-100 shadow-sm border border-base-200 transition-transform active:scale-[0.99]";
                                 if is_selected_fn() {
-                                    format!("{} ring-2 ring-primary", base)
+                                    format!("{} ring-2 ring-primary select-none", base)
                                 } else {
-                                    base.to_string()
+                                    format!("{} select-none", base)
                                 }
                             }
+                            style="user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;"
                             on:contextmenu={
                                 let t_hash = t_hash_ctx.clone();
                                 move |e: web_sys::MouseEvent| handle_context_menu(e, t_hash.clone())

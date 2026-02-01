@@ -1211,6 +1211,9 @@
   .z-\[1\] {
     z-index: 1;
   }
+  .z-\[99\] {
+    z-index: 99;
+  }
   .z-\[100\] {
     z-index: 100;
   }
@@ -1673,6 +1676,9 @@
   .transform {
     transform: var(--tw-rotate-x,) var(--tw-rotate-y,) var(--tw-rotate-z,) var(--tw-skew-x,) var(--tw-skew-y,);
   }
+  .cursor-default {
+    cursor: default;
+  }
   .cursor-pointer {
     cursor: pointer;
   }
@@ -1684,6 +1690,9 @@
   }
   .flex-col {
     flex-direction: column;
+  }
+  .content-start {
+    align-content: flex-start;
   }
   .items-center {
     align-items: center;

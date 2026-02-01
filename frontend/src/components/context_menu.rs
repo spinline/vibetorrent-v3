@@ -28,7 +28,6 @@ pub fn ContextMenu(
             role="button"
             tabindex="-1"
             on:click=move |_| on_close.call(())
-            on:touchstart=move |_| on_close.call(())
             on:contextmenu=move |e| e.prevent_default()
         ></div>
 

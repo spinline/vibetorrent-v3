@@ -2401,6 +2401,13 @@
     cursor: pointer;
   }
 }
+* {
+  -webkit-tap-highlight-color: transparent;
+  outline: none !important;
+}
+:focus {
+  outline: none !important;
+}
 @layer base {
   :where(:root),:root:has(input.theme-controller[value=light]:checked),[data-theme=light] {
     color-scheme: light;

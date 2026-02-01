@@ -16,3 +16,13 @@
         cursor: pointer;
     }
 }
+
+/* Remove default focus outline/tap highlight */
+* {
+    -webkit-tap-highlight-color: transparent;
+    outline: none !important;
+}
+
+:focus {
+    outline: none !important;
+}

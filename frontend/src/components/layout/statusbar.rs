@@ -49,10 +49,11 @@ pub fn StatusBar() -> impl IntoView {
                     <Show when=move || theme_open.get() fallback=|| ()>
                         // Backdrop to close on outside click
                         <div 
-                            class="fixed inset-0 z-[99] cursor-default" 
+                            class="fixed inset-0 z-[99] cursor-pointer bg-black/0" 
                             role="button"
                             tabindex="-1"
                             on:click=move |_| set_theme_open.set(false)
+                            on:touchstart=move |_| set_theme_open.set(false)
                         ></div>
                     </Show>
 

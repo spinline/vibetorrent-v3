@@ -81,13 +81,7 @@ pub fn Sidebar() -> impl IntoView {
                 </ul>
             </div>
             
-            <div class="mt-auto p-2 border-t border-base-300">
-                 <ul class="menu w-full rounded-box gap-1 text-sm">
-                    <li class="menu-title text-base-content/50 uppercase font-bold px-4">"Trackers"</li>
-                    <li><a>"All Trackers"</a></li>
-                    <li><a>"Error"</a></li>
-                </ul>
-            </div>
+
         </div>
     }
 }

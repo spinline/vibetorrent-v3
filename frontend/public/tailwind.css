@@ -1394,9 +1394,6 @@
   .mt-2 {
     margin-top: calc(var(--spacing) * 2);
   }
-  .mt-auto {
-    margin-top: auto;
-  }
   .mb-2 {
     margin-bottom: calc(var(--spacing) * 2);
   }

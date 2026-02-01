@@ -288,9 +288,25 @@ pub fn TorrentTable() -> impl IntoView {
                         >
                             <div class="card-body gap-3">
                                 <div class="flex justify-between items-start gap-2">
-                                    <h3 class="font-medium text-sm line-clamp-2 leading-tight">{t.name}</h3>
-                                    <div class={format!("badge badge-xs text-[10px] whitespace-nowrap {}", status_badge_class)}>
-                                        {status_str}
+                                    <h3 class="font-medium text-sm line-clamp-2 leading-tight flex-1">{t.name}</h3>
+                                    <div class="flex items-center gap-2">
+                                        <div class={format!("badge badge-xs text-[10px] whitespace-nowrap {}", status_badge_class)}>
+                                            {status_str}
+                                        </div>
+                                        <button 
+                                            class="btn btn-ghost btn-xs btn-square -mr-1 -mt-1 text-base-content/60"
+                                            on:click={
+                                                let t_hash = t_hash_ctx.clone();
+                                                move |e: web_sys::MouseEvent| {
+                                                    e.stop_propagation();
+                                                    handle_context_menu(e, t_hash.clone())
+                                                }
+                                            }
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5ZM12 12.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5ZM12 18.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5Z" />
+                                            </svg>
+                                        </button>
                                     </div>
                                 </div>
                                 

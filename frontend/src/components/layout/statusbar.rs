@@ -1,4 +1,5 @@
 use leptos::*;
+use wasm_bindgen::JsCast;
 
 #[component]
 pub fn StatusBar() -> impl IntoView {
@@ -55,7 +56,9 @@ pub fn StatusBar() -> impl IntoView {
 
                                                 // Close the dropdown by blurring the active element
                                                 if let Some(active) = doc.active_element() {
-                                                    let _ = active.blur();
+                                                     if let Ok(html_element) = active.dyn_into::<web_sys::HtmlElement>() {
+                                                        let _ = html_element.blur();
+                                                    }
                                                 }
                                             }
                                         >

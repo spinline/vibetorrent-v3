@@ -26,8 +26,17 @@ pub fn StatusBar() -> impl IntoView {
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                 </button>
-                <div class="relative">
-                    <button 
+                <div class=move || {
+                    let base = "dropdown dropdown-top dropdown-end";
+                    if theme_open.get() {
+                        format!("{} dropdown-open", base)
+                    } else {
+                        base.to_string()
+                    }
+                }>
+                    <div 
+                        tabindex="0" 
+                        role="button" 
                         class="btn btn-ghost btn-xs btn-square" 
                         title="Change Theme"
                         on:click=move |_| set_theme_open.update(|v| *v = !*v)
@@ -35,17 +44,17 @@ pub fn StatusBar() -> impl IntoView {
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M4.098 19.902a3.75 3.75 0 0 0 5.304 0l6.401-6.402M6.75 21A3.75 3.75 0 0 1 3 17.25V4.125C3 3.504 3.504 3 4.125 3h5.25c.621 0 1.125.504 1.125 1.125v4.072c0 .657.66 1.175 1.312 1.133 3.421-.22 6.187 2.546 6.187 5.965 0 1.595-.572 3.064-1.524 4.195" />
                         </svg>
-                    </button>
+                    </div>
 
                     <Show when=move || theme_open.get() fallback=|| ()>
-                        // Backdrop
+                        // Backdrop to close on outside click
                         <div 
                             class="fixed inset-0 z-[49] cursor-default" 
                             on:click=move |_| set_theme_open.set(false)
                         ></div>
+                    </Show>
 
-                        // Dropdown Content
-                        <ul class="absolute bottom-full right-0 mb-2 z-[50] menu p-2 shadow bg-base-200 rounded-box w-52 border border-base-300">
+                    <ul tabindex="0" class="dropdown-content z-[50] menu p-2 shadow bg-base-200 rounded-box w-52 mb-2 border border-base-300">
                         {
                             let themes = vec!["light", "dark", "cupcake", "dracula", "cyberpunk", "emerald", "luxury", "nord"];
                             themes.into_iter().map(|theme| {
@@ -75,8 +84,7 @@ pub fn StatusBar() -> impl IntoView {
                                 }
                             }).collect::<Vec<_>>()
                         }
-                        </ul>
-                    </Show>
+                    </ul>
                 </div>
                 
                  <button class="btn btn-ghost btn-xs btn-square" title="Settings">

@@ -49,12 +49,14 @@ pub fn StatusBar() -> impl IntoView {
                     <Show when=move || theme_open.get() fallback=|| ()>
                         // Backdrop to close on outside click
                         <div 
-                            class="fixed inset-0 z-[49] cursor-default" 
+                            class="fixed inset-0 z-[99] cursor-default" 
+                            role="button"
+                            tabindex="-1"
                             on:click=move |_| set_theme_open.set(false)
                         ></div>
                     </Show>
 
-                    <ul tabindex="0" class="dropdown-content z-[50] menu p-2 shadow bg-base-200 rounded-box w-52 mb-2 border border-base-300">
+                    <ul tabindex="0" class="dropdown-content z-[100] menu p-2 shadow bg-base-200 rounded-box w-52 mb-2 border border-base-300">
                         {
                             let themes = vec!["light", "dark", "cupcake", "dracula", "cyberpunk", "emerald", "luxury", "nord"];
                             themes.into_iter().map(|theme| {

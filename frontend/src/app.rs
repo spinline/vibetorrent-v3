@@ -17,7 +17,7 @@ pub fn App() -> impl IntoView {
                 // Toolbar at the top
                 <Toolbar />
 
-                <main class="flex-1 flex flex-col min-w-0 bg-base-100 overflow-hidden p-4 md:p-6 space-y-6">
+                <main class="flex-1 flex flex-col min-w-0 bg-base-100 overflow-hidden space-y-6">
                     <Router>
                         <Routes>
                             <Route path="/" view=move || view! { <TorrentTable /> } />

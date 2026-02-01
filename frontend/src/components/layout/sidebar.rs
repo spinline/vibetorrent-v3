@@ -19,10 +19,10 @@ pub fn Sidebar() -> impl IntoView {
     };
 
     view! {
-        <div class="w-64 h-full flex flex-col">
-            <div class="p-4">
-                <h2 class="text-xl font-bold px-4 mb-2 text-primary">"Filters"</h2>
+        <div class="w-64 h-full flex flex-col bg-base-200 border-r border-base-300">
+            <div class="p-2">
                 <ul class="menu w-full rounded-box gap-1">
+                    <li class="menu-title text-primary uppercase font-bold px-4">"Filters"</li>
                     <li>
                         <a class={move || filter_class(crate::store::FilterStatus::All)} on:click=move |_| set_filter(crate::store::FilterStatus::All)>
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
@@ -71,9 +71,9 @@ pub fn Sidebar() -> impl IntoView {
                 </ul>
             </div>
             
-            <div class="mt-auto p-4 border-t border-base-300">
-                <h3 class="text-xs font-bold text-base-content/50 uppercase mb-2 px-4">"Trackers"</h3>
+            <div class="mt-auto p-2 border-t border-base-300">
                  <ul class="menu w-full rounded-box gap-1 text-sm">
+                    <li class="menu-title text-base-content/50 uppercase font-bold px-4">"Trackers"</li>
                     <li><a>"All Trackers"</a></li>
                     <li><a>"Error"</a></li>
                 </ul>

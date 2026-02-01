@@ -106,14 +106,14 @@ pub fn TorrentTable() -> impl IntoView {
         }
     };
 
+    let (selected_hash, set_selected_hash) = create_signal(Option::<String>::None);
     let (menu_visible, set_menu_visible) = create_signal(false);
     let (menu_position, set_menu_position) = create_signal((0, 0));
-    let (active_hash, set_active_hash) = create_signal(String::new());
 
     let handle_context_menu = move |e: web_sys::MouseEvent, hash: String| {
         e.prevent_default();
         set_menu_position.set((e.client_x(), e.client_y()));
-        set_active_hash.set(hash);
+        set_selected_hash.set(Some(hash)); // Select on right click too
         set_menu_visible.set(true);
     };
 
@@ -152,88 +152,170 @@ pub fn TorrentTable() -> impl IntoView {
 
     view! {
         <div class="overflow-x-auto h-full bg-base-100 relative"> // Added relative for positioning context if needed, though menu is fixed
-            <table class="table table-xs table-pin-rows w-full max-w-full whitespace-nowrap">
-                <thead>
-                    <tr class="bg-base-200 text-base-content/70">
-                        <th class="w-8">
-                            <label>
-                                <input type="checkbox" class="checkbox checkbox-xs rounded-none" />
-                            </label>
-                        </th>
-                        <th class="cursor-pointer hover:bg-base-300 transition-colors group select-none" on:click=move |_| handle_sort(SortColumn::Name)>
-                            <div class="flex items-center">"Name" {move || sort_arrow(SortColumn::Name)}</div>
-                        </th>
-                        <th class="w-24 cursor-pointer hover:bg-base-300 transition-colors group select-none" on:click=move |_| handle_sort(SortColumn::Size)>
-                             <div class="flex items-center">"Size" {move || sort_arrow(SortColumn::Size)}</div>
-                        </th>
-                        <th class="w-48 cursor-pointer hover:bg-base-300 transition-colors group select-none" on:click=move |_| handle_sort(SortColumn::Progress)>
-                             <div class="flex items-center">"Progress" {move || sort_arrow(SortColumn::Progress)}</div>
-                        </th>
-                         <th class="w-24 cursor-pointer hover:bg-base-300 transition-colors group select-none" on:click=move |_| handle_sort(SortColumn::Status)>
-                             <div class="flex items-center">"Status" {move || sort_arrow(SortColumn::Status)}</div>
-                        </th>
-                        <th class="w-24 cursor-pointer hover:bg-base-300 transition-colors group select-none" on:click=move |_| handle_sort(SortColumn::DownSpeed)>
-                             <div class="flex items-center">"Down Speed" {move || sort_arrow(SortColumn::DownSpeed)}</div>
-                        </th>
-                        <th class="w-24 cursor-pointer hover:bg-base-300 transition-colors group select-none" on:click=move |_| handle_sort(SortColumn::UpSpeed)>
-                             <div class="flex items-center">"Up Speed" {move || sort_arrow(SortColumn::UpSpeed)}</div>
-                        </th>
-                         <th class="w-24 cursor-pointer hover:bg-base-300 transition-colors group select-none" on:click=move |_| handle_sort(SortColumn::ETA)>
-                             <div class="flex items-center">"ETA" {move || sort_arrow(SortColumn::ETA)}</div>
-                        </th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {move || filtered_torrents().into_iter().map(|t| {
-                        let progress_class = if t.percent_complete >= 100.0 { "progress-success" } else { "progress-primary" };
-                        let status_str = format!("{:?}", t.status);
-                        let status_class = match t.status {
-                            shared::TorrentStatus::Seeding => "text-success",
-                            shared::TorrentStatus::Downloading => "text-primary",
-                            shared::TorrentStatus::Paused => "text-warning",
-                            shared::TorrentStatus::Error => "text-error",
-                            _ => "text-base-content/50"
-                        };
-                        let t_hash = t.hash.clone(); // Clone for closure using it in handler
+            <div class="hidden md:block h-full overflow-x-auto">
+                <table class="table table-sm table-pin-rows w-full max-w-full whitespace-nowrap">
+                    <thead>
+                        <tr class="text-xs uppercase text-base-content/60 border-b border-base-200">
+                            <th class="cursor-pointer hover:bg-base-300 transition-colors group select-none" on:click=move |_| handle_sort(SortColumn::Name)>
+                                <div class="flex items-center">"Name" {move || sort_arrow(SortColumn::Name)}</div>
+                            </th>
+                            <th class="w-24 cursor-pointer hover:bg-base-300 transition-colors group select-none" on:click=move |_| handle_sort(SortColumn::Size)>
+                                 <div class="flex items-center">"Size" {move || sort_arrow(SortColumn::Size)}</div>
+                            </th>
+                            <th class="w-48 cursor-pointer hover:bg-base-300 transition-colors group select-none" on:click=move |_| handle_sort(SortColumn::Progress)>
+                                 <div class="flex items-center">"Progress" {move || sort_arrow(SortColumn::Progress)}</div>
+                            </th>
+                            <th class="w-24 cursor-pointer hover:bg-base-300 transition-colors group select-none" on:click=move |_| handle_sort(SortColumn::Status)>
+                                 <div class="flex items-center">"Status" {move || sort_arrow(SortColumn::Status)}</div>
+                            </th>
+                            <th class="w-24 cursor-pointer hover:bg-base-300 transition-colors group select-none" on:click=move |_| handle_sort(SortColumn::DownSpeed)>
+                                 <div class="flex items-center">"Down Speed" {move || sort_arrow(SortColumn::DownSpeed)}</div>
+                            </th>
+                            <th class="w-24 cursor-pointer hover:bg-base-300 transition-colors group select-none" on:click=move |_| handle_sort(SortColumn::UpSpeed)>
+                                 <div class="flex items-center">"Up Speed" {move || sort_arrow(SortColumn::UpSpeed)}</div>
+                            </th>
+                             <th class="w-24 cursor-pointer hover:bg-base-300 transition-colors group select-none" on:click=move |_| handle_sort(SortColumn::ETA)>
+                                 <div class="flex items-center">"ETA" {move || sort_arrow(SortColumn::ETA)}</div>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {move || filtered_torrents().into_iter().map(|t| {
+                            let progress_class = if t.percent_complete >= 100.0 { "progress-success" } else { "progress-primary" };
+                            let status_str = format!("{:?}", t.status);
+                            let status_class = match t.status {
+                                shared::TorrentStatus::Seeding => "text-success",
+                                shared::TorrentStatus::Downloading => "text-primary",
+                                shared::TorrentStatus::Paused => "text-warning",
+                                shared::TorrentStatus::Error => "text-error",
+                                _ => "text-base-content/50"
+                            };
+                            let t_hash = t.hash.clone(); 
+                            let t_hash_click = t.hash.clone();
+                            
+                            let is_selected_fn = move || {
+                                selected_hash.get() == Some(t_hash.clone())
+                            };
 
-                        view! {
-                            <tr 
-                                class="hover group border-b border-base-200 cursor-context-menu"
-                                on:contextmenu={
-                                    let t_hash = t_hash.clone();
-                                    move |e: web_sys::MouseEvent| handle_context_menu(e, t_hash.clone())
+                            view! {
+                                <tr 
+                                    class=move || {
+                                        let base = "hover border-b border-base-200 transition-colors select-none"; 
+                                        if is_selected_fn() {
+                                            format!("{} bg-primary/10", base)
+                                        } else {
+                                            base.to_string()
+                                        }
+                                    }
+                                    on:contextmenu={
+                                        let t_hash = t_hash_click.clone();
+                                        move |e: web_sys::MouseEvent| handle_context_menu(e, t_hash.clone())
+                                    }
+                                    on:click={
+                                        let t_hash = t_hash_click.clone();
+                                        move |_| set_selected_hash.set(Some(t_hash.clone()))
+                                    }
+                                >
+                                    <td class="font-medium truncate max-w-xs" title={t.name.clone()}>
+                                        {t.name}
+                                    </td>
+                                    <td class="opacity-80 font-mono text-[11px]">{format_bytes(t.size)}</td>
+                                    <td>
+                                        <div class="flex items-center gap-2">
+                                            <progress class={format!("progress w-24 {}", progress_class)} value={t.percent_complete} max="100"></progress>
+                                            <span class="text-[10px] opacity-70">{format!("{:.1}%", t.percent_complete)}</span>
+                                        </div>
+                                    </td>
+                                    <td class={format!("text-[11px] font-medium {}", status_class)}>{status_str}</td>
+                                    <td class="text-right font-mono text-[11px] opacity-80 text-success">{format_speed(t.down_rate)}</td>
+                                    <td class="text-right font-mono text-[11px] opacity-80 text-primary">{format_speed(t.up_rate)}</td>
+                                    <td class="text-right font-mono text-[11px] opacity-80">{if t.eta > 0 { format!("{}s", t.eta) } else { "∞".to_string() }}</td>
+                                </tr>
+                            }
+                        }).collect::<Vec<_>>()}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="md:hidden grid grid-cols-1 gap-3 p-3 pb-20 overflow-y-auto h-full">
+                {move || filtered_torrents().into_iter().map(|t| {
+                    let progress_class = if t.percent_complete >= 100.0 { "progress-success" } else { "progress-primary" };
+                    let status_str = format!("{:?}", t.status);
+                    let status_badge_class = match t.status {
+                        shared::TorrentStatus::Seeding => "badge-success badge-soft",
+                        shared::TorrentStatus::Downloading => "badge-primary badge-soft",
+                        shared::TorrentStatus::Paused => "badge-warning badge-soft",
+                        shared::TorrentStatus::Error => "badge-error badge-soft",
+                        _ => "badge-ghost"
+                    };
+                    let t_hash = t.hash.clone();
+                    let t_hash_click = t.hash.clone();
+                    let t_hash_ctx = t.hash.clone();
+                    
+                    let is_selected_fn = move || {
+                        selected_hash.get() == Some(t_hash.clone())
+                    };
+
+                    view! {
+                        <div 
+                            class=move || {
+                                let base = "card card-compact bg-base-100 shadow-sm border border-base-200 transition-all active:scale-[0.99]";
+                                if is_selected_fn() {
+                                    format!("{} ring-2 ring-primary", base)
+                                } else {
+                                    base.to_string()
                                 }
-                            >
-                                <th>
-                                    <label>
-                                        <input type="checkbox" class="checkbox checkbox-xs rounded-none" />
-                                    </label>
-                                </th>
-                                <td class="font-medium truncate max-w-xs" title={t.name.clone()}>
-                                    {t.name}
-                                </td>
-                                <td class="opacity-80 font-mono text-[11px]">{format_bytes(t.size)}</td>
-                                <td>
-                                    <div class="flex items-center gap-2">
-                                        <progress class={format!("progress w-24 {}", progress_class)} value={t.percent_complete} max="100"></progress>
-                                        <span class="text-[10px] opacity-70">{format!("{:.1}%", t.percent_complete)}</span>
+                            }
+                            on:contextmenu={
+                                let t_hash = t_hash_ctx.clone();
+                                move |e: web_sys::MouseEvent| handle_context_menu(e, t_hash.clone())
+                            }
+                            on:click={
+                                let t_hash = t_hash_click.clone();
+                                move |_| set_selected_hash.set(Some(t_hash.clone()))
+                            }
+                        >
+                            <div class="card-body gap-3">
+                                <div class="flex justify-between items-start gap-2">
+                                    <h3 class="font-medium text-sm line-clamp-2 leading-tight">{t.name}</h3>
+                                    <div class={format!("badge badge-xs text-[10px] whitespace-nowrap {}", status_badge_class)}>
+                                        {status_str}
                                     </div>
-                                </td>
-                                <td class={format!("text-[11px] font-medium {}", status_class)}>{status_str}</td>
-                                <td class="text-right font-mono text-[11px] opacity-80 text-success">{format_speed(t.down_rate)}</td>
-                                <td class="text-right font-mono text-[11px] opacity-80 text-primary">{format_speed(t.up_rate)}</td>
-                                <td class="text-right font-mono text-[11px] opacity-80">{if t.eta > 0 { format!("{}s", t.eta) } else { "∞".to_string() }}</td>
-                            </tr>
-                        }
-                    }).collect::<Vec<_>>()}
-                </tbody>
-            </table>
+                                </div>
+                                
+                                <div class="flex flex-col gap-1">
+                                    <div class="flex justify-between text-[10px] opacity-70">
+                                        <span>{format_bytes(t.size)}</span>
+                                        <span>{format!("{:.1}%", t.percent_complete)}</span>
+                                    </div>
+                                    <progress class={format!("progress w-full h-1.5 {}", progress_class)} value={t.percent_complete} max="100"></progress>
+                                </div>
+
+                                <div class="grid grid-cols-3 gap-2 text-[10px] font-mono opacity-80 pt-1 border-t border-base-200/50">
+                                    <div class="flex flex-col">
+                                        <span class="text-[9px] opacity-60 uppercase">"Down"</span>
+                                        <span class="text-success">{format_speed(t.down_rate)}</span>
+                                    </div>
+                                    <div class="flex flex-col text-center border-l border-r border-base-200/50">
+                                        <span class="text-[9px] opacity-60 uppercase">"Up"</span>
+                                        <span class="text-primary">{format_speed(t.up_rate)}</span>
+                                    </div>
+                                    <div class="flex flex-col text-right">
+                                        <span class="text-[9px] opacity-60 uppercase">"ETA"</span>
+                                        <span>{if t.eta > 0 { format!("{}s", t.eta) } else { "∞".to_string() }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                }).collect::<Vec<_>>()}
+            </div>
             
             <Show when=move || menu_visible.get() fallback=|| ()>
                 <crate::components::context_menu::ContextMenu
                     visible=true
                     position=menu_position.get()
-                    torrent_hash=active_hash.get()
+                    torrent_hash=selected_hash.get().unwrap_or_default() // Use selected_hash as source of truth
                     on_close=Callback::from(move |_| set_menu_visible.set(false))
                     on_action=Callback::from(on_action)
                 />

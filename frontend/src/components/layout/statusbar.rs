@@ -60,10 +60,9 @@ pub fn StatusBar() -> impl IntoView {
                     <ul tabindex="0" class="dropdown-content z-[100] menu p-2 shadow bg-base-200 rounded-box w-52 mb-2 border border-base-300 max-h-96 overflow-y-auto block">
                         {
                             let themes = vec![
-                                "light", "dark", "cupcake", "bumblebee", "emerald", "corporate", "synthwave", "retro", "cyberpunk", 
-                                "valentine", "halloween", "garden", "forest", "aqua", "lofi", "pastel", "fantasy", "wireframe", "black", 
-                                "luxury", "dracula", "cmyk", "autumn", "business", "acid", "lemonade", "night", "coffee", "winter", 
-                                "dim", "nord", "sunset"
+                                "light", "dark", "cupcake", "dracula", "cyberpunk", 
+                                "emerald", "luxury", "nord", "sunset", "winter", 
+                                "night", "synthwave", "retro", "forest"
                             ];
                             themes.into_iter().map(|theme| {
                                 view! {

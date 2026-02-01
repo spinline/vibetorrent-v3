@@ -10,10 +10,10 @@ pub fn App() -> impl IntoView {
     crate::store::provide_torrent_store();
 
     view! {
-        <div class="drawer lg:drawer-open">
+        <div class="drawer lg:drawer-open h-screen w-full" style="height: 100dvh;">
             <input id="my-drawer" type="checkbox" class="drawer-toggle" />
             
-            <div class="drawer-content flex flex-col h-[100dvh] overflow-hidden bg-base-100 text-base-content text-sm select-none">
+            <div class="drawer-content flex flex-col h-full overflow-hidden bg-base-100 text-base-content text-sm select-none">
                 // Toolbar at the top
                 <Toolbar />
 

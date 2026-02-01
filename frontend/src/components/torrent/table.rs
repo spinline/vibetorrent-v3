@@ -259,11 +259,72 @@ pub fn TorrentTable() -> impl IntoView {
                         _ => "badge-ghost"
                     };
                     let t_hash = t.hash.clone();
-                    let t_hash_click = t.hash.clone();
-                    let t_hash_ctx = t.hash.clone();
+                    // We don't need t_hash_click separately if we use t_hash, but existing pattern uses clones
+                    let t_hash_click = t.hash.clone(); 
                     
                     let is_selected_fn = move || {
                         selected_hash.get() == Some(t_hash.clone())
+                    };
+
+                    // Long press logic
+                    let (timer_id, set_timer_id) = create_signal(Option::<i32>::None);
+                    let t_hash_long = t.hash.clone();
+                    
+                    let clear_timer = move || {
+                        if let Some(id) = timer_id.get_untracked() {
+                            window().clear_timeout_with_handle(id);
+                            set_timer_id.set(None);
+                        }
+                    };
+
+                    let handle_touchstart = {
+                         let t_hash = t_hash_long.clone();
+                         move |e: web_sys::TouchEvent| {
+                            // Don't prevent default immediately, or we can't scroll. 
+                            // But for long press, we might need to if we want to stop iOS menu.
+                            // -webkit-touch-callout: none (in CSS) handles the iOS menu suppression usually.
+                            
+                            clear_timer();
+                            
+                            if let Some(touch) = e.touches().get(0) {
+                                let x = touch.client_x();
+                                let y = touch.client_y();
+                                let hash = t_hash.clone();
+                                
+                                let closure = Closure::wrap(Box::new(move || {
+                                    set_menu_position.set((x, y));
+                                    set_selected_hash.set(Some(hash.clone()));
+                                    set_menu_visible.set(true);
+                                    
+                                    // Haptic feedback if available
+                                    if let Ok(navigator) = window().navigator() {
+                                        let _ = navigator.vibrate_with_duration(50); 
+                                    }
+                                }) as Box<dyn Fn()>);
+                                
+                                let id = window()
+                                    .set_timeout_with_callback_and_timeout_and_arguments_0(
+                                        closure.as_ref().unchecked_ref(),
+                                        600 // 600ms long press
+                                    )
+                                    .unwrap_or(0);
+                                
+                                closure.forget(); // Leak memory? effectively yes, but for a simplified timeout it's "okay" in this context or we need to store the closure key.
+                                // In a real app we might want to store the closure to drop it, but `set_timeout` takes a function pointer effectively. 
+                                // Actually, `closure.forget()` is standard for one-off callbacks that the JS side consumes.
+                                
+                                set_timer_id.set(Some(id));
+                            }
+                        }
+                    };
+
+                    let handle_touchmove = move |_| {
+                        // If moving, it's likely a scroll, so cancel the long press
+                        clear_timer();
+                    };
+
+                    let handle_touchend = move |_| {
+                        clear_timer();
                     };
 
                     view! {
@@ -278,35 +339,24 @@ pub fn TorrentTable() -> impl IntoView {
                             }
                             style="user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;"
                             on:contextmenu={
-                                let t_hash = t_hash_ctx.clone();
+                                // Fallback for desktop/mouse right click still works
+                                let t_hash = t.hash.clone();
                                 move |e: web_sys::MouseEvent| handle_context_menu(e, t_hash.clone())
                             }
                             on:click={
                                 let t_hash = t_hash_click.clone();
                                 move |_| set_selected_hash.set(Some(t_hash.clone()))
                             }
+                            on:touchstart=handle_touchstart
+                            on:touchmove=handle_touchmove
+                            on:touchend=handle_touchend
+                            on:touchcancel=handle_touchend
                         >
                             <div class="card-body gap-3">
                                 <div class="flex justify-between items-start gap-2">
-                                    <h3 class="font-medium text-sm line-clamp-2 leading-tight flex-1">{t.name}</h3>
-                                    <div class="flex items-center gap-2">
-                                        <div class={format!("badge badge-xs text-[10px] whitespace-nowrap {}", status_badge_class)}>
-                                            {status_str}
-                                        </div>
-                                        <button 
-                                            class="btn btn-ghost btn-xs btn-square -mr-1 -mt-1 text-base-content/60"
-                                            on:click={
-                                                let t_hash = t_hash_ctx.clone();
-                                                move |e: web_sys::MouseEvent| {
-                                                    e.stop_propagation();
-                                                    handle_context_menu(e, t_hash.clone())
-                                                }
-                                            }
-                                        >
-                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5ZM12 12.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5ZM12 18.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5Z" />
-                                            </svg>
-                                        </button>
+                                    <h3 class="font-medium text-sm line-clamp-2 leading-tight">{t.name}</h3>
+                                    <div class={format!("badge badge-xs text-[10px] whitespace-nowrap {}", status_badge_class)}>
+                                        {status_str}
                                     </div>
                                 </div>
                                 

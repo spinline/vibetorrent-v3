@@ -48,12 +48,17 @@ pub fn StatusBar() -> impl IntoView {
 
                     <Show when=move || theme_open.get() fallback=|| ()>
                         // Backdrop to close on outside click
+                        // iOS Safari requires cursor:pointer inline style for click events on div elements
                         <div 
-                            class="fixed inset-0 z-[99] cursor-pointer bg-black/0" 
+                            class="fixed inset-0 z-[99] bg-black/0" 
+                            style="cursor: pointer; -webkit-tap-highlight-color: transparent;"
                             role="button"
                             tabindex="-1"
                             on:click=move |_| set_theme_open.set(false)
-                            on:touchstart=move |_| set_theme_open.set(false)
+                            on:touchend=move |e| {
+                                e.prevent_default();
+                                set_theme_open.set(false);
+                            }
                         ></div>
                     </Show>
 

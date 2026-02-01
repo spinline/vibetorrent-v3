@@ -13,7 +13,7 @@ pub fn App() -> impl IntoView {
         <div class="drawer lg:drawer-open">
             <input id="my-drawer" type="checkbox" class="drawer-toggle" />
             
-            <div class="drawer-content flex flex-col h-screen overflow-hidden bg-base-100 text-base-content text-sm select-none transition-colors duration-300">
+            <div class="drawer-content flex flex-col h-screen overflow-hidden bg-base-100 text-base-content text-sm select-none">
                 // Toolbar at the top
                 <Toolbar />
 
@@ -32,7 +32,7 @@ pub fn App() -> impl IntoView {
 
             <div class="drawer-side z-40">
                 <label for="my-drawer" aria-label="close sidebar" class="drawer-overlay"></label>
-                <div class="menu p-0 min-h-full bg-base-200 text-base-content border-r border-base-300">
+                <div class="menu p-0 min-h-full bg-base-200 text-base-content border-r border-base-300 transition-none duration-0">
                     <Sidebar />
                 </div>
             </div>

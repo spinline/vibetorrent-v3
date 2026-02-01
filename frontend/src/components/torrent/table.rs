@@ -166,25 +166,25 @@ pub fn TorrentTable() -> impl IntoView {
                 <table class="table table-sm table-pin-rows w-full max-w-full whitespace-nowrap">
                     <thead>
                         <tr class="text-xs uppercase text-base-content/60 border-b border-base-200">
-                            <th class="cursor-pointer hover:bg-base-300 transition-colors group select-none" on:click=move |_| handle_sort(SortColumn::Name)>
+                            <th class="cursor-pointer hover:bg-base-300 group select-none" on:click=move |_| handle_sort(SortColumn::Name)>
                                 <div class="flex items-center">"Name" {move || sort_arrow(SortColumn::Name)}</div>
                             </th>
-                            <th class="w-24 cursor-pointer hover:bg-base-300 transition-colors group select-none" on:click=move |_| handle_sort(SortColumn::Size)>
+                            <th class="w-24 cursor-pointer hover:bg-base-300 group select-none" on:click=move |_| handle_sort(SortColumn::Size)>
                                  <div class="flex items-center">"Size" {move || sort_arrow(SortColumn::Size)}</div>
                             </th>
-                            <th class="w-48 cursor-pointer hover:bg-base-300 transition-colors group select-none" on:click=move |_| handle_sort(SortColumn::Progress)>
+                            <th class="w-48 cursor-pointer hover:bg-base-300 group select-none" on:click=move |_| handle_sort(SortColumn::Progress)>
                                  <div class="flex items-center">"Progress" {move || sort_arrow(SortColumn::Progress)}</div>
                             </th>
-                            <th class="w-24 cursor-pointer hover:bg-base-300 transition-colors group select-none" on:click=move |_| handle_sort(SortColumn::Status)>
+                            <th class="w-24 cursor-pointer hover:bg-base-300 group select-none" on:click=move |_| handle_sort(SortColumn::Status)>
                                  <div class="flex items-center">"Status" {move || sort_arrow(SortColumn::Status)}</div>
                             </th>
-                            <th class="w-24 cursor-pointer hover:bg-base-300 transition-colors group select-none" on:click=move |_| handle_sort(SortColumn::DownSpeed)>
+                            <th class="w-24 cursor-pointer hover:bg-base-300 group select-none" on:click=move |_| handle_sort(SortColumn::DownSpeed)>
                                  <div class="flex items-center">"Down Speed" {move || sort_arrow(SortColumn::DownSpeed)}</div>
                             </th>
-                            <th class="w-24 cursor-pointer hover:bg-base-300 transition-colors group select-none" on:click=move |_| handle_sort(SortColumn::UpSpeed)>
+                            <th class="w-24 cursor-pointer hover:bg-base-300 group select-none" on:click=move |_| handle_sort(SortColumn::UpSpeed)>
                                  <div class="flex items-center">"Up Speed" {move || sort_arrow(SortColumn::UpSpeed)}</div>
                             </th>
-                             <th class="w-24 cursor-pointer hover:bg-base-300 transition-colors group select-none" on:click=move |_| handle_sort(SortColumn::ETA)>
+                             <th class="w-24 cursor-pointer hover:bg-base-300 group select-none" on:click=move |_| handle_sort(SortColumn::ETA)>
                                  <div class="flex items-center">"ETA" {move || sort_arrow(SortColumn::ETA)}</div>
                             </th>
                         </tr>
@@ -210,7 +210,7 @@ pub fn TorrentTable() -> impl IntoView {
                             view! {
                                 <tr 
                                     class=move || {
-                                        let base = "hover border-b border-base-200 transition-colors select-none"; 
+                                        let base = "hover border-b border-base-200 select-none"; 
                                         if is_selected_fn() {
                                             format!("{} bg-primary/10", base)
                                         } else {
@@ -269,7 +269,7 @@ pub fn TorrentTable() -> impl IntoView {
                     view! {
                         <div 
                             class=move || {
-                                let base = "card card-compact bg-base-100 shadow-sm border border-base-200 transition-all active:scale-[0.99]";
+                                let base = "card card-compact bg-base-100 shadow-sm border border-base-200 transition-transform active:scale-[0.99]";
                                 if is_selected_fn() {
                                     format!("{} ring-2 ring-primary", base)
                                 } else {

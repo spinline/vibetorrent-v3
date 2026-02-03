@@ -71,9 +71,10 @@ struct RequestParam<'a> {
 struct RequestValueInner<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     string: Option<&'a str>,
-    // rTorrent uses i8/i4. Let's use i8 (64-bit) which is safer for large limits/sizes
+    // rTorrent standard is often i4 (32-bit signed int). i8 might not be supported by all XML-RPC libs.
+    // Casting i64 to i32 is safe for typical speed limits.
     #[serde(skip_serializing_if = "Option::is_none")]
-    i8: Option<i64>,
+    i4: Option<i32>,
 }
 
 // --- Response Models for d.multicall2 ---
@@ -223,11 +224,11 @@ impl RtorrentClient {
                     value: match p {
                         RpcParam::String(s) => RequestValueInner {
                             string: Some(s),
-                            i8: None,
+                            i4: None,
                         },
                         RpcParam::Int(i) => RequestValueInner {
                             string: None,
-                            i8: Some(*i),
+                            i4: Some(*i as i32),
                         },
                     },
                 })
@@ -311,10 +312,8 @@ mod tests {
         let client = RtorrentClient::new("dummy");
         let params = vec![RpcParam::Int(1024)];
         let xml = client.build_method_call("test.int", &params).unwrap();
-        // quick-xml default for i64 might be just text inside tag if not renamed?
-        // We mapped i8 field to i64 value.
-        // It should produce <value><i8>1024</i8></value>
-        assert!(xml.contains("<i8>1024</i8>"));
+        // Should produce <value><i4>1024</i4></value>
+        assert!(xml.contains("<i4>1024</i4>"));
     }
 
     #[test]

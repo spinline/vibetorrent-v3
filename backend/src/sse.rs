@@ -117,7 +117,12 @@ pub async fn sse_handler(
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_secs();
-        let event_data = AppEvent::FullList(initial_torrents, timestamp);
+
+        let event_data = AppEvent::FullList {
+            torrents: initial_torrents,
+            timestamp,
+        };
+
         match serde_json::to_string(&event_data) {
             Ok(json) => Event::default().data(json),
             Err(_) => Event::default().comment("init_error"),

@@ -194,15 +194,15 @@ async fn main() {
         )
         .route("/api/system/version", get(handlers::get_version_handler))
         .route(
-            "/api/torrents/:hash/files",
+            "/api/torrents/{hash}/files",
             get(handlers::get_files_handler),
         )
         .route(
-            "/api/torrents/:hash/peers",
+            "/api/torrents/{hash}/peers",
             get(handlers::get_peers_handler),
         )
         .route(
-            "/api/torrents/:hash/trackers",
+            "/api/torrents/{hash}/trackers",
             get(handlers::get_trackers_handler),
         )
         .route(

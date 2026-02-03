@@ -25,10 +25,15 @@ pub fn StatusBar() -> impl IntoView {
     let store = use_context::<crate::store::TorrentStore>().expect("store not provided");
     let stats = store.global_stats;
     let (theme_open, set_theme_open) = create_signal(false);
+    let (limit_modal_open, set_limit_modal_open) = create_signal(false);
 
     view! {
         <div class="h-8 min-h-8 bg-base-200 border-t border-base-300 flex items-center px-4 text-xs gap-4 text-base-content/70">
-            <div class="flex items-center gap-2 cursor-pointer hover:text-primary" title="Global Download Speed">
+            <div
+                class="flex items-center gap-2 cursor-pointer hover:text-primary"
+                title="Global Download Speed - Click to set limits"
+                on:click=move |_| set_limit_modal_open.set(true)
+            >
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75l3 3m0 0l3-3m-3 3v-7.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
@@ -39,7 +44,11 @@ pub fn StatusBar() -> impl IntoView {
                     </span>
                 </Show>
             </div>
-             <div class="flex items-center gap-2 cursor-pointer hover:text-primary" title="Global Upload Speed">
+             <div
+                class="flex items-center gap-2 cursor-pointer hover:text-primary"
+                title="Global Upload Speed - Click to set limits"
+                on:click=move |_| set_limit_modal_open.set(true)
+            >
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M15 11.25l-3-3m0 0l-3 3m3-3v7.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
@@ -52,7 +61,11 @@ pub fn StatusBar() -> impl IntoView {
             </div>
 
             <div class="ml-auto flex items-center gap-4">
-                <button class="btn btn-ghost btn-xs btn-square" title="Alt Speed Limits">
+                <button
+                    class="btn btn-ghost btn-xs btn-square"
+                    title="Speed Limits"
+                    on:click=move |_| set_limit_modal_open.set(true)
+                >
                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
@@ -78,8 +91,6 @@ pub fn StatusBar() -> impl IntoView {
                     </div>
 
                     <Show when=move || theme_open.get() fallback=|| ()>
-                        // Backdrop to close on outside click
-                        // iOS Safari requires cursor:pointer inline style for click events on div elements
                         <div
                             class="fixed inset-0 z-[99] bg-black/0"
                             style="cursor: pointer; -webkit-tap-highlight-color: transparent;"
@@ -137,6 +148,11 @@ pub fn StatusBar() -> impl IntoView {
                     </svg>
                 </button>
             </div>
+
+            <crate::components::settings::limit_modal::GlobalLimitModal
+                visible=limit_modal_open
+                on_close=move |_| set_limit_modal_open.set(false)
+            />
         </div>
     }
 }

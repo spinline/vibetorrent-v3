@@ -1,7 +1,20 @@
-use crate::scgi::{send_request, ScgiRequest};
+use crate::scgi::{send_request, ScgiError, ScgiRequest};
 use quick_xml::de::from_str;
 use quick_xml::se::to_string;
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum XmlRpcError {
+    #[error("SCGI Error: {0}")]
+    Scgi(#[from] ScgiError),
+    #[error("Serialization Error: {0}")]
+    Serialization(String), // quick_xml errors are tricky to wrap directly due to versions/features
+    #[error("Deserialization Error: {0}")]
+    Deserialization(#[from] quick_xml::de::DeError),
+    #[error("XML Parse Error: {0}")]
+    Parse(String),
+}
 
 // --- Request Models ---
 
@@ -49,7 +62,6 @@ struct MulticallResponseParam {
     value: MulticallResponseValueArray,
 }
 
-// Top level array in d.multicall2 response
 #[derive(Debug, Deserialize)]
 struct MulticallResponseValueArray {
     array: MulticallResponseDataOuter,
@@ -145,7 +157,7 @@ impl RtorrentClient {
     }
 
     /// Helper to build and serialize XML-RPC method call
-    fn build_method_call(&self, method: &str, params: &[&str]) -> Result<String, String> {
+    fn build_method_call(&self, method: &str, params: &[&str]) -> Result<String, XmlRpcError> {
         let req_params = RequestParams {
             param: params
                 .iter()
@@ -163,27 +175,22 @@ impl RtorrentClient {
             params: req_params,
         };
 
-        let xml_body = to_string(&call).map_err(|e| format!("Serialization error: {}", e))?;
+        let xml_body = to_string(&call).map_err(|e| XmlRpcError::Serialization(e.to_string()))?;
         Ok(format!("<?xml version=\"1.0\"?>\n{}", xml_body))
     }
 
-    pub async fn call(&self, method: &str, params: &[&str]) -> Result<String, String> {
+    pub async fn call(&self, method: &str, params: &[&str]) -> Result<String, XmlRpcError> {
         let xml = self.build_method_call(method, params)?;
         let req = ScgiRequest::new().body(xml.into_bytes());
 
-        match send_request(&self.socket_path, req).await {
-            Ok(bytes) => {
-                let s = String::from_utf8_lossy(&bytes).to_string();
-                Ok(s)
-            }
-            Err(e) => Err(format!("SCGI Error: {:?}", e)),
-        }
+        let bytes = send_request(&self.socket_path, req).await?;
+        let s = String::from_utf8_lossy(&bytes).to_string();
+        Ok(s)
     }
 }
 
-pub fn parse_multicall_response(xml: &str) -> Result<Vec<Vec<String>>, String> {
-    let response: MulticallResponse =
-        from_str(xml).map_err(|e| format!("XML Parse Error: {}", e))?;
+pub fn parse_multicall_response(xml: &str) -> Result<Vec<Vec<String>>, XmlRpcError> {
+    let response: MulticallResponse = from_str(xml)?;
 
     let mut result = Vec::new();
 
@@ -198,8 +205,8 @@ pub fn parse_multicall_response(xml: &str) -> Result<Vec<Vec<String>>, String> {
     Ok(result)
 }
 
-pub fn parse_string_response(xml: &str) -> Result<String, String> {
-    let response: StringResponse = from_str(xml).map_err(|e| format!("XML Parse Error: {}", e))?;
+pub fn parse_string_response(xml: &str) -> Result<String, XmlRpcError> {
+    let response: StringResponse = from_str(xml)?;
     Ok(response.params.param.value.string)
 }
 
@@ -214,10 +221,7 @@ mod tests {
             .build_method_call("d.multicall2", &["", "main", "d.name="])
             .unwrap();
 
-        println!("Generated XML: {}", xml);
-
         assert!(xml.contains("<methodName>d.multicall2</methodName>"));
-        // With struct option serialization, it should produce <value><string>...</string></value>
         assert!(xml.contains("<value><string>main</string></value>"));
     }
 

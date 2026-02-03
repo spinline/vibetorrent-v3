@@ -22,3 +22,4 @@ clap = { version = "4.4", features = ["derive"] }
 rust-embed = "8.2"
 mime_guess = "2.0"
 shared = { path = "../shared" }
+thiserror = "2.0.18"

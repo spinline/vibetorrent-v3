@@ -3,30 +3,27 @@ mod scgi;
 mod sse;
 mod xmlrpc;
 
-use clap::Parser;
-use rust_embed::RustEmbed;
+use axum::{error_handling::HandleErrorLayer, BoxError};
 use axum::{
     extract::State,
     http::{header, StatusCode, Uri},
     response::IntoResponse,
     routing::{get, post},
-    Router, Json,
+    Json, Router,
 };
+use clap::Parser;
+use rust_embed::RustEmbed;
+use serde::Deserialize;
+use shared::{AppEvent, Torrent, TorrentActionRequest}; // shared crates imports
+use std::net::SocketAddr;
+use std::sync::Arc;
+use tokio::sync::{broadcast, watch};
+use tower::ServiceBuilder;
 use tower_http::{
+    compression::{CompressionLayer, CompressionLevel},
     cors::CorsLayer,
     trace::TraceLayer,
-    compression::{CompressionLayer, CompressionLevel},
 };
-use axum::{
-    error_handling::HandleErrorLayer,
-    BoxError,
-};
-use tower::ServiceBuilder;
-use serde::Deserialize;
-use std::net::SocketAddr;
-use shared::{Torrent, TorrentActionRequest, AppEvent}; // shared crates imports
-use tokio::sync::{watch, broadcast};
-use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -90,7 +87,10 @@ async fn add_torrent_handler(
     State(state): State<AppState>,
     Json(payload): Json<AddTorrentRequest>,
 ) -> StatusCode {
-    tracing::info!("Received add_torrent request. URI length: {}", payload.uri.len());
+    tracing::info!(
+        "Received add_torrent request. URI length: {}",
+        payload.uri.len()
+    );
     let client = xmlrpc::RtorrentClient::new(&state.scgi_socket_path);
     match client.call("load.start", &["", &payload.uri]).await {
         Ok(response) => {
@@ -100,7 +100,7 @@ async fn add_torrent_handler(
                 return StatusCode::INTERNAL_SERVER_ERROR;
             }
             StatusCode::OK
-        },
+        }
         Err(e) => {
             tracing::error!("Failed to add torrent: {}", e);
             StatusCode::INTERNAL_SERVER_ERROR
@@ -112,23 +112,25 @@ async fn add_torrent_handler(
 async fn main() {
     // initialize tracing with env filter (default to info)
     tracing_subscriber::fmt()
-        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env()
-            .add_directive(tracing::Level::INFO.into()))
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::from_default_env()
+                .add_directive(tracing::Level::INFO.into()),
+        )
         .init();
-    
+
     // Parse CLI Args
     let args = Args::parse();
     tracing::info!("Starting VibeTorrent Backend...");
     tracing::info!("Socket: {}", args.socket);
     tracing::info!("Port: {}", args.port);
-    
+
     // Channel for latest state (for new clients)
     let (tx, _rx) = watch::channel(vec![]);
     let tx = Arc::new(tx);
 
     // Channel for Events (Diffs)
     let (event_bus, _) = broadcast::channel::<AppEvent>(1024);
-    
+
     let app_state = AppState {
         tx: tx.clone(),
         event_bus: event_bus.clone(),
@@ -151,7 +153,10 @@ async fn main() {
                     let _ = tx_clone.send(new_torrents.clone());
 
                     // 2. Calculate Diff and Broadcasting
-                    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
+                    let now = std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap()
+                        .as_secs();
 
                     let mut structural_change = false;
                     if previous_torrents.len() != new_torrents.len() {
@@ -167,8 +172,8 @@ async fn main() {
                     }
 
                     if structural_change {
-                         // Structural change -> Send FullList
-                         let _ = event_bus_tx.send(AppEvent::FullList(new_torrents.clone(), now));
+                        // Structural change -> Send FullList
+                        let _ = event_bus_tx.send(AppEvent::FullList(new_torrents.clone(), now));
                     } else {
                         // Same structure -> Calculate partial updates
                         let updates = diff::diff_torrents(&previous_torrents, &new_torrents);
@@ -195,13 +200,16 @@ async fn main() {
         .route("/api/torrents/action", post(handle_torrent_action))
         .fallback(static_handler) // Serve static files for everything else
         .layer(TraceLayer::new_for_http())
-        .layer(CompressionLayer::new()
-            .br(false)
-            .gzip(true)
-            .quality(CompressionLevel::Fastest))
-        .layer(ServiceBuilder::new()
-            .layer(HandleErrorLayer::new(handle_timeout_error))
-            .layer(tower::timeout::TimeoutLayer::new(Duration::from_secs(30)))
+        .layer(
+            CompressionLayer::new()
+                .br(false)
+                .gzip(true)
+                .quality(CompressionLevel::Fastest),
+        )
+        .layer(
+            ServiceBuilder::new()
+                .layer(HandleErrorLayer::new(handle_timeout_error))
+                .layer(tower::timeout::TimeoutLayer::new(Duration::from_secs(30))),
         )
         .layer(CorsLayer::permissive())
         .with_state(app_state);
@@ -216,62 +224,160 @@ async fn handle_torrent_action(
     State(state): State<AppState>,
     Json(payload): Json<TorrentActionRequest>,
 ) -> impl IntoResponse {
-    tracing::info!("Received action: {} for hash: {}", payload.action, payload.hash);
-    
+    tracing::info!(
+        "Received action: {} for hash: {}",
+        payload.action,
+        payload.hash
+    );
+
     // Special handling for delete_with_data
     if payload.action == "delete_with_data" {
         let client = xmlrpc::RtorrentClient::new(&state.scgi_socket_path);
-        
+
         // 1. Get Base Path
         let path_xml = match client.call("d.base_path", &[&payload.hash]).await {
             Ok(xml) => xml,
-            Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to call rTorrent: {}", e)).into_response(),
+            Err(e) => {
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Failed to call rTorrent: {}", e),
+                )
+                    .into_response()
+            }
         };
 
         let path = match xmlrpc::parse_string_response(&path_xml) {
             Ok(p) => p,
-            Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to parse path: {}", e)).into_response(),
+            Err(e) => {
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Failed to parse path: {}", e),
+                )
+                    .into_response()
+            }
         };
-        
+
         let path_buf = std::path::Path::new(&path);
 
         // 1.5 Get Default Download Directory (Sandbox Root)
         let root_xml = match client.call("directory.default", &[]).await {
             Ok(xml) => xml,
-            Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to get valid download root: {}", e)).into_response(),
+            Err(e) => {
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Failed to get valid download root: {}", e),
+                )
+                    .into_response()
+            }
         };
-        
+
         let root_path_str = match xmlrpc::parse_string_response(&root_xml) {
             Ok(p) => p,
-            Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to parse root path: {}", e)).into_response(),
+            Err(e) => {
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Failed to parse root path: {}", e),
+                )
+                    .into_response()
+            }
         };
-        
-        let root_path = std::path::Path::new(&root_path_str);
 
-        tracing::info!("Delete request: Path='{}', Root='{}'", path, root_path_str);
+        // Resolve Paths (Canonicalize) to prevent .. traversal and symlink attacks
+        let root_path = match std::fs::canonicalize(std::path::Path::new(&root_path_str)) {
+            Ok(p) => p,
+            Err(e) => {
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Invalid download root configuration (on server): {}", e),
+                )
+                    .into_response()
+            }
+        };
+
+        // Check if target path exists before trying to resolve it
+        let target_path_raw = std::path::Path::new(&path);
+        if !target_path_raw.exists() {
+            tracing::warn!(
+                "Data path not found: {:?}. Removing torrent only.",
+                target_path_raw
+            );
+            // If file doesn't exist, we just remove the torrent entry
+            if let Err(e) = client.call("d.erase", &[&payload.hash]).await {
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Failed to erase torrent: {}", e),
+                )
+                    .into_response();
+            }
+            return (StatusCode::OK, "Torrent removed (Data not found)").into_response();
+        }
+
+        let target_path = match std::fs::canonicalize(target_path_raw) {
+            Ok(p) => p,
+            Err(e) => {
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Invalid data path: {}", e),
+                )
+                    .into_response()
+            }
+        };
+
+        tracing::info!(
+            "Delete request: Target='{:?}', Root='{:?}'",
+            target_path,
+            root_path
+        );
 
         // SECURITY CHECK: Ensure path is inside root_path
-        if !path_buf.starts_with(root_path) {
-             tracing::error!("Security Risk: Attempted to delete path outside download directory: {}", path);
-             return (StatusCode::FORBIDDEN, "Security Error: Cannot delete files outside default download directory").into_response();
+        if !target_path.starts_with(&root_path) {
+            tracing::error!(
+                "Security Risk: Attempted to delete path outside download directory: {:?}",
+                target_path
+            );
+            return (
+                StatusCode::FORBIDDEN,
+                "Security Error: Cannot delete files outside default download directory",
+            )
+                .into_response();
         }
-        
+
         // SECURITY CHECK: Ensure we are not deleting the root itself
-        if path_buf == root_path {
-             return (StatusCode::BAD_REQUEST, "Security Error: Cannot delete the download root directory itself").into_response();
+        if target_path == root_path {
+            return (
+                StatusCode::BAD_REQUEST,
+                "Security Error: Cannot delete the download root directory itself",
+            )
+                .into_response();
         }
 
-        // 2. Erase Torrent first (so rTorrent releases locks?)
+        // 2. Erase Torrent first
         if let Err(e) = client.call("d.erase", &[&payload.hash]).await {
-             tracing::warn!("Failed to erase torrent entry: {}", e);
-             // Proceed anyway to delete files? Maybe not.
+            tracing::warn!("Failed to erase torrent entry: {}", e);
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to erase torrent: {}", e),
+            )
+                .into_response();
         }
 
-        // 3. Delete Files via rTorrent (execute.throw.bg)
-        // Command: rm -rf <path>
-        match client.call("execute.throw.bg", &["", "rm", "-rf", &path]).await {
+        // 3. Delete Files via Native FS
+        let delete_result = if target_path.is_dir() {
+            std::fs::remove_dir_all(&target_path)
+        } else {
+            std::fs::remove_file(&target_path)
+        };
+
+        match delete_result {
             Ok(_) => return (StatusCode::OK, "Torrent and data deleted").into_response(),
-            Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to delete data: {}", e)).into_response(),
+            Err(e) => {
+                tracing::error!("Failed to delete data at {:?}: {}", target_path, e);
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Failed to delete data: {}", e),
+                )
+                    .into_response();
+            }
         }
     }
 
@@ -282,11 +388,16 @@ async fn handle_torrent_action(
         _ => return (StatusCode::BAD_REQUEST, "Invalid action").into_response(),
     };
 
-    match scgi::system_call(&state.scgi_socket_path, method, vec![&payload.hash]).await {
+    let client = xmlrpc::RtorrentClient::new(&state.scgi_socket_path);
+    match client.call(method, &[&payload.hash]).await {
         Ok(_) => (StatusCode::OK, "Action executed").into_response(),
         Err(e) => {
-            tracing::error!("SCGI error: {:?}", e);
-            (StatusCode::INTERNAL_SERVER_ERROR, "Failed to execute action").into_response()
+            tracing::error!("RPC error: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed to execute action",
+            )
+                .into_response()
         }
     }
 }
@@ -295,6 +406,9 @@ async fn handle_timeout_error(err: BoxError) -> (StatusCode, &'static str) {
     if err.is::<tower::timeout::error::Elapsed>() {
         (StatusCode::REQUEST_TIMEOUT, "Request timed out")
     } else {
-        (StatusCode::INTERNAL_SERVER_ERROR, "Unhandled internal error")
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Unhandled internal error",
+        )
     }
 }

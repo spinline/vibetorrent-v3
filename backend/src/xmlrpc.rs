@@ -1,20 +1,137 @@
 use crate::scgi::{send_request, ScgiRequest};
-use quick_xml::events::Event;
-use quick_xml::reader::Reader;
+use quick_xml::de::from_str;
+use quick_xml::se::to_string;
+use serde::{Deserialize, Serialize};
 
+// --- Request Models ---
 
-// Simple helper to build an XML-RPC method call
-pub fn build_method_call(method: &str, params: &[&str]) -> String {
-    let mut xml = String::from("<?xml version=\"1.0\"?>\n<methodCall>\n");
-    xml.push_str(&format!("<methodName>{}</methodName>\n<params>\n", method));
-    for param in params {
-        xml.push_str("<param><value><string><![CDATA[");
-        xml.push_str(param);
-        xml.push_str("]]></string></value></param>\n");
-    }
-    xml.push_str("</params>\n</methodCall>");
-    xml
+#[derive(Debug, Serialize)]
+#[serde(rename = "methodCall")]
+struct MethodCall<'a> {
+    #[serde(rename = "methodName")]
+    method_name: &'a str,
+    params: RequestParams<'a>,
 }
+
+#[derive(Debug, Serialize)]
+struct RequestParams<'a> {
+    param: Vec<RequestParam<'a>>,
+}
+
+#[derive(Debug, Serialize)]
+struct RequestParam<'a> {
+    value: RequestValueInner<'a>,
+}
+
+#[derive(Debug, Serialize)]
+struct RequestValueInner<'a> {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    string: Option<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    i4: Option<i32>,
+}
+
+// --- Response Models for d.multicall2 ---
+
+#[derive(Debug, Deserialize)]
+#[serde(rename = "methodResponse")]
+struct MulticallResponse {
+    params: MulticallResponseParams,
+}
+
+#[derive(Debug, Deserialize)]
+struct MulticallResponseParams {
+    param: MulticallResponseParam,
+}
+
+#[derive(Debug, Deserialize)]
+struct MulticallResponseParam {
+    value: MulticallResponseValueArray,
+}
+
+// Top level array in d.multicall2 response
+#[derive(Debug, Deserialize)]
+struct MulticallResponseValueArray {
+    array: MulticallResponseDataOuter,
+}
+
+#[derive(Debug, Deserialize)]
+struct MulticallResponseDataOuter {
+    data: MulticallResponseDataOuterValue,
+}
+
+#[derive(Debug, Deserialize)]
+struct MulticallResponseDataOuterValue {
+    #[serde(rename = "value", default)]
+    values: Vec<MulticallRowValue>,
+}
+
+// Each row in the response
+#[derive(Debug, Deserialize)]
+struct MulticallRowValue {
+    array: MulticallResponseDataInner,
+}
+
+#[derive(Debug, Deserialize)]
+struct MulticallResponseDataInner {
+    data: MulticallResponseDataInnerValue,
+}
+
+#[derive(Debug, Deserialize)]
+struct MulticallResponseDataInnerValue {
+    #[serde(rename = "value", default)]
+    values: Vec<MulticallItemValue>,
+}
+
+// Each item in a row (column)
+#[derive(Debug, Deserialize)]
+struct MulticallItemValue {
+    #[serde(rename = "string", default)]
+    string: Option<String>,
+    #[serde(rename = "i4", default)]
+    i4: Option<i64>,
+    #[serde(rename = "i8", default)]
+    i8: Option<i64>,
+}
+
+impl MulticallItemValue {
+    fn to_string_lossy(&self) -> String {
+        if let Some(s) = &self.string {
+            s.clone()
+        } else if let Some(i) = self.i4 {
+            i.to_string()
+        } else if let Some(i) = self.i8 {
+            i.to_string()
+        } else {
+            String::new()
+        }
+    }
+}
+
+// --- Response Model for simple string ---
+
+#[derive(Debug, Deserialize)]
+#[serde(rename = "methodResponse")]
+struct StringResponse {
+    params: StringResponseParams,
+}
+
+#[derive(Debug, Deserialize)]
+struct StringResponseParams {
+    param: StringResponseParam,
+}
+
+#[derive(Debug, Deserialize)]
+struct StringResponseParam {
+    value: StringResponseValue,
+}
+
+#[derive(Debug, Deserialize)]
+struct StringResponseValue {
+    string: String,
+}
+
+// --- Client Implementation ---
 
 pub struct RtorrentClient {
     socket_path: String,
@@ -27,155 +144,111 @@ impl RtorrentClient {
         }
     }
 
+    /// Helper to build and serialize XML-RPC method call
+    fn build_method_call(&self, method: &str, params: &[&str]) -> Result<String, String> {
+        let req_params = RequestParams {
+            param: params
+                .iter()
+                .map(|p| RequestParam {
+                    value: RequestValueInner {
+                        string: Some(p),
+                        i4: None,
+                    },
+                })
+                .collect(),
+        };
+
+        let call = MethodCall {
+            method_name: method,
+            params: req_params,
+        };
+
+        let xml_body = to_string(&call).map_err(|e| format!("Serialization error: {}", e))?;
+        Ok(format!("<?xml version=\"1.0\"?>\n{}", xml_body))
+    }
+
     pub async fn call(&self, method: &str, params: &[&str]) -> Result<String, String> {
-        let xml = build_method_call(method, params);
+        let xml = self.build_method_call(method, params)?;
         let req = ScgiRequest::new().body(xml.into_bytes());
-        
+
         match send_request(&self.socket_path, req).await {
             Ok(bytes) => {
                 let s = String::from_utf8_lossy(&bytes).to_string();
                 Ok(s)
             }
-            Err(e) => Err(format!("{:?}", e)),
+            Err(e) => Err(format!("SCGI Error: {:?}", e)),
         }
     }
 }
-
-// Specialized parser for d.multicall2 response
-// Expected structure:
-// <methodResponse><params><param><value><array><data>
-//   <value><array><data>
-//     <value><string>HASH</string></value>
-//     <value><string>NAME</string></value>
-//     ...
-//   </data></array></value>
-// ...
-// </data></array></value></param></params></methodResponse>
 
 pub fn parse_multicall_response(xml: &str) -> Result<Vec<Vec<String>>, String> {
-    let mut reader = Reader::from_str(xml);
-    reader.trim_text(true);
+    let response: MulticallResponse =
+        from_str(xml).map_err(|e| format!("XML Parse Error: {}", e))?;
 
-    let mut buf = Vec::new();
-    let mut results = Vec::new();
-    let mut current_row = Vec::new();
-    let mut inside_value = false;
-    let mut current_text = String::new();
+    let mut result = Vec::new();
 
-    // Loop through events
-    // Strategy: We look for <data> inside the outer array. 
-    // The outer array contains values which are arrays (rows).
-    // Each row array contains values (columns).
-    
-    // Simplified logic: flatten all <value>... content, but respect structure? 
-    // Actually, handling nested arrays properly with a streaming parser is tricky.
-    // Let's rely on the fact that d.multicall2 returns a 2D array.
-    // Depth 0: methodResponse/params/param/value/array/data
-    // Depth 1: value (row) / array / data
-    // Depth 2: value (col) / type (string/i8/i4)
-    
-    // We can count <array> depth.
-    
-    let mut array_depth = 0;
-    
-    loop {
-        match reader.read_event_into(&mut buf) {
-            Ok(Event::Start(ref e)) => {
-                match e.name().as_ref() {
-                    b"array" => array_depth += 1,
-                    b"value" => inside_value = true,
-                    _ => (),
-                }
-            }
-            Ok(Event::End(ref e)) => {
-                match e.name().as_ref() {
-                    b"array" => {
-                        array_depth -= 1;
-                        // If we just finished a row (depth 1 which means the inner array of the main list)
-                        if array_depth == 1 {
-                             if !current_row.is_empty() {
-                                 results.push(current_row.clone());
-                                 current_row.clear();
-                             }
-                        }
-                    },
-                    b"value" => {
-                        inside_value = false;
-                        // If we are at depth 2 (inside a column value)
-                        if array_depth == 2 && !current_text.is_empty() {
-                             current_row.push(current_text.clone());
-                             current_text.clear();
-                        } else if array_depth == 2 {
-                             // Empty value or non-text?
-                             // Sometimes values are empty, e.g. empty string
-                             // We should push it if we just closed a value at depth 2
-                             // But wait, the text event handles the content.
-                             // Logic: If we closed value at depth 2, we push the collected text (which might be empty).
-                             // To handle empty text correctly, we should clear text at Start(value) or use a flag.
-                             if inside_value == false { // we just closed it
-                                 current_row.push(current_text.clone());
-                                 current_text.clear();
-                             }
-                        }
-                    }
-                    _ => (),
-                }
-            }
-            Ok(Event::Text(e)) => {
-                if inside_value && array_depth == 2 {
-                    current_text = e.unescape().unwrap().into_owned();
-                }
-            }
-            Ok(Event::Eof) => break,
-            Err(e) => return Err(format!("Parse error: {:?}", e)),
-            _ => (),
+    for row in response.params.param.value.array.data.values {
+        let mut row_vec = Vec::new();
+        for item in row.array.data.values {
+            row_vec.push(item.to_string_lossy());
         }
-        buf.clear();
-    }
-
-    Ok(results)
-}
-
-// Parse a simple string response from a method call
-// Expected: <methodResponse><params><param><value><string>RESULT</string></value></param></params></methodResponse>
-pub fn parse_string_response(xml: &str) -> Result<String, String> {
-    let mut reader = Reader::from_str(xml);
-    reader.trim_text(true);
-    let mut buf = Vec::new();
-    let mut result = String::new();
-    let mut inside_string = false;
-
-    loop {
-        match reader.read_event_into(&mut buf) {
-            Ok(Event::Start(ref e)) => {
-                if e.name().as_ref() == b"string" {
-                    inside_string = true;
-                }
-            }
-            Ok(Event::Text(e)) => {
-                if inside_string {
-                    result = e.unescape().unwrap().into_owned();
-                }
-            }
-            Ok(Event::End(ref e)) => {
-                if e.name().as_ref() == b"string" {
-                     // inside_string = false;
-                     // Assuming only one string in the response which matters
-                    break;
-                }
-            }
-            Ok(Event::Eof) => break,
-            _ => (),
-        }
-    }
-    
-    if result.is_empty() {
-        // It might be empty string or we didn't find it.
-        // If xml contains "fault", we should verify. 
-        if xml.contains("fault") {
-             return Err("RPC Fault detected".to_string());
-        }
+        result.push(row_vec);
     }
 
     Ok(result)
+}
+
+pub fn parse_string_response(xml: &str) -> Result<String, String> {
+    let response: StringResponse = from_str(xml).map_err(|e| format!("XML Parse Error: {}", e))?;
+    Ok(response.params.param.value.string)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_build_method_call() {
+        let client = RtorrentClient::new("dummy");
+        let xml = client
+            .build_method_call("d.multicall2", &["", "main", "d.name="])
+            .unwrap();
+
+        println!("Generated XML: {}", xml);
+
+        assert!(xml.contains("<methodName>d.multicall2</methodName>"));
+        // With struct option serialization, it should produce <value><string>...</string></value>
+        assert!(xml.contains("<value><string>main</string></value>"));
+    }
+
+    #[test]
+    fn test_parse_multicall_response() {
+        let xml = r#"<methodResponse>
+<params>
+<param>
+<value>
+<array>
+<data>
+<value>
+<array>
+<data>
+<value><string>HASH123</string></value>
+<value><string>Ubuntu ISO</string></value>
+<value><i4>1024</i4></value>
+</data>
+</array>
+</value>
+</data>
+</array>
+</value>
+</param>
+</params>
+</methodResponse>
+"#;
+        let result = parse_multicall_response(xml).expect("Failed to parse");
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0][0], "HASH123");
+        assert_eq!(result[0][1], "Ubuntu ISO");
+        assert_eq!(result[0][2], "1024");
+    }
 }

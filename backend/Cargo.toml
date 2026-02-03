@@ -15,7 +15,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tokio-stream = "0.1"
 bytes = "1"
 futures = "0.3"
-quick-xml = { version = "0.31", features = ["serialize"] }
+quick-xml = { version = "0.31", features = ["serde", "serialize"] }
 # We might need `tokio-util` for codecs if we implement SCGI manually
 tokio-util = { version = "0.7", features = ["codec", "io"] }
 clap = { version = "4.4", features = ["derive"] }

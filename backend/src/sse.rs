@@ -1,4 +1,6 @@
-use crate::xmlrpc::{parse_multicall_response, RtorrentClient, XmlRpcError};
+use crate::xmlrpc::{
+    parse_i64_response, parse_multicall_response, RpcParam, RtorrentClient, XmlRpcError,
+};
 use crate::AppState;
 use axum::extract::State;
 use axum::response::sse::{Event, Sse};
@@ -101,7 +103,8 @@ fn from_rtorrent_row(row: Vec<String>) -> Torrent {
 }
 
 pub async fn fetch_torrents(client: &RtorrentClient) -> Result<Vec<Torrent>, XmlRpcError> {
-    let xml = client.call("d.multicall2", RTORRENT_FIELDS).await?;
+    let params: Vec<RpcParam> = RTORRENT_FIELDS.iter().map(|s| RpcParam::from(*s)).collect();
+    let xml = client.call("d.multicall2", &params).await?;
 
     if xml.trim().is_empty() {
         return Err(XmlRpcError::Parse("Empty response from SCGI".to_string()));
@@ -115,26 +118,33 @@ pub async fn fetch_torrents(client: &RtorrentClient) -> Result<Vec<Torrent>, Xml
 }
 
 pub async fn fetch_global_stats(client: &RtorrentClient) -> Result<GlobalStats, XmlRpcError> {
-    // Parallel calls would be better but let's keep it simple sequential for now.
-    // NOTE: This adds 4 roundtrips per second. If this is too slow, we should use multicall via system.multicall (if supported)
-    // or just accept the overhead. Unix socket overhead is very low.
+    let empty_params: Vec<RpcParam> = vec![];
 
-    // We ignore errors on individual stats to not break the whole loop, using defaults.
-    // But connection errors should propagate.
+    let down_rate_xml = client
+        .call("throttle.global_down.rate", &empty_params)
+        .await?;
+    let down_rate = parse_i64_response(&down_rate_xml).unwrap_or(0);
 
-    let down_rate_str = client.call("throttle.global_down.rate", &[]).await?;
-    let up_rate_str = client.call("throttle.global_up.rate", &[]).await?;
-    let down_limit_str = client.call("throttle.global_down.max_rate", &[]).await?;
-    let up_limit_str = client.call("throttle.global_up.max_rate", &[]).await?;
+    let up_rate_xml = client
+        .call("throttle.global_up.rate", &empty_params)
+        .await?;
+    let up_rate = parse_i64_response(&up_rate_xml).unwrap_or(0);
 
-    // Optionally get free space. "directory.default" then "d.free_space_path"?? No "get_directory_free_space"
-    // Let's skip free space for high frequency updates.
+    let down_limit_xml = client
+        .call("throttle.global_down.max_rate", &empty_params)
+        .await?;
+    let down_limit = parse_i64_response(&down_limit_xml).ok();
+
+    let up_limit_xml = client
+        .call("throttle.global_up.max_rate", &empty_params)
+        .await?;
+    let up_limit = parse_i64_response(&up_limit_xml).ok();
 
     Ok(GlobalStats {
-        down_rate: down_rate_str.parse().unwrap_or(0),
-        up_rate: up_rate_str.parse().unwrap_or(0),
-        down_limit: down_limit_str.parse().ok(),
-        up_limit: up_limit_str.parse().ok(),
+        down_rate,
+        up_rate,
+        down_limit,
+        up_limit,
         free_space: None,
     })
 }

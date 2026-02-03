@@ -116,7 +116,8 @@ async fn main() {
         tracing::info!("Socket file exists. Testing connection...");
         let client = xmlrpc::RtorrentClient::new(&args.socket);
         // We use a lightweight call to verify connectivity
-        match client.call("system.client_version", &[]).await {
+        let params: Vec<xmlrpc::RpcParam> = vec![];
+        match client.call("system.client_version", &params).await {
             Ok(xml) => {
                 let version = xmlrpc::parse_string_response(&xml).unwrap_or(xml);
                 tracing::info!("Connected to rTorrent successfully. Version: {}", version);

@@ -1,4 +1,7 @@
-use crate::{xmlrpc, AppState};
+use crate::{
+    xmlrpc::{self, RpcParam},
+    AppState,
+};
 use axum::{
     extract::{Json, Path, State},
     http::{header, StatusCode, Uri},
@@ -73,7 +76,9 @@ pub async fn add_torrent_handler(
         payload.uri.len()
     );
     let client = xmlrpc::RtorrentClient::new(&state.scgi_socket_path);
-    match client.call("load.start", &["", &payload.uri]).await {
+    let params = vec![RpcParam::from(""), RpcParam::from(payload.uri.as_str())];
+
+    match client.call("load.start", &params).await {
         Ok(response) => {
             tracing::debug!("rTorrent response to load.start: {}", response);
             if response.contains("faultCode") {
@@ -128,7 +133,9 @@ pub async fn handle_torrent_action(
         _ => return (StatusCode::BAD_REQUEST, "Invalid action").into_response(),
     };
 
-    match client.call(method, &[&payload.hash]).await {
+    let params = vec![RpcParam::from(payload.hash.as_str())];
+
+    match client.call(method, &params).await {
         Ok(_) => (StatusCode::OK, "Action executed").into_response(),
         Err(e) => {
             tracing::error!("RPC error: {}", e);
@@ -146,13 +153,18 @@ async fn delete_torrent_with_data(
     client: &xmlrpc::RtorrentClient,
     hash: &str,
 ) -> Result<&'static str, (StatusCode, String)> {
+    let params_hash = vec![RpcParam::from(hash)];
+
     // 1. Get Base Path
-    let path_xml = client.call("d.base_path", &[hash]).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Failed to call rTorrent: {}", e),
-        )
-    })?;
+    let path_xml = client
+        .call("d.base_path", &params_hash)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to call rTorrent: {}", e),
+            )
+        })?;
 
     let path = xmlrpc::parse_string_response(&path_xml).map_err(|e| {
         (
@@ -192,7 +204,7 @@ async fn delete_torrent_with_data(
             target_path_raw
         );
         // If file doesn't exist, we just remove the torrent entry
-        client.call("d.erase", &[hash]).await.map_err(|e| {
+        client.call("d.erase", &params_hash).await.map_err(|e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("Failed to erase torrent: {}", e),
@@ -236,7 +248,7 @@ async fn delete_torrent_with_data(
     }
 
     // 2. Erase Torrent first
-    client.call("d.erase", &[hash]).await.map_err(|e| {
+    client.call("d.erase", &params_hash).await.map_err(|e| {
         tracing::warn!("Failed to erase torrent entry: {}", e);
         (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -306,12 +318,12 @@ pub async fn get_files_handler(
 ) -> impl IntoResponse {
     let client = xmlrpc::RtorrentClient::new(&state.scgi_socket_path);
     let params = vec![
-        hash.as_str(),
-        "",
-        "f.path=",
-        "f.size_bytes=",
-        "f.completed_chunks=",
-        "f.priority=",
+        RpcParam::from(hash.as_str()),
+        RpcParam::from(""),
+        RpcParam::from("f.path="),
+        RpcParam::from("f.size_bytes="),
+        RpcParam::from("f.completed_chunks="),
+        RpcParam::from("f.priority="),
     ];
 
     match client.call("f.multicall", &params).await {
@@ -362,13 +374,13 @@ pub async fn get_peers_handler(
 ) -> impl IntoResponse {
     let client = xmlrpc::RtorrentClient::new(&state.scgi_socket_path);
     let params = vec![
-        hash.as_str(),
-        "",
-        "p.address=",
-        "p.client_version=",
-        "p.down_rate=",
-        "p.up_rate=",
-        "p.completed_percent=", // or similar
+        RpcParam::from(hash.as_str()),
+        RpcParam::from(""),
+        RpcParam::from("p.address="),
+        RpcParam::from("p.client_version="),
+        RpcParam::from("p.down_rate="),
+        RpcParam::from("p.up_rate="),
+        RpcParam::from("p.completed_percent="),
     ];
 
     match client.call("p.multicall", &params).await {
@@ -418,14 +430,12 @@ pub async fn get_trackers_handler(
 ) -> impl IntoResponse {
     let client = xmlrpc::RtorrentClient::new(&state.scgi_socket_path);
     let params = vec![
-        hash.as_str(),
-        "",
-        "t.url=",
-        "t.activity_date_last=", // Just an example field, msg is better
-        // t.latest_event (success/error) is tricky.
-        "t.message=", // Often empty if ok
+        RpcParam::from(hash.as_str()),
+        RpcParam::from(""),
+        RpcParam::from("t.url="),
+        RpcParam::from("t.activity_date_last="),
+        RpcParam::from("t.message="),
     ];
-    // rTorrent tracker info is sometimes sparse in multicall
 
     match client.call("t.multicall", &params).await {
         Ok(xml) => {
@@ -474,16 +484,28 @@ pub async fn set_file_priority_handler(
 ) -> impl IntoResponse {
     let client = xmlrpc::RtorrentClient::new(&state.scgi_socket_path);
 
-    let priority_str = payload.priority.to_string();
-    let target = format!("{}:f{}", payload.hash, payload.file_index);
+    // f.set_priority takes "hash", index, priority
+    // Priority: 0 (off), 1 (normal), 2 (high)
+    // f.set_priority is tricky. Let's send as string first as before, or int if we knew.
+    // Usually priorities are small integers.
+    // But since we are updating everything to RpcParam, let's use Int if possible or String.
+    // The previous implementation used string. Let's stick to string for now or try Int.
+    // Actually, f.set_priority likely takes an integer.
 
-    match client
-        .call("f.set_priority", &[&target, &priority_str])
-        .await
-    {
+    let target = format!("{}:f{}", payload.hash, payload.file_index);
+    let params = vec![
+        RpcParam::from(target.as_str()),
+        RpcParam::from(payload.priority as i64),
+    ];
+
+    match client.call("f.set_priority", &params).await {
         Ok(_) => {
-            // Need to update view to reflect changes? usually 'd.update_priorities' is needed
-            let _ = client.call("d.update_priorities", &[&payload.hash]).await;
+            let _ = client
+                .call(
+                    "d.update_priorities",
+                    &[RpcParam::from(payload.hash.as_str())],
+                )
+                .await;
             (StatusCode::OK, "Priority updated").into_response()
         }
         Err(e) => (
@@ -509,11 +531,12 @@ pub async fn set_label_handler(
     Json(payload): Json<SetLabelRequest>,
 ) -> impl IntoResponse {
     let client = xmlrpc::RtorrentClient::new(&state.scgi_socket_path);
+    let params = vec![
+        RpcParam::from(payload.hash.as_str()),
+        RpcParam::from(payload.label),
+    ];
 
-    match client
-        .call("d.custom1.set", &[&payload.hash, &payload.label])
-        .await
-    {
+    match client.call("d.custom1.set", &params).await {
         Ok(_) => (StatusCode::OK, "Label updated").into_response(),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -539,18 +562,12 @@ pub async fn get_global_limit_handler(State(state): State<AppState>) -> impl Int
     let up_fut = client.call("throttle.global_up.max_rate", &[]);
 
     let down = match down_fut.await {
-        Ok(xml) => xmlrpc::parse_string_response(&xml)
-            .unwrap_or_default()
-            .parse::<i64>()
-            .unwrap_or(0),
+        Ok(xml) => xmlrpc::parse_i64_response(&xml).unwrap_or(0),
         Err(_) => -1,
     };
 
     let up = match up_fut.await {
-        Ok(xml) => xmlrpc::parse_string_response(&xml)
-            .unwrap_or_default()
-            .parse::<i64>()
-            .unwrap_or(0),
+        Ok(xml) => xmlrpc::parse_i64_response(&xml).unwrap_or(0),
         Err(_) => -1,
     };
 
@@ -579,8 +596,9 @@ pub async fn set_global_limit_handler(
     let client = xmlrpc::RtorrentClient::new(&state.scgi_socket_path);
 
     if let Some(down) = payload.max_download_rate {
+        // Here is the fix: Send as Int
         if let Err(e) = client
-            .call("throttle.global_down.max_rate.set", &[&down.to_string()])
+            .call("throttle.global_down.max_rate.set", &[RpcParam::Int(down)])
             .await
         {
             return (
@@ -593,7 +611,7 @@ pub async fn set_global_limit_handler(
 
     if let Some(up) = payload.max_upload_rate {
         if let Err(e) = client
-            .call("throttle.global_up.max_rate.set", &[&up.to_string()])
+            .call("throttle.global_up.max_rate.set", &[RpcParam::Int(up)])
             .await
         {
             return (

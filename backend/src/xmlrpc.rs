@@ -9,11 +9,42 @@ pub enum XmlRpcError {
     #[error("SCGI Error: {0}")]
     Scgi(#[from] ScgiError),
     #[error("Serialization Error: {0}")]
-    Serialization(String), // quick_xml errors are tricky to wrap directly due to versions/features
+    Serialization(String),
     #[error("Deserialization Error: {0}")]
     Deserialization(#[from] quick_xml::de::DeError),
     #[error("XML Parse Error: {0}")]
     Parse(String),
+}
+
+// --- Request Parameters Enum ---
+#[derive(Debug, Clone)]
+pub enum RpcParam {
+    String(String),
+    Int(i64),
+}
+
+impl From<&str> for RpcParam {
+    fn from(s: &str) -> Self {
+        RpcParam::String(s.to_string())
+    }
+}
+
+impl From<String> for RpcParam {
+    fn from(s: String) -> Self {
+        RpcParam::String(s)
+    }
+}
+
+impl From<i64> for RpcParam {
+    fn from(i: i64) -> Self {
+        RpcParam::Int(i)
+    }
+}
+
+impl From<i32> for RpcParam {
+    fn from(i: i32) -> Self {
+        RpcParam::Int(i as i64)
+    }
 }
 
 // --- Request Models ---
@@ -40,8 +71,9 @@ struct RequestParam<'a> {
 struct RequestValueInner<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     string: Option<&'a str>,
+    // rTorrent uses i8/i4. Let's use i8 (64-bit) which is safer for large limits/sizes
     #[serde(skip_serializing_if = "Option::is_none")]
-    i4: Option<i32>,
+    i8: Option<i64>,
 }
 
 // --- Response Models for d.multicall2 ---
@@ -78,7 +110,6 @@ struct MulticallResponseDataOuterValue {
     values: Vec<MulticallRowValue>,
 }
 
-// Each row in the response
 #[derive(Debug, Deserialize)]
 struct MulticallRowValue {
     array: MulticallResponseDataInner,
@@ -95,7 +126,6 @@ struct MulticallResponseDataInnerValue {
     values: Vec<MulticallItemValue>,
 }
 
-// Each item in a row (column)
 #[derive(Debug, Deserialize)]
 struct MulticallItemValue {
     #[serde(rename = "string", default)]
@@ -143,6 +173,34 @@ struct StringResponseValue {
     string: String,
 }
 
+// --- Response Model for simple integer (i8/i4) ---
+
+#[derive(Debug, Deserialize)]
+#[serde(rename = "methodResponse")]
+struct IntegerResponse {
+    params: IntegerResponseParams,
+}
+
+#[derive(Debug, Deserialize)]
+struct IntegerResponseParams {
+    param: IntegerResponseParam,
+}
+
+#[derive(Debug, Deserialize)]
+struct IntegerResponseParam {
+    value: IntegerResponseValue,
+}
+
+#[derive(Debug, Deserialize)]
+struct IntegerResponseValue {
+    #[serde(rename = "i8", default)]
+    i8: Option<i64>,
+    #[serde(rename = "i4", default)]
+    i4: Option<i64>,
+    #[serde(rename = "string", default)]
+    string: Option<String>,
+}
+
 // --- Client Implementation ---
 
 pub struct RtorrentClient {
@@ -157,14 +215,20 @@ impl RtorrentClient {
     }
 
     /// Helper to build and serialize XML-RPC method call
-    fn build_method_call(&self, method: &str, params: &[&str]) -> Result<String, XmlRpcError> {
+    fn build_method_call(&self, method: &str, params: &[RpcParam]) -> Result<String, XmlRpcError> {
         let req_params = RequestParams {
             param: params
                 .iter()
                 .map(|p| RequestParam {
-                    value: RequestValueInner {
-                        string: Some(p),
-                        i4: None,
+                    value: match p {
+                        RpcParam::String(s) => RequestValueInner {
+                            string: Some(s),
+                            i8: None,
+                        },
+                        RpcParam::Int(i) => RequestValueInner {
+                            string: None,
+                            i8: Some(*i),
+                        },
                     },
                 })
                 .collect(),
@@ -179,7 +243,7 @@ impl RtorrentClient {
         Ok(format!("<?xml version=\"1.0\"?>\n{}", xml_body))
     }
 
-    pub async fn call(&self, method: &str, params: &[&str]) -> Result<String, XmlRpcError> {
+    pub async fn call(&self, method: &str, params: &[RpcParam]) -> Result<String, XmlRpcError> {
         let xml = self.build_method_call(method, params)?;
         let req = ScgiRequest::new().body(xml.into_bytes());
 
@@ -210,6 +274,20 @@ pub fn parse_string_response(xml: &str) -> Result<String, XmlRpcError> {
     Ok(response.params.param.value.string)
 }
 
+pub fn parse_i64_response(xml: &str) -> Result<i64, XmlRpcError> {
+    let response: IntegerResponse = from_str(xml)?;
+    if let Some(val) = response.params.param.value.i8 {
+        Ok(val)
+    } else if let Some(val) = response.params.param.value.i4 {
+        Ok(val)
+    } else if let Some(ref s) = response.params.param.value.string {
+        s.parse()
+            .map_err(|_| XmlRpcError::Parse("Not an integer string".to_string()))
+    } else {
+        Err(XmlRpcError::Parse("No integer value found".to_string()))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -217,12 +295,26 @@ mod tests {
     #[test]
     fn test_build_method_call() {
         let client = RtorrentClient::new("dummy");
-        let xml = client
-            .build_method_call("d.multicall2", &["", "main", "d.name="])
-            .unwrap();
+        let params = vec![
+            RpcParam::String("".to_string()),
+            RpcParam::String("main".to_string()),
+            RpcParam::String("d.name=".to_string()),
+        ];
+        let xml = client.build_method_call("d.multicall2", &params).unwrap();
 
         assert!(xml.contains("<methodName>d.multicall2</methodName>"));
         assert!(xml.contains("<value><string>main</string></value>"));
+    }
+
+    #[test]
+    fn test_build_method_call_int() {
+        let client = RtorrentClient::new("dummy");
+        let params = vec![RpcParam::Int(1024)];
+        let xml = client.build_method_call("test.int", &params).unwrap();
+        // quick-xml default for i64 might be just text inside tag if not renamed?
+        // We mapped i8 field to i64 value.
+        // It should produce <value><i8>1024</i8></value>
+        assert!(xml.contains("<i8>1024</i8>"));
     }
 
     #[test]

@@ -8,8 +8,8 @@ use axum::{
 use rust_embed::RustEmbed;
 use serde::Deserialize;
 use shared::{
-    SetFilePriorityRequest, SetLabelRequest, TorrentActionRequest, TorrentFile, TorrentPeer,
-    TorrentTracker,
+    GlobalLimitRequest, SetFilePriorityRequest, SetLabelRequest, TorrentActionRequest, TorrentFile,
+    TorrentPeer, TorrentTracker,
 };
 use utoipa::ToSchema;
 
@@ -113,6 +113,7 @@ pub async fn handle_torrent_action(
 
     let client = xmlrpc::RtorrentClient::new(&state.scgi_socket_path);
 
+    // Special handling for delete_with_data
     if payload.action == "delete_with_data" {
         return match delete_torrent_with_data(&client, &payload.hash).await {
             Ok(msg) => (StatusCode::OK, msg).into_response(),
@@ -145,6 +146,7 @@ async fn delete_torrent_with_data(
     client: &xmlrpc::RtorrentClient,
     hash: &str,
 ) -> Result<&'static str, (StatusCode, String)> {
+    // 1. Get Base Path
     let path_xml = client.call("d.base_path", &[hash]).await.map_err(|e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -159,6 +161,7 @@ async fn delete_torrent_with_data(
         )
     })?;
 
+    // 1.5 Get Default Download Directory (Sandbox Root)
     let root_xml = client.call("directory.default", &[]).await.map_err(|e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -173,6 +176,7 @@ async fn delete_torrent_with_data(
         )
     })?;
 
+    // Resolve Paths (Canonicalize) to prevent .. traversal and symlink attacks
     let root_path = std::fs::canonicalize(std::path::Path::new(&root_path_str)).map_err(|e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -180,18 +184,21 @@ async fn delete_torrent_with_data(
         )
     })?;
 
+    // Check if target path exists before trying to resolve it
     let target_path_raw = std::path::Path::new(&path);
     if !target_path_raw.exists() {
         tracing::warn!(
             "Data path not found: {:?}. Removing torrent only.",
             target_path_raw
         );
+        // If file doesn't exist, we just remove the torrent entry
         client.call("d.erase", &[hash]).await.map_err(|e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("Failed to erase torrent: {}", e),
             )
         })?;
+
         return Ok("Torrent removed (Data not found)");
     }
 
@@ -208,6 +215,7 @@ async fn delete_torrent_with_data(
         root_path
     );
 
+    // SECURITY CHECK: Ensure path is inside root_path
     if !target_path.starts_with(&root_path) {
         tracing::error!(
             "Security Risk: Attempted to delete path outside download directory: {:?}",
@@ -219,6 +227,7 @@ async fn delete_torrent_with_data(
         ));
     }
 
+    // SECURITY CHECK: Ensure we are not deleting the root itself
     if target_path == root_path {
         return Err((
             StatusCode::BAD_REQUEST,
@@ -226,6 +235,7 @@ async fn delete_torrent_with_data(
         ));
     }
 
+    // 2. Erase Torrent first
     client.call("d.erase", &[hash]).await.map_err(|e| {
         tracing::warn!("Failed to erase torrent entry: {}", e);
         (
@@ -234,6 +244,7 @@ async fn delete_torrent_with_data(
         )
     })?;
 
+    // 3. Delete Files via Native FS
     let delete_result = if target_path.is_dir() {
         std::fs::remove_dir_all(&target_path)
     } else {
@@ -463,17 +474,7 @@ pub async fn set_file_priority_handler(
 ) -> impl IntoResponse {
     let client = xmlrpc::RtorrentClient::new(&state.scgi_socket_path);
 
-    // f.set_priority takes "hash", index, priority
-    // Priority: 0 (off), 1 (normal), 2 (high)
     let priority_str = payload.priority.to_string();
-
-    // For file calls, target is often "hash:fIndex" or similar, but f.set_priority usually works on file target
-    // In d.multicall, f.set_priority is called on file items.
-    // To call directly: f.set_priority(hash, index, prio) ?? No, usually:
-    // f.set_priority is not a system command. It's a method on a file object.
-    // We need to target the file.
-    // Target format: "{hash}:f{index}" e.g. "HASH:f0"
-
     let target = format!("{}:f{}", payload.hash, payload.file_index);
 
     match client
@@ -520,6 +521,90 @@ pub async fn set_label_handler(
         )
             .into_response(),
     }
+}
+
+/// Get global speed limits
+#[utoipa::path(
+    get,
+    path = "/api/settings/global-limits",
+    responses(
+        (status = 200, description = "Current limits", body = GlobalLimitRequest),
+        (status = 500, description = "Internal server error")
+    )
+)]
+pub async fn get_global_limit_handler(State(state): State<AppState>) -> impl IntoResponse {
+    let client = xmlrpc::RtorrentClient::new(&state.scgi_socket_path);
+    // throttle.global_down.max_rate, throttle.global_up.max_rate
+    let down_fut = client.call("throttle.global_down.max_rate", &[]);
+    let up_fut = client.call("throttle.global_up.max_rate", &[]);
+
+    let down = match down_fut.await {
+        Ok(xml) => xmlrpc::parse_string_response(&xml)
+            .unwrap_or_default()
+            .parse::<i64>()
+            .unwrap_or(0),
+        Err(_) => -1,
+    };
+
+    let up = match up_fut.await {
+        Ok(xml) => xmlrpc::parse_string_response(&xml)
+            .unwrap_or_default()
+            .parse::<i64>()
+            .unwrap_or(0),
+        Err(_) => -1,
+    };
+
+    let resp = GlobalLimitRequest {
+        max_download_rate: Some(down),
+        max_upload_rate: Some(up),
+    };
+
+    (StatusCode::OK, Json(resp)).into_response()
+}
+
+/// Set global speed limits
+#[utoipa::path(
+    post,
+    path = "/api/settings/global-limits",
+    request_body = GlobalLimitRequest,
+    responses(
+        (status = 200, description = "Limits updated"),
+        (status = 500, description = "Internal server error")
+    )
+)]
+pub async fn set_global_limit_handler(
+    State(state): State<AppState>,
+    Json(payload): Json<GlobalLimitRequest>,
+) -> impl IntoResponse {
+    let client = xmlrpc::RtorrentClient::new(&state.scgi_socket_path);
+
+    if let Some(down) = payload.max_download_rate {
+        if let Err(e) = client
+            .call("throttle.global_down.max_rate.set", &[&down.to_string()])
+            .await
+        {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to set down limit: {}", e),
+            )
+                .into_response();
+        }
+    }
+
+    if let Some(up) = payload.max_upload_rate {
+        if let Err(e) = client
+            .call("throttle.global_up.max_rate.set", &[&up.to_string()])
+            .await
+        {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to set up limit: {}", e),
+            )
+                .into_response();
+        }
+    }
+
+    (StatusCode::OK, "Limits updated").into_response()
 }
 
 pub async fn handle_timeout_error(err: BoxError) -> (StatusCode, &'static str) {

@@ -59,7 +59,9 @@ struct Args {
         handlers::get_peers_handler,
         handlers::get_trackers_handler,
         handlers::set_file_priority_handler,
-        handlers::set_label_handler
+        handlers::set_label_handler,
+        handlers::get_global_limit_handler,
+        handlers::set_global_limit_handler
     ),
     components(
         schemas(
@@ -71,7 +73,8 @@ struct Args {
             shared::TorrentPeer,
             shared::TorrentTracker,
             shared::SetFilePriorityRequest,
-            shared::SetLabelRequest
+            shared::SetLabelRequest,
+            shared::GlobalLimitRequest
         )
     ),
     tags(
@@ -207,6 +210,10 @@ async fn main() {
             post(handlers::set_file_priority_handler),
         )
         .route("/api/torrents/label", post(handlers::set_label_handler))
+        .route(
+            "/api/settings/global-limits",
+            get(handlers::get_global_limit_handler).post(handlers::set_global_limit_handler),
+        )
         .fallback(handlers::static_handler) // Serve static files for everything else
         .layer(TraceLayer::new_for_http())
         .layer(

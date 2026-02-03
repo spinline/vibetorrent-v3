@@ -95,7 +95,7 @@ pub fn provide_torrent_store() {
                                             t.error_message = error_message;
                                         }
                                         if let Some(label) = update.label {
-                                            t.label = label;
+                                            t.label = Some(label);
                                         }
                                     }
                                 });

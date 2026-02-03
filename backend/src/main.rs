@@ -66,6 +66,26 @@ async fn main() {
     tracing::info!("Socket: {}", args.socket);
     tracing::info!("Port: {}", args.port);
 
+    // Startup Health Check
+    let socket_path = std::path::Path::new(&args.socket);
+    if !socket_path.exists() {
+        tracing::error!("CRITICAL: rTorrent socket not found at {:?}.", socket_path);
+        tracing::warn!(
+            "HINT: Make sure rTorrent is running and the SCGI socket is enabled in .rtorrent.rc"
+        );
+        tracing::warn!(
+            "HINT: You can configure the socket path via --socket ARG or RTORRENT_SOCKET ENV."
+        );
+    } else {
+        tracing::info!("Socket file exists. Testing connection...");
+        let client = xmlrpc::RtorrentClient::new(&args.socket);
+        // We use a lightweight call to verify connectivity
+        match client.call("system.client_version", &[]).await {
+            Ok(v) => tracing::info!("Connected to rTorrent successfully. Version: {}", v),
+            Err(e) => tracing::error!("Socket exists but failed to connect to rTorrent: {}", e),
+        }
+    }
+
     // Channel for latest state (for new clients)
     let (tx, _rx) = watch::channel(vec![]);
     let tx = Arc::new(tx);

@@ -143,6 +143,34 @@ struct StringResponseValue {
     string: String,
 }
 
+// --- Response Model for simple integer (i8/i4) ---
+
+#[derive(Debug, Deserialize)]
+#[serde(rename = "methodResponse")]
+struct IntegerResponse {
+    params: IntegerResponseParams,
+}
+
+#[derive(Debug, Deserialize)]
+struct IntegerResponseParams {
+    param: IntegerResponseParam,
+}
+
+#[derive(Debug, Deserialize)]
+struct IntegerResponseParam {
+    value: IntegerResponseValue,
+}
+
+#[derive(Debug, Deserialize)]
+struct IntegerResponseValue {
+    #[serde(rename = "i8", default)]
+    i8: Option<i64>,
+    #[serde(rename = "i4", default)]
+    i4: Option<i64>,
+    #[serde(rename = "string", default)]
+    string: Option<String>,
+}
+
 // --- Client Implementation ---
 
 pub struct RtorrentClient {
@@ -208,6 +236,20 @@ pub fn parse_multicall_response(xml: &str) -> Result<Vec<Vec<String>>, XmlRpcErr
 pub fn parse_string_response(xml: &str) -> Result<String, XmlRpcError> {
     let response: StringResponse = from_str(xml)?;
     Ok(response.params.param.value.string)
+}
+
+pub fn parse_i64_response(xml: &str) -> Result<i64, XmlRpcError> {
+    let response: IntegerResponse = from_str(xml)?;
+    if let Some(val) = response.params.param.value.i8 {
+        Ok(val)
+    } else if let Some(val) = response.params.param.value.i4 {
+        Ok(val)
+    } else if let Some(ref s) = response.params.param.value.string {
+        s.parse()
+            .map_err(|_| XmlRpcError::Parse("Not an integer string".to_string()))
+    } else {
+        Err(XmlRpcError::Parse("No integer value found".to_string()))
+    }
 }
 
 #[cfg(test)]

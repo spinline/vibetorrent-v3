@@ -115,7 +115,13 @@ pub fn StatusBar() -> impl IntoView {
                 </div>
 
                 <Show when=move || down_menu_open.get() fallback=|| ()>
-                    <div class="fixed inset-0 z-[99] bg-black/0" on:click=move |_| set_down_menu_open.set(false)></div>
+                    <div
+                        class="fixed inset-0 z-[99] bg-black/0 cursor-default"
+                        on:click=move |e| {
+                            e.stop_propagation();
+                            set_down_menu_open.set(false);
+                        }
+                    ></div>
                 </Show>
 
                 <ul tabindex="0" class="dropdown-content z-[100] menu p-2 shadow bg-base-200 rounded-box w-40 mb-2 border border-base-300">
@@ -164,7 +170,13 @@ pub fn StatusBar() -> impl IntoView {
                 </div>
 
                 <Show when=move || up_menu_open.get() fallback=|| ()>
-                    <div class="fixed inset-0 z-[99] bg-black/0" on:click=move |_| set_up_menu_open.set(false)></div>
+                    <div
+                        class="fixed inset-0 z-[99] bg-black/0 cursor-default"
+                        on:click=move |e| {
+                            e.stop_propagation();
+                            set_up_menu_open.set(false);
+                        }
+                    ></div>
                 </Show>
 
                 <ul tabindex="0" class="dropdown-content z-[100] menu p-2 shadow bg-base-200 rounded-box w-40 mb-2 border border-base-300">
@@ -212,13 +224,9 @@ pub fn StatusBar() -> impl IntoView {
 
                     <Show when=move || theme_open.get() fallback=|| ()>
                         <div
-                            class="fixed inset-0 z-[99] bg-black/0"
-                            style="cursor: pointer; -webkit-tap-highlight-color: transparent;"
-                            role="button"
-                            tabindex="-1"
-                            on:click=move |_| set_theme_open.set(false)
-                            on:touchend=move |e| {
-                                e.prevent_default();
+                            class="fixed inset-0 z-[99] bg-black/0 cursor-default"
+                            on:click=move |e| {
+                                e.stop_propagation();
                                 set_theme_open.set(false);
                             }
                         ></div>

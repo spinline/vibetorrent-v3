@@ -37,6 +37,7 @@ pub fn diff_torrents(old: &[Torrent], new: &[Torrent]) -> DiffResult {
             eta: None,
             status: None,
             error_message: None,
+            label: None,
         };
 
         let mut has_changes = false;
@@ -76,6 +77,10 @@ pub fn diff_torrents(old: &[Torrent], new: &[Torrent]) -> DiffResult {
         }
         if old_t.error_message != new_t.error_message {
             update.error_message = Some(new_t.error_message.clone());
+            has_changes = true;
+        }
+        if old_t.label != new_t.label {
+            update.label = new_t.label.clone();
             has_changes = true;
         }
 

@@ -14,6 +14,7 @@ pub struct Torrent {
     pub status: TorrentStatus,
     pub error_message: String,
     pub added_date: i64,
+    pub label: Option<String>, // Added Label support
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, ToSchema)]
@@ -48,14 +49,13 @@ pub struct TorrentUpdate {
     pub eta: Option<i64>,
     pub status: Option<TorrentStatus>,
     pub error_message: Option<String>,
+    pub label: Option<String>, // Added Label update support
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 pub struct TorrentActionRequest {
-    /// The hash of the torrent
     #[schema(example = "5D4C9065...")]
     pub hash: String,
-    /// The action to perform: "start", "stop", "delete", "delete_with_data"
     #[schema(example = "start")]
     pub action: String,
 }
@@ -65,4 +65,50 @@ pub enum Theme {
     Midnight,
     Light,
     Amoled,
+}
+
+// --- NEW STRUCTS FOR ADVANCED FEATURES ---
+
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
+pub struct TorrentFile {
+    pub index: u32,
+    pub path: String,
+    pub size: i64,
+    pub completed_chunks: i64,
+    pub priority: u8, // 0: Off, 1: Normal, 2: High
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
+pub struct TorrentPeer {
+    pub ip: String,
+    pub client: String,
+    pub down_rate: i64,
+    pub up_rate: i64,
+    pub progress: f64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
+pub struct TorrentTracker {
+    pub url: String,
+    pub status: String,
+    pub message: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
+pub struct SetFilePriorityRequest {
+    pub hash: String,
+    pub file_index: u32,
+    pub priority: u8,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
+pub struct GlobalLimitRequest {
+    pub max_upload_rate: Option<i64>,   // in bytes/s
+    pub max_download_rate: Option<i64>, // in bytes/s
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
+pub struct SetLabelRequest {
+    pub hash: String,
+    pub label: String,
 }

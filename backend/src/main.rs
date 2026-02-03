@@ -53,7 +53,13 @@ struct Args {
 #[openapi(
     paths(
         handlers::add_torrent_handler,
-        handlers::handle_torrent_action
+        handlers::handle_torrent_action,
+        handlers::get_version_handler,
+        handlers::get_files_handler,
+        handlers::get_peers_handler,
+        handlers::get_trackers_handler,
+        handlers::set_file_priority_handler,
+        handlers::set_label_handler
     ),
     components(
         schemas(
@@ -61,7 +67,12 @@ struct Args {
             shared::TorrentActionRequest,
             shared::Torrent,
             shared::TorrentStatus,
-            shared::Theme
+            shared::Theme,
+            shared::TorrentFile,
+            shared::TorrentPeer,
+            shared::TorrentTracker,
+            shared::SetFilePriorityRequest,
+            shared::SetLabelRequest
         )
     ),
     tags(
@@ -179,6 +190,24 @@ async fn main() {
             "/api/torrents/action",
             post(handlers::handle_torrent_action),
         )
+        .route("/api/system/version", get(handlers::get_version_handler))
+        .route(
+            "/api/torrents/:hash/files",
+            get(handlers::get_files_handler),
+        )
+        .route(
+            "/api/torrents/:hash/peers",
+            get(handlers::get_peers_handler),
+        )
+        .route(
+            "/api/torrents/:hash/trackers",
+            get(handlers::get_trackers_handler),
+        )
+        .route(
+            "/api/torrents/files/priority",
+            post(handlers::set_file_priority_handler),
+        )
+        .route("/api/torrents/label", post(handlers::set_label_handler))
         .fallback(handlers::static_handler) // Serve static files for everything else
         .layer(TraceLayer::new_for_http())
         .layer(

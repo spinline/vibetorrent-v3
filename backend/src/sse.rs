@@ -23,6 +23,7 @@ const RTORRENT_FIELDS: &[&str] = &[
     "d.left_bytes=",    // 9
     "d.creation_date=", // 10
     "d.hashing=",       // 11
+    "d.custom1=",       // 12 (Label)
 ];
 
 fn parse_long(s: Option<&String>) -> i64 {
@@ -49,6 +50,14 @@ fn from_rtorrent_row(row: Vec<String>) -> Torrent {
     let left_bytes = parse_long(row.get(9));
     let added_date = parse_long(row.get(10));
     let is_hashing = parse_long(row.get(11));
+    let label_raw = parse_string(row.get(12));
+
+    // Treat empty label as None
+    let label = if label_raw.is_empty() {
+        None
+    } else {
+        Some(label_raw)
+    };
 
     let percent_complete = if size > 0 {
         (completed as f64 / size as f64) * 100.0
@@ -88,6 +97,7 @@ fn from_rtorrent_row(row: Vec<String>) -> Torrent {
         status,
         error_message: message,
         added_date,
+        label,
     }
 }
 

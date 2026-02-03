@@ -67,7 +67,6 @@ struct Args {
             shared::TorrentActionRequest,
             shared::Torrent,
             shared::TorrentStatus,
-            shared::Theme,
             shared::TorrentFile,
             shared::TorrentPeer,
             shared::TorrentTracker,

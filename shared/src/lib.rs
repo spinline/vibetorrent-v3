@@ -60,13 +60,6 @@ pub struct TorrentActionRequest {
     pub action: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, ToSchema)]
-pub enum Theme {
-    Midnight,
-    Light,
-    Amoled,
-}
-
 // --- NEW STRUCTS FOR ADVANCED FEATURES ---
 
 #[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]

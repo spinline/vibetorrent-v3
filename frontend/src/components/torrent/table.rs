@@ -2,16 +2,17 @@ use leptos::*;
 use wasm_bindgen::closure::Closure;
 use wasm_bindgen::JsCast;
 
-
-
-
 fn format_bytes(bytes: i64) -> String {
     const UNITS: [&str; 6] = ["B", "KB", "MB", "GB", "TB", "PB"];
     if bytes < 1024 {
         return format!("{} B", bytes);
     }
     let i = (bytes as f64).log2().div_euclid(10.0) as usize;
-    format!("{:.1} {}", (bytes as f64) / 1024_f64.powi(i as i32), UNITS[i])
+    format!(
+        "{:.1} {}",
+        (bytes as f64) / 1024_f64.powi(i as i32),
+        UNITS[i]
+    )
 }
 
 fn format_speed(bytes_per_sec: i64) -> String {
@@ -41,32 +42,47 @@ enum SortDirection {
 #[component]
 pub fn TorrentTable() -> impl IntoView {
     let store = use_context::<crate::store::TorrentStore>().expect("store not provided");
-    
+
     let sort_col = create_rw_signal(SortColumn::Name);
     let sort_dir = create_rw_signal(SortDirection::Ascending);
 
     let filtered_torrents = move || {
-        let mut torrents = store.torrents.get().into_iter().filter(|t| {
-            let filter = store.filter.get();
-            let search = store.search_query.get().to_lowercase();
-            
-            let matches_filter = match filter {
-                crate::store::FilterStatus::All => true,
-                crate::store::FilterStatus::Downloading => t.status == shared::TorrentStatus::Downloading,
-                crate::store::FilterStatus::Seeding => t.status == shared::TorrentStatus::Seeding,
-                crate::store::FilterStatus::Completed => t.status == shared::TorrentStatus::Seeding || t.status == shared::TorrentStatus::Paused, // Approximate
-                crate::store::FilterStatus::Inactive => t.status == shared::TorrentStatus::Paused || t.status == shared::TorrentStatus::Error,
-                _ => true
-            };
+        let mut torrents = store
+            .torrents
+            .get()
+            .into_iter()
+            .filter(|t| {
+                let filter = store.filter.get();
+                let search = store.search_query.get().to_lowercase();
 
-            let matches_search = if search.is_empty() {
-                true
-            } else {
-                t.name.to_lowercase().contains(&search)
-            };
+                let matches_filter = match filter {
+                    crate::store::FilterStatus::All => true,
+                    crate::store::FilterStatus::Downloading => {
+                        t.status == shared::TorrentStatus::Downloading
+                    }
+                    crate::store::FilterStatus::Seeding => {
+                        t.status == shared::TorrentStatus::Seeding
+                    }
+                    crate::store::FilterStatus::Completed => {
+                        t.status == shared::TorrentStatus::Seeding
+                            || t.status == shared::TorrentStatus::Paused
+                    } // Approximate
+                    crate::store::FilterStatus::Inactive => {
+                        t.status == shared::TorrentStatus::Paused
+                            || t.status == shared::TorrentStatus::Error
+                    }
+                    _ => true,
+                };
 
-            matches_filter && matches_search
-        }).collect::<Vec<_>>();
+                let matches_search = if search.is_empty() {
+                    true
+                } else {
+                    t.name.to_lowercase().contains(&search)
+                };
+
+                matches_filter && matches_search
+            })
+            .collect::<Vec<_>>();
 
         torrents.sort_by(|a, b| {
             let col = sort_col.get();
@@ -74,32 +90,41 @@ pub fn TorrentTable() -> impl IntoView {
             let cmp = match col {
                 SortColumn::Name => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
                 SortColumn::Size => a.size.cmp(&b.size),
-                SortColumn::Progress => a.percent_complete.partial_cmp(&b.percent_complete).unwrap_or(std::cmp::Ordering::Equal),
+                SortColumn::Progress => a
+                    .percent_complete
+                    .partial_cmp(&b.percent_complete)
+                    .unwrap_or(std::cmp::Ordering::Equal),
                 SortColumn::Status => format!("{:?}", a.status).cmp(&format!("{:?}", b.status)),
                 SortColumn::DownSpeed => a.down_rate.cmp(&b.down_rate),
                 SortColumn::UpSpeed => a.up_rate.cmp(&b.up_rate),
                 SortColumn::ETA => {
-                     // ETA 0 means infinity usually, so we need to handle it.
-                     // But for simple sorting, maybe just treat is numeric?
-                     // Let's treat 0 as MAX for ascending, MIN for descending? Or just as is?
-                     // Usually negative or 0 means unknown/inf.
-                     // Let's handle 0 as very large number for sorting purposes if we want it at the end of ascending
-                     let a_eta = if a.eta <= 0 { i64::MAX } else { a.eta };
-                     let b_eta = if b.eta <= 0 { i64::MAX } else { b.eta };
-                     a_eta.cmp(&b_eta)
+                    // ETA 0 means infinity usually, so we need to handle it.
+                    // But for simple sorting, maybe just treat is numeric?
+                    // Let's treat 0 as MAX for ascending, MIN for descending? Or just as is?
+                    // Usually negative or 0 means unknown/inf.
+                    // Let's handle 0 as very large number for sorting purposes if we want it at the end of ascending
+                    let a_eta = if a.eta <= 0 { i64::MAX } else { a.eta };
+                    let b_eta = if b.eta <= 0 { i64::MAX } else { b.eta };
+                    a_eta.cmp(&b_eta)
                 }
             };
-            if dir == SortDirection::Descending { cmp.reverse() } else { cmp }
+            if dir == SortDirection::Descending {
+                cmp.reverse()
+            } else {
+                cmp
+            }
         });
-        
+
         torrents
     };
 
     let handle_sort = move |col: SortColumn| {
         if sort_col.get() == col {
-            sort_dir.update(|d| *d = match d {
-                SortDirection::Ascending => SortDirection::Descending,
-                SortDirection::Descending => SortDirection::Ascending,
+            sort_dir.update(|d| {
+                *d = match d {
+                    SortDirection::Ascending => SortDirection::Descending,
+                    SortDirection::Descending => SortDirection::Ascending,
+                }
             });
         } else {
             sort_col.set(col);
@@ -110,11 +135,16 @@ pub fn TorrentTable() -> impl IntoView {
     let sort_arrow = move |col: SortColumn| {
         if sort_col.get() == col {
             match sort_dir.get() {
-                SortDirection::Ascending => view!{ <span class="ml-1 text-xs">"▲"</span> }.into_view(),
-                SortDirection::Descending => view!{ <span class="ml-1 text-xs">"▼"</span> }.into_view(),
+                SortDirection::Ascending => {
+                    view! { <span class="ml-1 text-xs">"▲"</span> }.into_view()
+                }
+                SortDirection::Descending => {
+                    view! { <span class="ml-1 text-xs">"▼"</span> }.into_view()
+                }
             }
         } else {
-            view!{ <span class="ml-1 text-xs opacity-0 group-hover:opacity-50">"▲"</span> }.into_view()
+            view! { <span class="ml-1 text-xs opacity-0 group-hover:opacity-50">"▲"</span> }
+                .into_view()
         }
     };
 
@@ -134,29 +164,34 @@ pub fn TorrentTable() -> impl IntoView {
         set_menu_visible.set(false); // Close menu immediately
 
         spawn_local(async move {
-            let action_req =  if action == "delete_with_data" { "delete_with_data" } else { &action };
-            
+            let action_req = if action == "delete_with_data" {
+                "delete_with_data"
+            } else {
+                &action
+            };
+
             let req_body = shared::TorrentActionRequest {
                 hash: hash.clone(),
                 action: action_req.to_string(),
             };
 
-            let client = gloo_net::http::Request::post("/api/torrents/action")
-                .json(&req_body);
+            let client = gloo_net::http::Request::post("/api/torrents/action").json(&req_body);
 
             match client {
-                Ok(req) => {
-                    match req.send().await {
-                        Ok(resp) => {
-                            if !resp.ok() {
-                                logging::error!("Failed to execute action: {} {}", resp.status(), resp.status_text());
-                            } else {
-                                logging::log!("Action {} executed successfully", action);
-                            }
+                Ok(req) => match req.send().await {
+                    Ok(resp) => {
+                        if !resp.ok() {
+                            logging::error!(
+                                "Failed to execute action: {} {}",
+                                resp.status(),
+                                resp.status_text()
+                            );
+                        } else {
+                            logging::log!("Action {} executed successfully", action);
                         }
-                        Err(e) => logging::error!("Network error executing action: {}", e),
                     }
-                }
+                    Err(e) => logging::error!("Network error executing action: {}", e),
+                },
                 Err(e) => logging::error!("Failed to serialize request: {}", e),
             }
         });
@@ -202,17 +237,17 @@ pub fn TorrentTable() -> impl IntoView {
                                 shared::TorrentStatus::Error => "text-error",
                                 _ => "text-base-content/50"
                             };
-                            let t_hash = t.hash.clone(); 
+                            let t_hash = t.hash.clone();
                             let t_hash_click = t.hash.clone();
-                            
+
                             let is_selected_fn = move || {
                                 selected_hash.get() == Some(t_hash.clone())
                             };
 
                             view! {
-                                <tr 
+                                <tr
                                     class=move || {
-                                        let base = "hover border-b border-base-200 select-none"; 
+                                        let base = "hover border-b border-base-200 select-none";
                                         if is_selected_fn() {
                                             format!("{} bg-primary/10", base)
                                         } else {
@@ -262,16 +297,14 @@ pub fn TorrentTable() -> impl IntoView {
                     };
                     let t_hash = t.hash.clone();
                     // We don't need t_hash_click separately if we use t_hash, but existing pattern uses clones
-                    let t_hash_click = t.hash.clone(); 
-                    
-                    let is_selected_fn = move || {
-                        selected_hash.get() == Some(t_hash.clone())
-                    };
+                    let t_hash_click = t.hash.clone();
+
+
 
                     // Long press logic
                     let (timer_id, set_timer_id) = create_signal(Option::<i32>::None);
                     let t_hash_long = t.hash.clone();
-                    
+
                     let clear_timer = move || {
                         if let Some(id) = timer_id.get_untracked() {
                             window().clear_timeout_with_handle(id);
@@ -282,38 +315,38 @@ pub fn TorrentTable() -> impl IntoView {
                     let handle_touchstart = {
                          let t_hash = t_hash_long.clone();
                          move |e: web_sys::TouchEvent| {
-                            // Don't prevent default immediately, or we can't scroll. 
+                            // Don't prevent default immediately, or we can't scroll.
                             // But for long press, we might need to if we want to stop iOS menu.
                             // -webkit-touch-callout: none (in CSS) handles the iOS menu suppression usually.
-                            
+
                             clear_timer();
-                            
+
                             if let Some(touch) = e.touches().get(0) {
                                 let x = touch.client_x();
                                 let y = touch.client_y();
                                 let hash = t_hash.clone();
-                                
+
                                 let closure = Closure::wrap(Box::new(move || {
                                     set_menu_position.set((x, y));
                                     set_selected_hash.set(Some(hash.clone()));
                                     set_menu_visible.set(true);
-                                    
+
                                     // Haptic feedback if available
                                     let navigator = window().navigator();
                                     let _ = navigator.vibrate_with_duration(50);
                                 }) as Box<dyn Fn()>);
-                                
+
                                 let id = window()
                                     .set_timeout_with_callback_and_timeout_and_arguments_0(
                                         closure.as_ref().unchecked_ref(),
                                         600 // 600ms long press
                                     )
                                     .unwrap_or(0);
-                                
+
                                 closure.forget(); // Leak memory? effectively yes, but for a simplified timeout it's "okay" in this context or we need to store the closure key.
-                                // In a real app we might want to store the closure to drop it, but `set_timeout` takes a function pointer effectively. 
+                                // In a real app we might want to store the closure to drop it, but `set_timeout` takes a function pointer effectively.
                                 // Actually, `closure.forget()` is standard for one-off callbacks that the JS side consumes.
-                                
+
                                 set_timer_id.set(Some(id));
                             }
                         }
@@ -329,7 +362,7 @@ pub fn TorrentTable() -> impl IntoView {
                     };
 
                     view! {
-                        <div 
+                        <div
                             class=move || {
                                 "card card-compact bg-base-100 shadow-sm border border-base-200 transition-transform active:scale-[0.99] select-none"
                             }
@@ -355,7 +388,7 @@ pub fn TorrentTable() -> impl IntoView {
                                         {status_str}
                                     </div>
                                 </div>
-                                
+
                                 <div class="flex flex-col gap-1">
                                     <div class="flex justify-between text-[10px] opacity-70">
                                         <span>{format_bytes(t.size)}</span>
@@ -383,7 +416,7 @@ pub fn TorrentTable() -> impl IntoView {
                     }
                 }).collect::<Vec<_>>()}
             </div>
-            
+
             <Show when=move || menu_visible.get() fallback=|| ()>
                 <crate::components::context_menu::ContextMenu
                     visible=true

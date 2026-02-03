@@ -1,35 +1,31 @@
 use shared::{AppEvent, Torrent, TorrentUpdate};
 
-pub fn diff_torrents(old: &[Torrent], new: &[Torrent]) -> Vec<AppEvent> {
-    // 1. Structural Change Check
-    // If length differs or any hash at specific index differs (simplistic view), send FullList.
-    // Ideally we should track "Added/Removed", but for simplicity and robustness as per prompt "FullList for big changes",
-    // we fallback to FullList on structural changes.
+#[derive(Debug)]
+pub enum DiffResult {
+    NoChange,
+    FullUpdate,
+    Partial(Vec<AppEvent>),
+}
+
+pub fn diff_torrents(old: &[Torrent], new: &[Torrent]) -> DiffResult {
+    // 1. Structural Check (Length or Order changed)
     if old.len() != new.len() {
-        // Timestamp is needed for FullList? The definition is FullList(Vec, u64).
-        // We'll let the caller handle the timestamp or pass it in?
-        // AppEvent in shared::lib.rs is FullList(Vec<Torrent>, u64).
-        // We'll return just the list decision here, or constructs events.
-        // Let's assume caller adds the u64 (disk space/timestamp).
-        // Actually, let's keep it simple: Return Option<Vec<AppEvent>>.
-        // But simply returning "NeedFullList" signal is easier if we can't accept u64 here.
-        // Let's change signature to return an enum or boolean flag if FullList needed.
-        return vec![]; // Special signal: Empty vec means "No diffs" or "Caller handles FullList"?
-                       // This function is tricky if we don't have the u64.
+        return DiffResult::FullUpdate;
     }
-    
-    // Check for hash mismatch (order changed)
+
     for (i, t) in new.iter().enumerate() {
         if old[i].hash != t.hash {
-            return vec![]; // Signal Full List needed
+            return DiffResult::FullUpdate;
         }
     }
 
+    // 2. Field Updates
     let mut events = Vec::new();
 
     for (i, new_t) in new.iter().enumerate() {
         let old_t = &old[i];
-        
+
+        // Initialize with all None
         let mut update = TorrentUpdate {
             hash: new_t.hash.clone(),
             name: None,
@@ -42,9 +38,10 @@ pub fn diff_torrents(old: &[Torrent], new: &[Torrent]) -> Vec<AppEvent> {
             status: None,
             error_message: None,
         };
-        
+
         let mut has_changes = false;
 
+        // Compare fields
         if old_t.name != new_t.name {
             update.name = Some(new_t.name.clone());
             has_changes = true;
@@ -61,7 +58,6 @@ pub fn diff_torrents(old: &[Torrent], new: &[Torrent]) -> Vec<AppEvent> {
             update.up_rate = Some(new_t.up_rate);
             has_changes = true;
         }
-        // Floating point comparison with epsilon
         if (old_t.percent_complete - new_t.percent_complete).abs() > 0.01 {
             update.percent_complete = Some(new_t.percent_complete);
             has_changes = true;
@@ -87,10 +83,11 @@ pub fn diff_torrents(old: &[Torrent], new: &[Torrent]) -> Vec<AppEvent> {
             events.push(AppEvent::Update(update));
         }
     }
-    
-    if !events.is_empty() {
-        tracing::debug!("Generated {} updates", events.len());
+
+    if events.is_empty() {
+        DiffResult::NoChange
+    } else {
+        tracing::debug!("Generated {} partial updates", events.len());
+        DiffResult::Partial(events)
     }
-    
-    events
 }

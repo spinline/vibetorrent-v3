@@ -91,30 +91,17 @@ async fn main() {
                         .unwrap()
                         .as_secs();
 
-                    let mut structural_change = false;
-                    if previous_torrents.len() != new_torrents.len() {
-                        structural_change = true;
-                    } else {
-                        // Check for order/hash change
-                        for (i, t) in new_torrents.iter().enumerate() {
-                            if previous_torrents[i].hash != t.hash {
-                                structural_change = true;
-                                break;
-                            }
+                    match diff::diff_torrents(&previous_torrents, &new_torrents) {
+                        diff::DiffResult::FullUpdate => {
+                            let _ =
+                                event_bus_tx.send(AppEvent::FullList(new_torrents.clone(), now));
                         }
-                    }
-
-                    if structural_change {
-                        // Structural change -> Send FullList
-                        let _ = event_bus_tx.send(AppEvent::FullList(new_torrents.clone(), now));
-                    } else {
-                        // Same structure -> Calculate partial updates
-                        let updates = diff::diff_torrents(&previous_torrents, &new_torrents);
-                        if !updates.is_empty() {
+                        diff::DiffResult::Partial(updates) => {
                             for update in updates {
                                 let _ = event_bus_tx.send(update);
                             }
                         }
+                        diff::DiffResult::NoChange => {}
                     }
 
                     previous_torrents = new_torrents;

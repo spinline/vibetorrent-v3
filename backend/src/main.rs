@@ -10,6 +10,7 @@ use axum::{
     Router,
 };
 use clap::Parser;
+use dotenvy::dotenv;
 use shared::{AppEvent, Torrent};
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -33,16 +34,24 @@ pub struct AppState {
 #[command(author, version, about, long_about = None)]
 struct Args {
     /// Path to rTorrent SCGI socket
-    #[arg(short, long, default_value = "/tmp/rtorrent.sock")]
+    #[arg(
+        short,
+        long,
+        env = "RTORRENT_SOCKET",
+        default_value = "/tmp/rtorrent.sock"
+    )]
     socket: String,
 
     /// Port to listen on
-    #[arg(short, long, default_value_t = 3000)]
+    #[arg(short, long, env = "PORT", default_value_t = 3000)]
     port: u16,
 }
 
 #[tokio::main]
 async fn main() {
+    // Load .env file
+    let _ = dotenv();
+
     // initialize tracing with env filter (default to info)
     tracing_subscriber::fmt()
         .with_env_filter(

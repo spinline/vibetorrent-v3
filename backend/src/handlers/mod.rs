@@ -71,6 +71,128 @@ pub async fn add_torrent_handler(
     }
 }
 
+/// Helper function to handle secure deletion of torrent data
+async fn delete_torrent_with_data(
+    client: &xmlrpc::RtorrentClient,
+    hash: &str,
+) -> Result<&'static str, (StatusCode, String)> {
+    // 1. Get Base Path
+    let path_xml = client.call("d.base_path", &[hash]).await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Failed to call rTorrent: {}", e),
+        )
+    })?;
+
+    let path = xmlrpc::parse_string_response(&path_xml).map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Failed to parse path: {}", e),
+        )
+    })?;
+
+    // 1.5 Get Default Download Directory (Sandbox Root)
+    let root_xml = client.call("directory.default", &[]).await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Failed to get valid download root: {}", e),
+        )
+    })?;
+
+    let root_path_str = xmlrpc::parse_string_response(&root_xml).map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Failed to parse root path: {}", e),
+        )
+    })?;
+
+    // Resolve Paths (Canonicalize) to prevent .. traversal and symlink attacks
+    let root_path = std::fs::canonicalize(std::path::Path::new(&root_path_str)).map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Invalid download root configuration (on server): {}", e),
+        )
+    })?;
+
+    // Check if target path exists before trying to resolve it
+    let target_path_raw = std::path::Path::new(&path);
+    if !target_path_raw.exists() {
+        tracing::warn!(
+            "Data path not found: {:?}. Removing torrent only.",
+            target_path_raw
+        );
+        // If file doesn't exist, we just remove the torrent entry
+        client.call("d.erase", &[hash]).await.map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to erase torrent: {}", e),
+            )
+        })?;
+
+        return Ok("Torrent removed (Data not found)");
+    }
+
+    let target_path = std::fs::canonicalize(target_path_raw).map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Invalid data path: {}", e),
+        )
+    })?;
+
+    tracing::info!(
+        "Delete request: Target='{:?}', Root='{:?}'",
+        target_path,
+        root_path
+    );
+
+    // SECURITY CHECK: Ensure path is inside root_path
+    if !target_path.starts_with(&root_path) {
+        tracing::error!(
+            "Security Risk: Attempted to delete path outside download directory: {:?}",
+            target_path
+        );
+        return Err((
+            StatusCode::FORBIDDEN,
+            "Security Error: Cannot delete files outside default download directory".to_string(),
+        ));
+    }
+
+    // SECURITY CHECK: Ensure we are not deleting the root itself
+    if target_path == root_path {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Security Error: Cannot delete the download root directory itself".to_string(),
+        ));
+    }
+
+    // 2. Erase Torrent first
+    client.call("d.erase", &[hash]).await.map_err(|e| {
+        tracing::warn!("Failed to erase torrent entry: {}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Failed to erase torrent: {}", e),
+        )
+    })?;
+
+    // 3. Delete Files via Native FS
+    let delete_result = if target_path.is_dir() {
+        std::fs::remove_dir_all(&target_path)
+    } else {
+        std::fs::remove_file(&target_path)
+    };
+
+    match delete_result {
+        Ok(_) => Ok("Torrent and data deleted"),
+        Err(e) => {
+            tracing::error!("Failed to delete data at {:?}: {}", target_path, e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to delete data: {}", e),
+            ))
+        }
+    }
+}
+
 pub async fn handle_torrent_action(
     State(state): State<AppState>,
     Json(payload): Json<TorrentActionRequest>,
@@ -81,153 +203,14 @@ pub async fn handle_torrent_action(
         payload.hash
     );
 
+    let client = xmlrpc::RtorrentClient::new(&state.scgi_socket_path);
+
     // Special handling for delete_with_data
     if payload.action == "delete_with_data" {
-        let client = xmlrpc::RtorrentClient::new(&state.scgi_socket_path);
-
-        // 1. Get Base Path
-        let path_xml = match client.call("d.base_path", &[&payload.hash]).await {
-            Ok(xml) => xml,
-            Err(e) => {
-                return (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("Failed to call rTorrent: {}", e),
-                )
-                    .into_response()
-            }
+        return match delete_torrent_with_data(&client, &payload.hash).await {
+            Ok(msg) => (StatusCode::OK, msg).into_response(),
+            Err((status, msg)) => (status, msg).into_response(),
         };
-
-        let path = match xmlrpc::parse_string_response(&path_xml) {
-            Ok(p) => p,
-            Err(e) => {
-                return (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("Failed to parse path: {}", e),
-                )
-                    .into_response()
-            }
-        };
-
-        // 1.5 Get Default Download Directory (Sandbox Root)
-        let root_xml = match client.call("directory.default", &[]).await {
-            Ok(xml) => xml,
-            Err(e) => {
-                return (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("Failed to get valid download root: {}", e),
-                )
-                    .into_response()
-            }
-        };
-
-        let root_path_str = match xmlrpc::parse_string_response(&root_xml) {
-            Ok(p) => p,
-            Err(e) => {
-                return (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("Failed to parse root path: {}", e),
-                )
-                    .into_response()
-            }
-        };
-
-        // Resolve Paths (Canonicalize) to prevent .. traversal and symlink attacks
-        let root_path = match std::fs::canonicalize(std::path::Path::new(&root_path_str)) {
-            Ok(p) => p,
-            Err(e) => {
-                return (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("Invalid download root configuration (on server): {}", e),
-                )
-                    .into_response()
-            }
-        };
-
-        // Check if target path exists before trying to resolve it
-        let target_path_raw = std::path::Path::new(&path);
-        if !target_path_raw.exists() {
-            tracing::warn!(
-                "Data path not found: {:?}. Removing torrent only.",
-                target_path_raw
-            );
-            // If file doesn't exist, we just remove the torrent entry
-            if let Err(e) = client.call("d.erase", &[&payload.hash]).await {
-                return (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("Failed to erase torrent: {}", e),
-                )
-                    .into_response();
-            }
-            return (StatusCode::OK, "Torrent removed (Data not found)").into_response();
-        }
-
-        let target_path = match std::fs::canonicalize(target_path_raw) {
-            Ok(p) => p,
-            Err(e) => {
-                return (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("Invalid data path: {}", e),
-                )
-                    .into_response()
-            }
-        };
-
-        tracing::info!(
-            "Delete request: Target='{:?}', Root='{:?}'",
-            target_path,
-            root_path
-        );
-
-        // SECURITY CHECK: Ensure path is inside root_path
-        if !target_path.starts_with(&root_path) {
-            tracing::error!(
-                "Security Risk: Attempted to delete path outside download directory: {:?}",
-                target_path
-            );
-            return (
-                StatusCode::FORBIDDEN,
-                "Security Error: Cannot delete files outside default download directory",
-            )
-                .into_response();
-        }
-
-        // SECURITY CHECK: Ensure we are not deleting the root itself
-        if target_path == root_path {
-            return (
-                StatusCode::BAD_REQUEST,
-                "Security Error: Cannot delete the download root directory itself",
-            )
-                .into_response();
-        }
-
-        // 2. Erase Torrent first
-        if let Err(e) = client.call("d.erase", &[&payload.hash]).await {
-            tracing::warn!("Failed to erase torrent entry: {}", e);
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Failed to erase torrent: {}", e),
-            )
-                .into_response();
-        }
-
-        // 3. Delete Files via Native FS
-        let delete_result = if target_path.is_dir() {
-            std::fs::remove_dir_all(&target_path)
-        } else {
-            std::fs::remove_file(&target_path)
-        };
-
-        match delete_result {
-            Ok(_) => return (StatusCode::OK, "Torrent and data deleted").into_response(),
-            Err(e) => {
-                tracing::error!("Failed to delete data at {:?}: {}", target_path, e);
-                return (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("Failed to delete data: {}", e),
-                )
-                    .into_response();
-            }
-        }
     }
 
     let method = match payload.action.as_str() {
@@ -237,7 +220,6 @@ pub async fn handle_torrent_action(
         _ => return (StatusCode::BAD_REQUEST, "Invalid action").into_response(),
     };
 
-    let client = xmlrpc::RtorrentClient::new(&state.scgi_socket_path);
     match client.call(method, &[&payload.hash]).await {
         Ok(_) => (StatusCode::OK, "Action executed").into_response(),
         Err(e) => {

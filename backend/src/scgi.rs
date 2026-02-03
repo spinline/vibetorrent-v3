@@ -8,6 +8,7 @@ use tokio::net::UnixStream;
 pub enum ScgiError {
     #[error("IO Error: {0}")]
     Io(#[from] std::io::Error),
+    #[allow(dead_code)]
     #[error("Protocol Error: {0}")]
     Protocol(String),
 }

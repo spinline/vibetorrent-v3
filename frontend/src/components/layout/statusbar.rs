@@ -1,22 +1,54 @@
 use leptos::*;
 
+fn format_bytes(bytes: i64) -> String {
+    const UNITS: [&str; 6] = ["B", "KB", "MB", "GB", "TB", "PB"];
+    if bytes < 1024 {
+        return format!("{} B", bytes);
+    }
+    let i = (bytes as f64).log2().div_euclid(10.0) as usize;
+    format!(
+        "{:.1} {}",
+        (bytes as f64) / 1024_f64.powi(i as i32),
+        UNITS[i]
+    )
+}
+
+fn format_speed(bytes_per_sec: i64) -> String {
+    if bytes_per_sec == 0 {
+        return "0 B/s".to_string();
+    }
+    format!("{}/s", format_bytes(bytes_per_sec))
+}
+
 #[component]
 pub fn StatusBar() -> impl IntoView {
+    let store = use_context::<crate::store::TorrentStore>().expect("store not provided");
+    let stats = store.global_stats;
     let (theme_open, set_theme_open) = create_signal(false);
 
     view! {
         <div class="h-8 min-h-8 bg-base-200 border-t border-base-300 flex items-center px-4 text-xs gap-4 text-base-content/70">
-            <div class="flex items-center gap-2 cursor-pointer hover:text-primary">
+            <div class="flex items-center gap-2 cursor-pointer hover:text-primary" title="Global Download Speed">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75l3 3m0 0l3-3m-3 3v-7.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <span class="font-mono">"0 KB/s"</span>
+                <span class="font-mono">{move || format_speed(stats.get().down_rate)}</span>
+                <Show when=move || stats.get().down_limit.unwrap_or(0) > 0 fallback=|| ()>
+                    <span class="text-[10px] opacity-60">
+                        {move || format!("(Limit: {})", format_speed(stats.get().down_limit.unwrap_or(0)))}
+                    </span>
+                </Show>
             </div>
-             <div class="flex items-center gap-2 cursor-pointer hover:text-primary">
+             <div class="flex items-center gap-2 cursor-pointer hover:text-primary" title="Global Upload Speed">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M15 11.25l-3-3m0 0l-3 3m3-3v7.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <span class="font-mono">"0 KB/s"</span>
+                <span class="font-mono">{move || format_speed(stats.get().up_rate)}</span>
+                <Show when=move || stats.get().up_limit.unwrap_or(0) > 0 fallback=|| ()>
+                    <span class="text-[10px] opacity-60">
+                        {move || format!("(Limit: {})", format_speed(stats.get().up_limit.unwrap_or(0)))}
+                    </span>
+                </Show>
             </div>
 
             <div class="ml-auto flex items-center gap-4">

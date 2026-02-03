@@ -148,12 +148,19 @@ async fn main() {
         let mut previous_torrents: Vec<Torrent> = Vec::new();
 
         loop {
-            match sse::fetch_torrents(&client).await {
+            // 1. Fetch Torrents
+            let torrents_result = sse::fetch_torrents(&client).await;
+
+            // 2. Fetch Global Stats
+            let stats_result = sse::fetch_global_stats(&client).await;
+
+            // Handle Torrents
+            match torrents_result {
                 Ok(new_torrents) => {
-                    // 1. Update latest state (always)
+                    // Update latest state
                     let _ = tx_clone.send(new_torrents.clone());
 
-                    // 2. Calculate Diff and Broadcasting
+                    // Calculate Diff and Broadcasting
                     let now = std::time::SystemTime::now()
                         .duration_since(std::time::UNIX_EPOCH)
                         .unwrap()
@@ -180,6 +187,17 @@ async fn main() {
                     tracing::error!("Error fetching torrents in background: {}", e);
                 }
             }
+
+            // Handle Stats
+            match stats_result {
+                Ok(stats) => {
+                    let _ = event_bus_tx.send(AppEvent::Stats(stats));
+                }
+                Err(e) => {
+                    tracing::warn!("Error fetching global stats: {}", e);
+                }
+            }
+
             tokio::time::sleep(Duration::from_secs(1)).await;
         }
     });

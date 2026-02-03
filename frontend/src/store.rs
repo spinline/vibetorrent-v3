@@ -1,7 +1,7 @@
 use futures::StreamExt;
 use gloo_net::eventsource::futures::EventSource;
 use leptos::*;
-use shared::{AppEvent, Torrent};
+use shared::{AppEvent, GlobalStats, Torrent};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FilterStatus {
@@ -33,17 +33,20 @@ pub struct TorrentStore {
     pub torrents: RwSignal<Vec<Torrent>>,
     pub filter: RwSignal<FilterStatus>,
     pub search_query: RwSignal<String>,
+    pub global_stats: RwSignal<GlobalStats>,
 }
 
 pub fn provide_torrent_store() {
     let torrents = create_rw_signal(Vec::<Torrent>::new());
     let filter = create_rw_signal(FilterStatus::All);
     let search_query = create_rw_signal(String::new());
+    let global_stats = create_rw_signal(GlobalStats::default());
 
     let store = TorrentStore {
         torrents,
         filter,
         search_query,
+        global_stats,
     };
     provide_context(store);
 
@@ -91,8 +94,14 @@ pub fn provide_torrent_store() {
                                         if let Some(error_message) = update.error_message {
                                             t.error_message = error_message;
                                         }
+                                        if let Some(label) = update.label {
+                                            t.label = label;
+                                        }
                                     }
                                 });
+                            }
+                            AppEvent::Stats(stats) => {
+                                global_stats.set(stats);
                             }
                         }
                     }

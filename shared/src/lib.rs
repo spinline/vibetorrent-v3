@@ -14,7 +14,7 @@ pub struct Torrent {
     pub status: TorrentStatus,
     pub error_message: String,
     pub added_date: i64,
-    pub label: Option<String>, // Added Label support
+    pub label: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, ToSchema)]
@@ -35,6 +35,16 @@ pub enum AppEvent {
         timestamp: u64,
     },
     Update(TorrentUpdate),
+    Stats(GlobalStats),
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema, Default)]
+pub struct GlobalStats {
+    pub down_rate: i64,
+    pub up_rate: i64,
+    pub down_limit: Option<i64>,
+    pub up_limit: Option<i64>,
+    pub free_space: Option<i64>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
@@ -49,7 +59,7 @@ pub struct TorrentUpdate {
     pub eta: Option<i64>,
     pub status: Option<TorrentStatus>,
     pub error_message: Option<String>,
-    pub label: Option<String>, // Added Label update support
+    pub label: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]

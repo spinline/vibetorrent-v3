@@ -3,7 +3,7 @@ use crate::AppState;
 use axum::extract::State;
 use axum::response::sse::{Event, Sse};
 use futures::stream::{self, Stream};
-use shared::{AppEvent, Torrent, TorrentStatus};
+use shared::{AppEvent, GlobalStats, Torrent, TorrentStatus};
 use std::convert::Infallible;
 use tokio_stream::StreamExt;
 
@@ -52,7 +52,6 @@ fn from_rtorrent_row(row: Vec<String>) -> Torrent {
     let is_hashing = parse_long(row.get(11));
     let label_raw = parse_string(row.get(12));
 
-    // Treat empty label as None
     let label = if label_raw.is_empty() {
         None
     } else {
@@ -113,6 +112,31 @@ pub async fn fetch_torrents(client: &RtorrentClient) -> Result<Vec<Torrent>, Xml
     let torrents = rows.into_iter().map(from_rtorrent_row).collect();
 
     Ok(torrents)
+}
+
+pub async fn fetch_global_stats(client: &RtorrentClient) -> Result<GlobalStats, XmlRpcError> {
+    // Parallel calls would be better but let's keep it simple sequential for now.
+    // NOTE: This adds 4 roundtrips per second. If this is too slow, we should use multicall via system.multicall (if supported)
+    // or just accept the overhead. Unix socket overhead is very low.
+
+    // We ignore errors on individual stats to not break the whole loop, using defaults.
+    // But connection errors should propagate.
+
+    let down_rate_str = client.call("throttle.global_down.rate", &[]).await?;
+    let up_rate_str = client.call("throttle.global_up.rate", &[]).await?;
+    let down_limit_str = client.call("throttle.global_down.max_rate", &[]).await?;
+    let up_limit_str = client.call("throttle.global_up.max_rate", &[]).await?;
+
+    // Optionally get free space. "directory.default" then "d.free_space_path"?? No "get_directory_free_space"
+    // Let's skip free space for high frequency updates.
+
+    Ok(GlobalStats {
+        down_rate: down_rate_str.parse().unwrap_or(0),
+        up_rate: up_rate_str.parse().unwrap_or(0),
+        down_limit: down_limit_str.parse().ok(),
+        up_limit: up_limit_str.parse().ok(),
+        free_space: None,
+    })
 }
 
 pub async fn sse_handler(

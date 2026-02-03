@@ -125,13 +125,10 @@ pub fn StatusBar() -> impl IntoView {
                             view! {
                                 <li>
                                     <button
-                                        class=move || if is_active() { "active text-xs flex justify-between" } else { "text-xs flex justify-between" }
+                                        class=move || if is_active() { "active text-xs" } else { "text-xs" }
                                         on:click=move |_| set_limit("down", val)
                                     >
-                                        <span>{label}</span>
-                                        <Show when=is_active fallback=|| ()>
-                                            <span>"✓"</span>
-                                        </Show>
+                                        {label}
                                     </button>
                                 </li>
                             }
@@ -177,13 +174,10 @@ pub fn StatusBar() -> impl IntoView {
                             view! {
                                 <li>
                                     <button
-                                        class=move || if is_active() { "active text-xs flex justify-between" } else { "text-xs flex justify-between" }
+                                        class=move || if is_active() { "active text-xs" } else { "text-xs" }
                                         on:click=move |_| set_limit("up", val)
                                     >
-                                        <span>{label}</span>
-                                        <Show when=is_active fallback=|| ()>
-                                            <span>"✓"</span>
-                                        </Show>
+                                        {label}
                                     </button>
                                 </li>
                             }

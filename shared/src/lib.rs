@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, ToSchema)]
 pub struct Torrent {
     pub hash: String,
     pub name: String,
@@ -15,7 +16,7 @@ pub struct Torrent {
     pub added_date: i64,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, ToSchema)]
 pub enum TorrentStatus {
     Downloading,
     Seeding,
@@ -25,14 +26,17 @@ pub enum TorrentStatus {
     Queued,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 #[serde(tag = "type", content = "data")]
 pub enum AppEvent {
-    FullList(Vec<Torrent>, u64), // u64 is likely free_space_bytes
+    FullList {
+        torrents: Vec<Torrent>,
+        timestamp: u64,
+    },
     Update(TorrentUpdate),
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 pub struct TorrentUpdate {
     pub hash: String,
     pub name: Option<String>,
@@ -46,14 +50,17 @@ pub struct TorrentUpdate {
     pub error_message: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 pub struct TorrentActionRequest {
+    /// The hash of the torrent
+    #[schema(example = "5D4C9065...")]
     pub hash: String,
-    pub action: String, // "start", "stop", "delete"
+    /// The action to perform: "start", "stop", "delete", "delete_with_data"
+    #[schema(example = "start")]
+    pub action: String,
 }
 
-// Added Theme here to separate it from backend logic but allow frontend usage via shared
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, ToSchema)]
 pub enum Theme {
     Midnight,
     Light,

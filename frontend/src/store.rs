@@ -1,8 +1,7 @@
-use leptos::*;
-use shared::{Torrent, AppEvent};
 use futures::StreamExt;
 use gloo_net::eventsource::futures::EventSource;
-
+use leptos::*;
+use shared::{AppEvent, Torrent};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FilterStatus {
@@ -41,7 +40,11 @@ pub fn provide_torrent_store() {
     let filter = create_rw_signal(FilterStatus::All);
     let search_query = create_rw_signal(String::new());
 
-    let store = TorrentStore { torrents, filter, search_query };
+    let store = TorrentStore {
+        torrents,
+        filter,
+        search_query,
+    };
     provide_context(store);
 
     // Initialize SSE connection
@@ -52,28 +55,47 @@ pub fn provide_torrent_store() {
 
             while let Some(Ok((_, msg))) = stream.next().await {
                 if let Some(data_str) = msg.data().as_string() {
-                     if let Ok(event) = serde_json::from_str::<AppEvent>(&data_str) {
+                    if let Ok(event) = serde_json::from_str::<AppEvent>(&data_str) {
                         match event {
-                            AppEvent::FullList(list, _) => {
+                            AppEvent::FullList { torrents: list, .. } => {
                                 torrents.set(list);
                             }
                             AppEvent::Update(update) => {
                                 torrents.update(|list| {
-                                    if let Some(t) = list.iter_mut().find(|t| t.hash == update.hash) {
-                                        if let Some(name) = update.name { t.name = name; }
-                                        if let Some(size) = update.size { t.size = size; }
-                                        if let Some(down_rate) = update.down_rate { t.down_rate = down_rate; }
-                                        if let Some(up_rate) = update.up_rate { t.up_rate = up_rate; }
-                                        if let Some(percent_complete) = update.percent_complete { t.percent_complete = percent_complete; }
-                                        if let Some(completed) = update.completed { t.completed = completed; }
-                                        if let Some(eta) = update.eta { t.eta = eta; }
-                                        if let Some(status) = update.status { t.status = status; }
-                                        if let Some(error_message) = update.error_message { t.error_message = error_message; }
+                                    if let Some(t) = list.iter_mut().find(|t| t.hash == update.hash)
+                                    {
+                                        if let Some(name) = update.name {
+                                            t.name = name;
+                                        }
+                                        if let Some(size) = update.size {
+                                            t.size = size;
+                                        }
+                                        if let Some(down_rate) = update.down_rate {
+                                            t.down_rate = down_rate;
+                                        }
+                                        if let Some(up_rate) = update.up_rate {
+                                            t.up_rate = up_rate;
+                                        }
+                                        if let Some(percent_complete) = update.percent_complete {
+                                            t.percent_complete = percent_complete;
+                                        }
+                                        if let Some(completed) = update.completed {
+                                            t.completed = completed;
+                                        }
+                                        if let Some(eta) = update.eta {
+                                            t.eta = eta;
+                                        }
+                                        if let Some(status) = update.status {
+                                            t.status = status;
+                                        }
+                                        if let Some(error_message) = update.error_message {
+                                            t.error_message = error_message;
+                                        }
                                     }
                                 });
                             }
                         }
-                     }
+                    }
                 }
             }
         });

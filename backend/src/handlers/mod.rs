@@ -8,13 +8,16 @@ use axum::{
 use rust_embed::RustEmbed;
 use serde::Deserialize;
 use shared::TorrentActionRequest;
+use utoipa::ToSchema;
 
 #[derive(RustEmbed)]
 #[folder = "../frontend/dist"]
 pub struct Asset;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, ToSchema)]
 pub struct AddTorrentRequest {
+    /// Magnet link or Torrent file URL
+    #[schema(example = "magnet:?xt=urn:btih:...")]
     uri: String,
 }
 
@@ -46,6 +49,16 @@ pub async fn static_handler(uri: Uri) -> impl IntoResponse {
     }
 }
 
+/// Add a new torrent via magnet link or URL
+#[utoipa::path(
+    post,
+    path = "/api/torrents/add",
+    request_body = AddTorrentRequest,
+    responses(
+        (status = 200, description = "Torrent added successfully"),
+        (status = 500, description = "Internal server error or rTorrent fault")
+    )
+)]
 pub async fn add_torrent_handler(
     State(state): State<AppState>,
     Json(payload): Json<AddTorrentRequest>,
@@ -193,6 +206,18 @@ async fn delete_torrent_with_data(
     }
 }
 
+/// Perform an action on a torrent (start, stop, delete)
+#[utoipa::path(
+    post,
+    path = "/api/torrents/action",
+    request_body = TorrentActionRequest,
+    responses(
+        (status = 200, description = "Action executed successfully"),
+        (status = 400, description = "Invalid action or request"),
+        (status = 403, description = "Forbidden: Security risk detected"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 pub async fn handle_torrent_action(
     State(state): State<AppState>,
     Json(payload): Json<TorrentActionRequest>,

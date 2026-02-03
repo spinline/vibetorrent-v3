@@ -22,6 +22,8 @@ use tower_http::{
     cors::CorsLayer,
     trace::TraceLayer,
 };
+use utoipa::OpenApi;
+use utoipa_swagger_ui::SwaggerUi;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -46,6 +48,27 @@ struct Args {
     #[arg(short, long, env = "PORT", default_value_t = 3000)]
     port: u16,
 }
+
+#[derive(OpenApi)]
+#[openapi(
+    paths(
+        handlers::add_torrent_handler,
+        handlers::handle_torrent_action
+    ),
+    components(
+        schemas(
+            handlers::AddTorrentRequest,
+            shared::TorrentActionRequest,
+            shared::Torrent,
+            shared::TorrentStatus,
+            shared::Theme
+        )
+    ),
+    tags(
+        (name = "vibetorrent", description = "VibeTorrent API")
+    )
+)]
+struct ApiDoc;
 
 #[tokio::main]
 async fn main() {
@@ -122,8 +145,10 @@ async fn main() {
 
                     match diff::diff_torrents(&previous_torrents, &new_torrents) {
                         diff::DiffResult::FullUpdate => {
-                            let _ =
-                                event_bus_tx.send(AppEvent::FullList(new_torrents.clone(), now));
+                            let _ = event_bus_tx.send(AppEvent::FullList {
+                                torrents: new_torrents.clone(),
+                                timestamp: now,
+                            });
                         }
                         diff::DiffResult::Partial(updates) => {
                             for update in updates {
@@ -144,6 +169,7 @@ async fn main() {
     });
 
     let app = Router::new()
+        .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         .route("/api/events", get(sse::sse_handler))
         .route("/api/torrents/add", post(handlers::add_torrent_handler))
         .route(

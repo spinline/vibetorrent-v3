@@ -40,10 +40,13 @@ pub fn StatusBar() -> impl IntoView {
         (2 * 1024 * 1024, "2 MB/s"),
         (5 * 1024 * 1024, "5 MB/s"),
         (10 * 1024 * 1024, "10 MB/s"),
+        (20 * 1024 * 1024, "20 MB/s"),
     ];
 
     let set_limit = move |limit_type: &str, val: i64| {
         let limit_type = limit_type.to_string();
+        logging::log!("Setting {} limit to {}", limit_type, val);
+
         spawn_local(async move {
             let req_body = if limit_type == "down" {
                 GlobalLimitRequest {
@@ -60,10 +63,22 @@ pub fn StatusBar() -> impl IntoView {
             let client =
                 gloo_net::http::Request::post("/api/settings/global-limits").json(&req_body);
 
-            if let Ok(req) = client {
-                if let Err(e) = req.send().await {
-                    logging::error!("Failed to set limit: {}", e);
-                }
+            match client {
+                Ok(req) => match req.send().await {
+                    Ok(resp) => {
+                        if !resp.ok() {
+                            logging::error!(
+                                "Failed to set limit: {} {}",
+                                resp.status(),
+                                resp.status_text()
+                            );
+                        } else {
+                            logging::log!("Limit set successfully");
+                        }
+                    }
+                    Err(e) => logging::error!("Network error setting limit: {}", e),
+                },
+                Err(e) => logging::error!("Failed to create request: {}", e),
             }
         });
         set_down_menu_open.set(false);
@@ -75,13 +90,13 @@ pub fn StatusBar() -> impl IntoView {
 
             // --- DOWNLOAD SPEED DROPDOWN ---
             <div class=move || {
-                let base = "dropdown dropdown-top dropdown-start"; // dropdown-start aligns left
+                let base = "dropdown dropdown-top dropdown-start";
                 if down_menu_open.get() { format!("{} dropdown-open", base) } else { base.to_string() }
             }>
                 <div
                     tabindex="0"
                     role="button"
-                    class="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors"
+                    class="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors select-none"
                     title="Global Download Speed - Click to Set Limit"
                     on:click=move |_| set_down_menu_open.update(|v| *v = !*v)
                 >
@@ -101,17 +116,22 @@ pub fn StatusBar() -> impl IntoView {
                 </Show>
 
                 <ul tabindex="0" class="dropdown-content z-[100] menu p-2 shadow bg-base-200 rounded-box w-40 mb-2 border border-base-300">
-                    <li class="menu-title px-2 py-1 text-[10px] opacity-50 uppercase tracking-wider">"Download Limit"</li>
                     {
                         limits.clone().into_iter().map(|(val, label)| {
-                            let is_active = move || stats.get().down_limit.unwrap_or(0) == val;
+                            let is_active = move || {
+                                let current = stats.get().down_limit.unwrap_or(0);
+                                current == val
+                            };
                             view! {
                                 <li>
                                     <button
-                                        class=move || if is_active() { "active text-xs" } else { "text-xs" }
+                                        class=move || if is_active() { "active text-xs flex justify-between" } else { "text-xs flex justify-between" }
                                         on:click=move |_| set_limit("down", val)
                                     >
-                                        {label}
+                                        <span>{label}</span>
+                                        <Show when=is_active fallback=|| ()>
+                                            <span>"✓"</span>
+                                        </Show>
                                     </button>
                                 </li>
                             }
@@ -128,7 +148,7 @@ pub fn StatusBar() -> impl IntoView {
                 <div
                     tabindex="0"
                     role="button"
-                    class="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors"
+                    class="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors select-none"
                     title="Global Upload Speed - Click to Set Limit"
                     on:click=move |_| set_up_menu_open.update(|v| *v = !*v)
                 >
@@ -148,17 +168,22 @@ pub fn StatusBar() -> impl IntoView {
                 </Show>
 
                 <ul tabindex="0" class="dropdown-content z-[100] menu p-2 shadow bg-base-200 rounded-box w-40 mb-2 border border-base-300">
-                    <li class="menu-title px-2 py-1 text-[10px] opacity-50 uppercase tracking-wider">"Upload Limit"</li>
                     {
                         limits.clone().into_iter().map(|(val, label)| {
-                            let is_active = move || stats.get().up_limit.unwrap_or(0) == val;
+                            let is_active = move || {
+                                let current = stats.get().up_limit.unwrap_or(0);
+                                current == val
+                            };
                             view! {
                                 <li>
                                     <button
-                                        class=move || if is_active() { "active text-xs" } else { "text-xs" }
+                                        class=move || if is_active() { "active text-xs flex justify-between" } else { "text-xs flex justify-between" }
                                         on:click=move |_| set_limit("up", val)
                                     >
-                                        {label}
+                                        <span>{label}</span>
+                                        <Show when=is_active fallback=|| ()>
+                                            <span>"✓"</span>
+                                        </Show>
                                     </button>
                                 </li>
                             }

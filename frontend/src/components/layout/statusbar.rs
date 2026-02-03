@@ -1,4 +1,5 @@
 use leptos::*;
+use shared::GlobalLimitRequest;
 
 fn format_bytes(bytes: i64) -> String {
     const UNITS: [&str; 6] = ["B", "KB", "MB", "GB", "TB", "PB"];
@@ -26,37 +27,147 @@ pub fn StatusBar() -> impl IntoView {
     let stats = store.global_stats;
     let (theme_open, set_theme_open) = create_signal(false);
 
+    // Dropdown states
+    let (down_menu_open, set_down_menu_open) = create_signal(false);
+    let (up_menu_open, set_up_menu_open) = create_signal(false);
+
+    // Preset limits in bytes/s
+    let limits = vec![
+        (0, "Unlimited"),
+        (100 * 1024, "100 KB/s"),
+        (500 * 1024, "500 KB/s"),
+        (1024 * 1024, "1 MB/s"),
+        (2 * 1024 * 1024, "2 MB/s"),
+        (5 * 1024 * 1024, "5 MB/s"),
+        (10 * 1024 * 1024, "10 MB/s"),
+    ];
+
+    let set_limit = move |limit_type: &str, val: i64| {
+        let limit_type = limit_type.to_string();
+        spawn_local(async move {
+            let req_body = if limit_type == "down" {
+                GlobalLimitRequest {
+                    max_download_rate: Some(val),
+                    max_upload_rate: None,
+                }
+            } else {
+                GlobalLimitRequest {
+                    max_download_rate: None,
+                    max_upload_rate: Some(val),
+                }
+            };
+
+            let client =
+                gloo_net::http::Request::post("/api/settings/global-limits").json(&req_body);
+
+            if let Ok(req) = client {
+                if let Err(e) = req.send().await {
+                    logging::error!("Failed to set limit: {}", e);
+                }
+            }
+        });
+        set_down_menu_open.set(false);
+        set_up_menu_open.set(false);
+    };
+
     view! {
         <div class="h-8 min-h-8 bg-base-200 border-t border-base-300 flex items-center px-4 text-xs gap-4 text-base-content/70">
-            <div class="flex items-center gap-2 cursor-pointer hover:text-primary" title="Global Download Speed">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75l3 3m0 0l3-3m-3 3v-7.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span class="font-mono">{move || format_speed(stats.get().down_rate)}</span>
-                <Show when=move || (stats.get().down_limit.unwrap_or(0) > 0) fallback=|| ()>
-                    <span class="text-[10px] opacity-60">
-                        {move || format!("(Limit: {})", format_speed(stats.get().down_limit.unwrap_or(0)))}
-                    </span>
+
+            // --- DOWNLOAD SPEED DROPDOWN ---
+            <div class=move || {
+                let base = "dropdown dropdown-top dropdown-start"; // dropdown-start aligns left
+                if down_menu_open.get() { format!("{} dropdown-open", base) } else { base.to_string() }
+            }>
+                <div
+                    tabindex="0"
+                    role="button"
+                    class="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors"
+                    title="Global Download Speed - Click to Set Limit"
+                    on:click=move |_| set_down_menu_open.update(|v| *v = !*v)
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75l3 3m0 0l3-3m-3 3v-7.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span class="font-mono">{move || format_speed(stats.get().down_rate)}</span>
+                    <Show when=move || (stats.get().down_limit.unwrap_or(0) > 0) fallback=|| ()>
+                        <span class="text-[10px] opacity-60">
+                            {move || format!("(Limit: {})", format_speed(stats.get().down_limit.unwrap_or(0)))}
+                        </span>
+                    </Show>
+                </div>
+
+                <Show when=move || down_menu_open.get() fallback=|| ()>
+                    <div class="fixed inset-0 z-[99] bg-black/0" on:click=move |_| set_down_menu_open.set(false)></div>
                 </Show>
+
+                <ul tabindex="0" class="dropdown-content z-[100] menu p-2 shadow bg-base-200 rounded-box w-40 mb-2 border border-base-300">
+                    <li class="menu-title px-2 py-1 text-[10px] opacity-50 uppercase tracking-wider">"Download Limit"</li>
+                    {
+                        limits.clone().into_iter().map(|(val, label)| {
+                            let is_active = move || stats.get().down_limit.unwrap_or(0) == val;
+                            view! {
+                                <li>
+                                    <button
+                                        class=move || if is_active() { "active text-xs" } else { "text-xs" }
+                                        on:click=move |_| set_limit("down", val)
+                                    >
+                                        {label}
+                                    </button>
+                                </li>
+                            }
+                        }).collect::<Vec<_>>()
+                    }
+                </ul>
             </div>
-             <div class="flex items-center gap-2 cursor-pointer hover:text-primary" title="Global Upload Speed">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 11.25l-3-3m0 0l-3 3m3-3v7.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span class="font-mono">{move || format_speed(stats.get().up_rate)}</span>
-                <Show when=move || (stats.get().up_limit.unwrap_or(0) > 0) fallback=|| ()>
-                    <span class="text-[10px] opacity-60">
-                        {move || format!("(Limit: {})", format_speed(stats.get().up_limit.unwrap_or(0)))}
-                    </span>
+
+            // --- UPLOAD SPEED DROPDOWN ---
+            <div class=move || {
+                let base = "dropdown dropdown-top dropdown-start";
+                if up_menu_open.get() { format!("{} dropdown-open", base) } else { base.to_string() }
+            }>
+                <div
+                    tabindex="0"
+                    role="button"
+                    class="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors"
+                    title="Global Upload Speed - Click to Set Limit"
+                    on:click=move |_| set_up_menu_open.update(|v| *v = !*v)
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 11.25l-3-3m0 0l-3 3m3-3v7.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span class="font-mono">{move || format_speed(stats.get().up_rate)}</span>
+                    <Show when=move || (stats.get().up_limit.unwrap_or(0) > 0) fallback=|| ()>
+                        <span class="text-[10px] opacity-60">
+                            {move || format!("(Limit: {})", format_speed(stats.get().up_limit.unwrap_or(0)))}
+                        </span>
+                    </Show>
+                </div>
+
+                <Show when=move || up_menu_open.get() fallback=|| ()>
+                    <div class="fixed inset-0 z-[99] bg-black/0" on:click=move |_| set_up_menu_open.set(false)></div>
                 </Show>
+
+                <ul tabindex="0" class="dropdown-content z-[100] menu p-2 shadow bg-base-200 rounded-box w-40 mb-2 border border-base-300">
+                    <li class="menu-title px-2 py-1 text-[10px] opacity-50 uppercase tracking-wider">"Upload Limit"</li>
+                    {
+                        limits.clone().into_iter().map(|(val, label)| {
+                            let is_active = move || stats.get().up_limit.unwrap_or(0) == val;
+                            view! {
+                                <li>
+                                    <button
+                                        class=move || if is_active() { "active text-xs" } else { "text-xs" }
+                                        on:click=move |_| set_limit("up", val)
+                                    >
+                                        {label}
+                                    </button>
+                                </li>
+                            }
+                        }).collect::<Vec<_>>()
+                    }
+                </ul>
             </div>
 
             <div class="ml-auto flex items-center gap-4">
-                <button class="btn btn-ghost btn-xs btn-square" title="Alt Speed Limits">
-                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                </button>
                 <div class=move || {
                     let base = "dropdown dropdown-top dropdown-end";
                     if theme_open.get() {
@@ -78,8 +189,6 @@ pub fn StatusBar() -> impl IntoView {
                     </div>
 
                     <Show when=move || theme_open.get() fallback=|| ()>
-                        // Backdrop to close on outside click
-                        // iOS Safari requires cursor:pointer inline style for click events on div elements
                         <div
                             class="fixed inset-0 z-[99] bg-black/0"
                             style="cursor: pointer; -webkit-tap-highlight-color: transparent;"

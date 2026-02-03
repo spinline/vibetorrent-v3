@@ -167,7 +167,20 @@ async fn main() {
         .with_state(app_state);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], args.port));
-    let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
+    tracing::info!("Backend attempting to listen on {}", addr);
+    let listener = match tokio::net::TcpListener::bind(addr).await {
+        Ok(l) => l,
+        Err(e) => {
+            tracing::error!("FATAL: Failed to bind to address {}: {}", addr, e);
+            if e.kind() == std::io::ErrorKind::AddrInUse {
+                tracing::error!("HINT: Port {} is already in use. Stop the existing process or use --port to specify a different port.", args.port);
+            }
+            std::process::exit(1);
+        }
+    };
     tracing::info!("Backend listening on {}", addr);
-    axum::serve(listener, app).await.unwrap();
+    if let Err(e) = axum::serve(listener, app).await {
+        tracing::error!("Server error: {}", e);
+        std::process::exit(1);
+    }
 }

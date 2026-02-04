@@ -88,11 +88,25 @@ pub fn StatusBar() -> impl IntoView {
         }
     };
 
+    // Global listener to force blur on touchstart (for iOS "tap outside" closing)
+    let force_blur = move |_| {
+         if let Some(doc) = web_sys::window().and_then(|w| w.document()) {
+            if let Some(active) = doc.active_element() {
+                // If something is focused, blur it to close dropdowns
+                let _ = active.dyn_into::<web_sys::HtmlElement>().map(|el| el.blur());
+            }
+        }
+    };
+    let _ = window_event_listener(ev::touchstart, force_blur);
+
     view! {
         <div class="h-8 min-h-8 bg-base-200 border-t border-base-300 flex items-center px-4 text-xs gap-4 text-base-content/70">
 
             // --- DOWNLOAD SPEED DROPDOWN ---
-            <div class="dropdown dropdown-top dropdown-start">
+            <div 
+                class="dropdown dropdown-top dropdown-start"
+                on:touchstart=move |e| e.stop_propagation()
+            >
                 <div
                     tabindex="0"
                     role="button"
@@ -143,7 +157,10 @@ pub fn StatusBar() -> impl IntoView {
             </div>
 
             // --- UPLOAD SPEED DROPDOWN ---
-            <div class="dropdown dropdown-top dropdown-start">
+            <div 
+                class="dropdown dropdown-top dropdown-start"
+                 on:touchstart=move |e| e.stop_propagation()
+            >
                 <div
                     tabindex="0"
                     role="button"
@@ -194,7 +211,10 @@ pub fn StatusBar() -> impl IntoView {
             </div>
 
             <div class="ml-auto flex items-center gap-4">
-                <div class="dropdown dropdown-top dropdown-end">
+                <div 
+                    class="dropdown dropdown-top dropdown-end"
+                     on:touchstart=move |e| e.stop_propagation()
+                >
                     <div
                         tabindex="0"
                         role="button"

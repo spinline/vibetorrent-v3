@@ -86,15 +86,18 @@ pub fn StatusBar() -> impl IntoView {
     };
 
     // Register global click/touch listener to close menus when clicking outside
-    let close_menus = move |_| {
+    let close_menus = move || {
         if down_menu_open.get_untracked() { set_down_menu_open.set(false); }
         if up_menu_open.get_untracked() { set_up_menu_open.set(false); }
         if theme_open.get_untracked() { set_theme_open.set(false); }
     };
     
     // Use window_event_listener from leptos for both click and touchstart (for iOS)
-    let _ = window_event_listener(ev::click, close_menus);
-    let _ = window_event_listener(ev::touchstart, close_menus);
+    let _ = window_event_listener(ev::click, {
+        let close = close_menus.clone();
+        move |_| close()
+    });
+    let _ = window_event_listener(ev::touchstart, move |_| close_menus());
 
     view! {
         <div class="h-8 min-h-8 bg-base-200 border-t border-base-300 flex items-center px-4 text-xs gap-4 text-base-content/70">
@@ -125,7 +128,7 @@ pub fn StatusBar() -> impl IntoView {
                         <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3" />
                     </svg>
                     <span class="font-mono">{move || format_speed(stats.get().down_rate)}</span>
-                    <Show when=move || (stats.get().down_limit.unwrap_or(0) > 0) fallback=|| ()>
+                    <Show when=move || stats.get().down_limit.unwrap_or(0) > 0 fallback=|| ()>
                         <span class="text-[10px] opacity-60">
                             {move || format!("(Limit: {})", format_speed(stats.get().down_limit.unwrap_or(0)))}
                         </span>
@@ -189,7 +192,7 @@ pub fn StatusBar() -> impl IntoView {
                         <path stroke-linecap="round" stroke-linejoin="round" d="M15 11.25l-3-3m0 0l-3 3m3-3v7.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     <span class="font-mono">{move || format_speed(stats.get().up_rate)}</span>
-                    <Show when=move || (stats.get().up_limit.unwrap_or(0) > 0) fallback=|| ()>
+                    <Show when=move || stats.get().up_limit.unwrap_or(0) > 0 fallback=|| ()>
                         <span class="text-[10px] opacity-60">
                             {move || format!("(Limit: {})", format_speed(stats.get().up_limit.unwrap_or(0)))}
                         </span>

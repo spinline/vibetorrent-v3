@@ -1,6 +1,6 @@
 use leptos::*;
-use wasm_bindgen::JsCast;
 use shared::GlobalLimitRequest;
+use wasm_bindgen::JsCast;
 
 fn format_bytes(bytes: i64) -> String {
     const UNITS: [&str; 6] = ["B", "KB", "MB", "GB", "TB", "PB"];
@@ -26,6 +26,24 @@ fn format_speed(bytes_per_sec: i64) -> String {
 pub fn StatusBar() -> impl IntoView {
     let store = use_context::<crate::store::TorrentStore>().expect("store not provided");
     let stats = store.global_stats;
+
+    let (current_theme, set_current_theme) = create_signal("light".to_string());
+
+    create_effect(move |_| {
+        if let Some(win) = web_sys::window() {
+            if let Some(storage) = win.local_storage().ok().flatten() {
+                if let Ok(Some(stored_theme)) = storage.get_item("vibetorrent_theme") {
+                    set_current_theme.set(stored_theme.clone());
+                    if let Some(doc) = win.document() {
+                        let _ = doc
+                            .document_element()
+                            .unwrap()
+                            .set_attribute("data-theme", &stored_theme);
+                    }
+                }
+            }
+        }
+    });
 
     // Preset limits in bytes/s
     let limits: Vec<(i64, &str)> = vec![
@@ -83,17 +101,21 @@ pub fn StatusBar() -> impl IntoView {
     let close_dropdown = move || {
         if let Some(doc) = web_sys::window().and_then(|w| w.document()) {
             if let Some(active) = doc.active_element() {
-                let _ = active.dyn_into::<web_sys::HtmlElement>().map(|el| el.blur());
+                let _ = active
+                    .dyn_into::<web_sys::HtmlElement>()
+                    .map(|el| el.blur());
             }
         }
     };
 
     // Global listener to force blur on touchstart (for iOS "tap outside" closing)
     let force_blur = move |_| {
-         if let Some(doc) = web_sys::window().and_then(|w| w.document()) {
+        if let Some(doc) = web_sys::window().and_then(|w| w.document()) {
             if let Some(active) = doc.active_element() {
                 // If something is focused, blur it to close dropdowns
-                let _ = active.dyn_into::<web_sys::HtmlElement>().map(|el| el.blur());
+                let _ = active
+                    .dyn_into::<web_sys::HtmlElement>()
+                    .map(|el| el.blur());
             }
         }
     };
@@ -103,7 +125,7 @@ pub fn StatusBar() -> impl IntoView {
         <div class="h-8 min-h-8 bg-base-200 border-t border-base-300 flex items-center px-4 text-xs gap-4 text-base-content/70">
 
             // --- DOWNLOAD SPEED DROPDOWN ---
-            <div 
+            <div
                 class="dropdown dropdown-top dropdown-start"
                 on:touchstart=move |e| e.stop_propagation()
             >
@@ -124,8 +146,8 @@ pub fn StatusBar() -> impl IntoView {
                     </Show>
                 </div>
 
-                <ul 
-                    tabindex="0" 
+                <ul
+                    tabindex="0"
                     class="dropdown-content z-[100] menu p-2 shadow bg-base-200 rounded-box w-40 mb-2 border border-base-300"
                 >
                     {
@@ -157,7 +179,7 @@ pub fn StatusBar() -> impl IntoView {
             </div>
 
             // --- UPLOAD SPEED DROPDOWN ---
-            <div 
+            <div
                 class="dropdown dropdown-top dropdown-start"
                  on:touchstart=move |e| e.stop_propagation()
             >
@@ -178,8 +200,8 @@ pub fn StatusBar() -> impl IntoView {
                     </Show>
                 </div>
 
-                <ul 
-                    tabindex="0" 
+                <ul
+                    tabindex="0"
                     class="dropdown-content z-[100] menu p-2 shadow bg-base-200 rounded-box w-40 mb-2 border border-base-300"
                 >
                     {
@@ -211,7 +233,7 @@ pub fn StatusBar() -> impl IntoView {
             </div>
 
             <div class="ml-auto flex items-center gap-4">
-                <div 
+                <div
                     class="dropdown dropdown-top dropdown-end"
                      on:touchstart=move |e| e.stop_propagation()
                 >
@@ -226,8 +248,8 @@ pub fn StatusBar() -> impl IntoView {
                         </svg>
                     </div>
 
-                    <ul 
-                        tabindex="0" 
+                    <ul
+                        tabindex="0"
                         class="dropdown-content z-[100] menu p-2 shadow bg-base-200 rounded-box w-52 mb-2 border border-base-300 max-h-96 overflow-y-auto block"
                     >
                         {
@@ -240,10 +262,17 @@ pub fn StatusBar() -> impl IntoView {
                                 view! {
                                     <li>
                                         <button
-                                            class=move || if theme == "dim" { "bg-primary/10 text-primary font-bold text-xs capitalize" } else { "text-xs capitalize" }
+                                            class=move || if current_theme.get() == theme { "bg-primary/10 text-primary font-bold text-xs capitalize" } else { "text-xs capitalize" }
                                             on:click=move |_| {
-                                                let doc = web_sys::window().unwrap().document().unwrap();
-                                                let _ = doc.document_element().unwrap().set_attribute("data-theme", theme);
+                                                set_current_theme.set(theme.to_string());
+                                                if let Some(win) = web_sys::window() {
+                                                    if let Some(doc) = win.document() {
+                                                        let _ = doc.document_element().unwrap().set_attribute("data-theme", theme);
+                                                    }
+                                                    if let Some(storage) = win.local_storage().ok().flatten() {
+                                                        let _ = storage.set_item("vibetorrent_theme", theme);
+                                                    }
+                                                }
                                                 close();
                                             }
                                         >

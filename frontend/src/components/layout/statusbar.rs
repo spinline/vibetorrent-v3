@@ -26,6 +26,59 @@ fn format_speed(bytes_per_sec: i64) -> String {
 pub fn StatusBar() -> impl IntoView {
     let store = use_context::<crate::store::TorrentStore>().expect("store not provided");
     let stats = store.global_stats;
+
+    // Preset limits in bytes/s
+    let limits: Vec<(i64, &str)> = vec![
+        (0, "Unlimited"),
+        (100 * 1024, "100 KB/s"),
+        (500 * 1024, "500 KB/s"),
+        (1024 * 1024, "1 MB/s"),
+        (2 * 1024 * 1024, "2 MB/s"),
+        (5 * 1024 * 1024, "5 MB/s"),
+        (10 * 1024 * 1024, "10 MB/s"),
+        (20 * 1024 * 1024, "20 MB/s"),
+    ];
+
+    let set_limit = move |limit_type: &str, val: i64| {
+        let limit_type = limit_type.to_string();
+        logging::log!("Setting {} limit to {}", limit_type, val);
+
+        spawn_local(async move {
+            let req_body = if limit_type == "down" {
+                GlobalLimitRequest {
+                    max_download_rate: Some(val),
+                    max_upload_rate: None,
+                }
+            } else {
+                GlobalLimitRequest {
+                    max_download_rate: None,
+                    max_upload_rate: Some(val),
+                }
+            };
+
+            let client =
+                gloo_net::http::Request::post("/api/settings/global-limits").json(&req_body);
+
+            match client {
+                Ok(req) => match req.send().await {
+                    Ok(resp) => {
+                        if !resp.ok() {
+                            logging::error!(
+                                "Failed to set limit: {} {}",
+                                resp.status(),
+                                resp.status_text()
+                            );
+                        } else {
+                            logging::log!("Limit set successfully");
+                        }
+                    }
+                    Err(e) => logging::error!("Network error setting limit: {}", e),
+                },
+                Err(e) => logging::error!("Failed to create request: {}", e),
+            }
+        });
+    };
+
     // Helper to close dropdowns by blurring the active element
     let close_dropdown = move || {
         if let Some(doc) = web_sys::window().and_then(|w| w.document()) {

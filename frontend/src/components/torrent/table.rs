@@ -98,11 +98,6 @@ pub fn TorrentTable() -> impl IntoView {
                 SortColumn::DownSpeed => a.down_rate.cmp(&b.down_rate),
                 SortColumn::UpSpeed => a.up_rate.cmp(&b.up_rate),
                 SortColumn::ETA => {
-                    // ETA 0 means infinity usually, so we need to handle it.
-                    // But for simple sorting, maybe just treat is numeric?
-                    // Let's treat 0 as MAX for ascending, MIN for descending? Or just as is?
-                    // Usually negative or 0 means unknown/inf.
-                    // Let's handle 0 as very large number for sorting purposes if we want it at the end of ascending
                     let a_eta = if a.eta <= 0 { i64::MAX } else { a.eta };
                     let b_eta = if b.eta <= 0 { i64::MAX } else { b.eta };
                     a_eta.cmp(&b_eta)
@@ -198,7 +193,7 @@ pub fn TorrentTable() -> impl IntoView {
     };
 
     view! {
-        <div class="overflow-x-auto h-full bg-base-100 relative"> // Added relative for positioning context if needed, though menu is fixed
+        <div class="overflow-x-auto h-full bg-base-100 relative">
             <div class="hidden md:block h-full overflow-x-auto">
                 <table class="table table-sm table-pin-rows w-full max-w-full whitespace-nowrap">
                     <thead>
@@ -221,7 +216,7 @@ pub fn TorrentTable() -> impl IntoView {
                             <th class="w-24 cursor-pointer hover:bg-base-300 group select-none" on:click=move |_| handle_sort(SortColumn::UpSpeed)>
                                  <div class="flex items-center">"Up Speed" {move || sort_arrow(SortColumn::UpSpeed)}</div>
                             </th>
-                             <th class="w-24 cursor-pointer hover:bg-base-300 group select-none" on:click=move |_| handle_sort(SortColumn::ETA)>
+                            <th class="w-24 cursor-pointer hover:bg-base-300 group select-none" on:click=move |_| handle_sort(SortColumn::ETA)>
                                  <div class="flex items-center">"ETA" {move || sort_arrow(SortColumn::ETA)}</div>
                             </th>
                         </tr>
@@ -285,11 +280,9 @@ pub fn TorrentTable() -> impl IntoView {
             </div>
 
             <div class="md:hidden flex flex-col h-full bg-base-100">
-                // Toolbar
                 <div class="px-3 py-2 border-b border-base-200 flex justify-between items-center bg-base-100/95 backdrop-blur z-10 shrink-0">
                     <span class="text-xs font-bold opacity-50 uppercase tracking-wider">"Torrents"</span>
                     
-                    // Sort Dropdown
                     <div 
                         class="dropdown dropdown-end"
                         on:touchstart=move |e| e.stop_propagation()
@@ -317,7 +310,6 @@ pub fn TorrentTable() -> impl IntoView {
                                      (SortColumn::ETA, "ETA"),
                                  ];
                                  
-                                 // Helper to close dropdown using the same logic as statusbar
                                  let close_dropdown = move || {
                                      if let Some(doc) = web_sys::window().and_then(|w| w.document()) {
                                          if let Some(active) = doc.active_element() {
@@ -358,7 +350,6 @@ pub fn TorrentTable() -> impl IntoView {
                     </div>
                 </div>
 
-                // Scrollable Content
                 <div class="overflow-y-auto p-3 pb-20 flex-1 grid grid-cols-1 content-start gap-3">
                 {move || filtered_torrents().into_iter().map(|t| {
                     let progress_class = if t.percent_complete >= 100.0 { "progress-success" } else { "progress-primary" };
@@ -371,10 +362,8 @@ pub fn TorrentTable() -> impl IntoView {
                         _ => "badge-ghost"
                     };
                     let t_hash = t.hash.clone();
-                    // We don't need t_hash_click separately if we use t_hash, but existing pattern uses clones
                     let t_hash_click = t.hash.clone();
 
-                    // Long press logic
                     let (timer_id, set_timer_id) = create_signal(Option::<i32>::None);
                     let t_hash_long = t.hash.clone();
 
@@ -388,12 +377,7 @@ pub fn TorrentTable() -> impl IntoView {
                     let handle_touchstart = {
                          let t_hash = t_hash_long.clone();
                          move |e: web_sys::TouchEvent| {
-                            // Don't prevent default immediately, or we can't scroll.
-                            // But for long press, we might need to if we want to stop iOS menu.
-                            // -webkit-touch-callout: none (in CSS) handles the iOS menu suppression usually.
-
                             clear_timer();
-
                             if let Some(touch) = e.touches().get(0) {
                                 let x = touch.client_x();
                                 let y = touch.client_y();
@@ -403,8 +387,6 @@ pub fn TorrentTable() -> impl IntoView {
                                     set_menu_position.set((x, y));
                                     set_selected_hash.set(Some(hash.clone()));
                                     set_menu_visible.set(true);
-
-                                    // Haptic feedback if available
                                     let navigator = window().navigator();
                                     let _ = navigator.vibrate_with_duration(50);
                                 }) as Box<dyn Fn()>);
@@ -412,21 +394,17 @@ pub fn TorrentTable() -> impl IntoView {
                                 let id = window()
                                     .set_timeout_with_callback_and_timeout_and_arguments_0(
                                         closure.as_ref().unchecked_ref(),
-                                        600 // 600ms long press
+                                        600 
                                     )
                                     .unwrap_or(0);
 
-                                closure.forget(); // Leak memory? effectively yes, but for a simplified timeout it's "okay" in this context or we need to store the closure key.
-                                // In a real app we might want to store the closure to drop it, but `set_timeout` takes a function pointer effectively.
-                                // Actually, `closure.forget()` is standard for one-off callbacks that the JS side consumes.
-
+                                closure.forget();
                                 set_timer_id.set(Some(id));
                             }
                         }
                     };
 
                     let handle_touchmove = move |_| {
-                        // If moving, it's likely a scroll, so cancel the long press
                         clear_timer();
                     };
 
@@ -441,7 +419,6 @@ pub fn TorrentTable() -> impl IntoView {
                             }
                             style="user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;"
                             on:contextmenu={
-                                // Fallback for desktop/mouse right click still works
                                 let t_hash = t.hash.clone();
                                 move |e: web_sys::MouseEvent| handle_context_menu(e, t_hash.clone())
                             }
@@ -489,6 +466,7 @@ pub fn TorrentTable() -> impl IntoView {
                     }
                 }).collect::<Vec<_>>()}
                 </div>
+            </div>
 
             <Show when=move || menu_visible.get() fallback=|| ()>
                 <crate::components::context_menu::ContextMenu
@@ -502,6 +480,3 @@ pub fn TorrentTable() -> impl IntoView {
         </div>
     }
 }
-
-
-

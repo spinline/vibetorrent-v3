@@ -118,7 +118,11 @@ pub fn StatusBar() -> impl IntoView {
                     <div
                         class="fixed inset-0 z-[99] bg-black/0 cursor-pointer"
                         on:click=move |e| { e.stop_propagation(); set_down_menu_open.set(false); }
-                        on:touchstart=move |e| { e.stop_propagation(); set_down_menu_open.set(false); }
+                        on:touchstart=move |e| {
+                            e.stop_propagation();
+                            e.prevent_default();
+                            set_down_menu_open.set(false);
+                        }
                     ></div>
                 </Show>
 
@@ -171,7 +175,11 @@ pub fn StatusBar() -> impl IntoView {
                     <div
                         class="fixed inset-0 z-[99] bg-black/0 cursor-pointer"
                         on:click=move |e| { e.stop_propagation(); set_up_menu_open.set(false); }
-                        on:touchstart=move |e| { e.stop_propagation(); set_up_menu_open.set(false); }
+                        on:touchstart=move |e| {
+                            e.stop_propagation();
+                            e.prevent_default();
+                            set_up_menu_open.set(false);
+                        }
                     ></div>
                 </Show>
 
@@ -222,7 +230,11 @@ pub fn StatusBar() -> impl IntoView {
                         <div
                             class="fixed inset-0 z-[99] bg-black/0 cursor-pointer"
                             on:click=move |e| { e.stop_propagation(); set_theme_open.set(false); }
-                            on:touchstart=move |e| { e.stop_propagation(); set_theme_open.set(false); }
+                            on:touchstart=move |e| {
+                                e.stop_propagation();
+                                e.prevent_default();
+                                set_theme_open.set(false);
+                            }
                         ></div>
                     </Show>
 

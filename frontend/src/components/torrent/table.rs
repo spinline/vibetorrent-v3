@@ -281,7 +281,7 @@ pub fn TorrentTable() -> impl IntoView {
                 </table>
             </div>
 
-            <div class="md:hidden flex flex-col h-full bg-base-100">
+            <div class="md:hidden flex flex-col h-full bg-base-200">
                 <div class="px-3 py-2 border-b border-base-200 flex justify-between items-center bg-base-100/95 backdrop-blur z-10 shrink-0">
                     <span class="text-xs font-bold opacity-50 uppercase tracking-wider">"Torrents"</span>
 

@@ -490,5 +490,18 @@ pub fn TorrentTable() -> impl IntoView {
                 }).collect::<Vec<_>>()}
                 </div>
 
+            <Show when=move || menu_visible.get() fallback=|| ()>
+                <crate::components::context_menu::ContextMenu
+                    visible=true
+                    position=menu_position.get()
+                    torrent_hash=selected_hash.get().unwrap_or_default()
+                    on_close=Callback::from(move |_| set_menu_visible.set(false))
+                    on_action=Callback::from(on_action)
+                />
+            </Show>
+        </div>
+    }
+}
+
 
 

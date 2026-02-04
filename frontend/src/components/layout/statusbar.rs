@@ -116,7 +116,7 @@ pub fn StatusBar() -> impl IntoView {
 
                 <Show when=move || down_menu_open.get() fallback=|| ()>
                     <div
-                        class="fixed inset-0 z-[99] bg-black/0 cursor-pointer"
+                        class="fixed inset-0 z-[99] bg-black opacity-0 cursor-pointer"
                         on:click=move |e| { e.stop_propagation(); set_down_menu_open.set(false); }
                         on:touchstart=move |e| {
                             e.stop_propagation();
@@ -181,7 +181,7 @@ pub fn StatusBar() -> impl IntoView {
 
                 <Show when=move || up_menu_open.get() fallback=|| ()>
                     <div
-                        class="fixed inset-0 z-[99] bg-black/0 cursor-pointer"
+                        class="fixed inset-0 z-[99] bg-black opacity-0 cursor-pointer"
                         on:click=move |e| { e.stop_propagation(); set_up_menu_open.set(false); }
                         on:touchstart=move |e| {
                             e.stop_propagation();
@@ -236,7 +236,7 @@ pub fn StatusBar() -> impl IntoView {
 
                     <Show when=move || theme_open.get() fallback=|| ()>
                         <div
-                            class="fixed inset-0 z-[99] bg-black/0 cursor-pointer"
+                            class="fixed inset-0 z-[99] bg-black opacity-0 cursor-pointer"
                             on:click=move |e| { e.stop_propagation(); set_theme_open.set(false); }
                             on:touchstart=move |e| {
                                 e.stop_propagation();

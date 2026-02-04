@@ -22,6 +22,27 @@ fn format_speed(bytes_per_sec: i64) -> String {
     format!("{}/s", format_bytes(bytes_per_sec))
 }
 
+fn format_duration(seconds: i64) -> String {
+    if seconds <= 0 {
+        return "∞".to_string();
+    }
+
+    let days = seconds / 86400;
+    let hours = (seconds % 86400) / 3600;
+    let minutes = (seconds % 3600) / 60;
+    let secs = seconds % 60;
+
+    if days > 0 {
+        format!("{}d {}h", days, hours)
+    } else if hours > 0 {
+        format!("{}h {}m", hours, minutes)
+    } else if minutes > 0 {
+        format!("{}m {}s", minutes, secs)
+    } else {
+        format!("{}s", secs)
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum SortColumn {
     Name,
@@ -273,7 +294,7 @@ pub fn TorrentTable() -> impl IntoView {
                                     <td class={format!("text-[11px] font-medium {}", status_class)}>{status_str}</td>
                                     <td class="text-right font-mono text-[11px] opacity-80 text-success">{format_speed(t.down_rate)}</td>
                                     <td class="text-right font-mono text-[11px] opacity-80 text-primary">{format_speed(t.up_rate)}</td>
-                                    <td class="text-right font-mono text-[11px] opacity-80">{if t.eta > 0 { format!("{}s", t.eta) } else { "∞".to_string() }}</td>
+                                    <td class="text-right font-mono text-[11px] opacity-80">{format_duration(t.eta)}</td>
                                 </tr>
                             }
                         }).collect::<Vec<_>>()}
@@ -460,7 +481,7 @@ pub fn TorrentTable() -> impl IntoView {
                                     </div>
                                     <div class="flex flex-col text-right">
                                         <span class="text-[9px] opacity-60 uppercase">"ETA"</span>
-                                        <span>{if t.eta > 0 { format!("{}s", t.eta) } else { "∞".to_string() }}</span>
+                                        <span>{format_duration(t.eta)}</span>
                                     </div>
                                 </div>
                             </div>

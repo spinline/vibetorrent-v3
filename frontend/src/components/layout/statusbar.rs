@@ -117,12 +117,9 @@ pub fn StatusBar() -> impl IntoView {
                 <Show when=move || down_menu_open.get() fallback=|| ()>
                     <div
                         class="fixed inset-0 z-[99] bg-black opacity-0 cursor-pointer"
+                        role="button"
+                        tabindex="0"
                         on:click=move |e| { e.stop_propagation(); set_down_menu_open.set(false); }
-                        on:touchstart=move |e| {
-                            e.stop_propagation();
-                            e.prevent_default();
-                            set_down_menu_open.set(false);
-                        }
                     ></div>
                 </Show>
 
@@ -131,7 +128,7 @@ pub fn StatusBar() -> impl IntoView {
                         limits.clone().into_iter().map(|(val, label)| {
                             let is_active = move || {
                                 let current = stats.get().down_limit.unwrap_or(0);
-                                logging::log!("Down Active Check: current={} (i64), val={} (i64), diff={}, match={}", 
+                                logging::error!("Down Active Check: current={} (i64), val={} (i64), diff={}, match={}", 
                                     current, 
                                     val, 
                                     (current - val).abs(),
@@ -180,12 +177,9 @@ pub fn StatusBar() -> impl IntoView {
                 <Show when=move || up_menu_open.get() fallback=|| ()>
                     <div
                         class="fixed inset-0 z-[99] bg-black opacity-0 cursor-pointer"
+                        role="button"
+                        tabindex="0"
                         on:click=move |e| { e.stop_propagation(); set_up_menu_open.set(false); }
-                        on:touchstart=move |e| {
-                            e.stop_propagation();
-                            e.prevent_default();
-                            set_up_menu_open.set(false);
-                        }
                     ></div>
                 </Show>
 
@@ -235,12 +229,9 @@ pub fn StatusBar() -> impl IntoView {
                     <Show when=move || theme_open.get() fallback=|| ()>
                         <div
                             class="fixed inset-0 z-[99] bg-black opacity-0 cursor-pointer"
+                            role="button"
+                            tabindex="0"
                             on:click=move |e| { e.stop_propagation(); set_theme_open.set(false); }
-                            on:touchstart=move |e| {
-                                e.stop_propagation();
-                                e.prevent_default();
-                                set_theme_open.set(false);
-                            }
                         ></div>
                     </Show>
 

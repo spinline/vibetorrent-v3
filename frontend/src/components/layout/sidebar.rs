@@ -1,15 +1,49 @@
-use leptos::*;
 use leptos::wasm_bindgen::JsCast;
+use leptos::*;
 
 #[component]
 pub fn Sidebar() -> impl IntoView {
     let store = use_context::<crate::store::TorrentStore>().expect("store not provided");
 
     let total_count = move || store.torrents.get().len();
-    let downloading_count = move || store.torrents.get().iter().filter(|t| t.status == shared::TorrentStatus::Downloading).count();
-    let seeding_count = move || store.torrents.get().iter().filter(|t| t.status == shared::TorrentStatus::Seeding).count();
-    let completed_count = move || store.torrents.get().iter().filter(|t| t.status == shared::TorrentStatus::Seeding || t.status == shared::TorrentStatus::Paused).count();
-    let inactive_count = move || store.torrents.get().iter().filter(|t| t.status == shared::TorrentStatus::Paused || t.status == shared::TorrentStatus::Error).count();
+    let downloading_count = move || {
+        store
+            .torrents
+            .get()
+            .iter()
+            .filter(|t| t.status == shared::TorrentStatus::Downloading)
+            .count()
+    };
+    let seeding_count = move || {
+        store
+            .torrents
+            .get()
+            .iter()
+            .filter(|t| t.status == shared::TorrentStatus::Seeding)
+            .count()
+    };
+    let completed_count = move || {
+        store
+            .torrents
+            .get()
+            .iter()
+            .filter(|t| {
+                t.status == shared::TorrentStatus::Seeding
+                    || (t.status == shared::TorrentStatus::Paused && t.percent_complete >= 100.0)
+            })
+            .count()
+    };
+    let inactive_count = move || {
+        store
+            .torrents
+            .get()
+            .iter()
+            .filter(|t| {
+                t.status == shared::TorrentStatus::Paused
+                    || t.status == shared::TorrentStatus::Error
+            })
+            .count()
+    };
 
     let close_drawer = move || {
         if let Some(element) = document().get_element_by_id("my-drawer") {
@@ -25,7 +59,11 @@ pub fn Sidebar() -> impl IntoView {
     };
 
     let filter_class = move |f: crate::store::FilterStatus| {
-        if store.filter.get() == f { "active" } else { "" }
+        if store.filter.get() == f {
+            "active"
+        } else {
+            ""
+        }
     };
 
     view! {
@@ -80,7 +118,7 @@ pub fn Sidebar() -> impl IntoView {
                     </li>
                 </ul>
             </div>
-            
+
 
         </div>
     }

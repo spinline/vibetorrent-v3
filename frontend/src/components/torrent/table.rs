@@ -65,7 +65,8 @@ pub fn TorrentTable() -> impl IntoView {
                     }
                     crate::store::FilterStatus::Completed => {
                         t.status == shared::TorrentStatus::Seeding
-                            || t.status == shared::TorrentStatus::Paused
+                            || (t.status == shared::TorrentStatus::Paused
+                                && t.percent_complete >= 100.0)
                     } // Approximate
                     crate::store::FilterStatus::Inactive => {
                         t.status == shared::TorrentStatus::Paused
@@ -282,14 +283,14 @@ pub fn TorrentTable() -> impl IntoView {
             <div class="md:hidden flex flex-col h-full bg-base-100">
                 <div class="px-3 py-2 border-b border-base-200 flex justify-between items-center bg-base-100/95 backdrop-blur z-10 shrink-0">
                     <span class="text-xs font-bold opacity-50 uppercase tracking-wider">"Torrents"</span>
-                    
-                    <div 
+
+                    <div
                         class="dropdown dropdown-end"
                         on:touchstart=move |e| e.stop_propagation()
                     >
-                        <div 
-                            tabindex="0" 
-                            role="button" 
+                        <div
+                            tabindex="0"
+                            role="button"
                             class="btn btn-ghost btn-xs gap-1 opacity-70 font-normal"
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
@@ -309,7 +310,7 @@ pub fn TorrentTable() -> impl IntoView {
                                      (SortColumn::UpSpeed, "Up Speed"),
                                      (SortColumn::ETA, "ETA"),
                                  ];
-                                 
+
                                  let close_dropdown = move || {
                                      if let Some(doc) = web_sys::window().and_then(|w| w.document()) {
                                          if let Some(active) = doc.active_element() {
@@ -322,10 +323,10 @@ pub fn TorrentTable() -> impl IntoView {
                                      let is_active = move || sort_col.get() == col;
                                      let current_dir = move || sort_dir.get();
                                      let close = close_dropdown.clone();
-                                     
+
                                      view! {
                                          <li>
-                                             <button 
+                                             <button
                                                  class=move || if is_active() { "bg-primary/10 text-primary font-bold flex justify-between" } else { "flex justify-between" }
                                                  on:click=move |_| {
                                                      handle_sort(col);
@@ -394,7 +395,7 @@ pub fn TorrentTable() -> impl IntoView {
                                 let id = window()
                                     .set_timeout_with_callback_and_timeout_and_arguments_0(
                                         closure.as_ref().unchecked_ref(),
-                                        600 
+                                        600
                                     )
                                     .unwrap_or(0);
 

@@ -131,14 +131,12 @@ pub fn StatusBar() -> impl IntoView {
                         limits.clone().into_iter().map(|(val, label)| {
                             let is_active = move || {
                                 let current = stats.get().down_limit.unwrap_or(0);
-                                if down_menu_open.get() {
-                                    logging::log!("Down Active Check: current={} (i64), val={} (i64), diff={}, match={}", 
-                                        current, 
-                                        val, 
-                                        (current - val).abs(),
-                                        (current - val).abs() < 1024
-                                    );
-                                }
+                                logging::log!("Down Active Check: current={} (i64), val={} (i64), diff={}, match={}", 
+                                    current, 
+                                    val, 
+                                    (current - val).abs(),
+                                    (current - val).abs() < 1024
+                                );
                                 (current - val).abs() < 1024
                             };
                             view! {

@@ -254,7 +254,7 @@ pub fn StatusBar() -> impl IntoView {
                     >
                         {
                             let themes = vec![
-                                "light", "dark", "dim", "nord", "cupcake", "dracula", "cyberpunk", "emerald", "sunset"
+                                "light", "dark", "dim", "nord", "cupcake", "dracula", "cyberpunk", "emerald", "sunset", "abyss"
                             ];
                             let close = close_dropdown.clone();
                             themes.into_iter().map(|theme| {

@@ -3,7 +3,8 @@
 
 @plugin "daisyui" {
     themes:
-        light, dark, dim, nord, cupcake, dracula, cyberpunk, emerald, sunset;
+        light, dark, dim, nord, cupcake, dracula, cyberpunk, emerald, sunset,
+        abyss;
 }
 
 @layer base {

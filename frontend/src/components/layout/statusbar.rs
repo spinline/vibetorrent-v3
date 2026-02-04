@@ -85,6 +85,16 @@ pub fn StatusBar() -> impl IntoView {
         set_up_menu_open.set(false);
     };
 
+    // Register global click listener to close menus when clicking outside
+    let close_menus = move |_| {
+        set_down_menu_open.set(false);
+        set_up_menu_open.set(false);
+        set_theme_open.set(false);
+    };
+    
+    // Use window_event_listener from leptos
+    let _ = window_event_listener(ev::click, close_menus);
+
     view! {
         <div class="h-8 min-h-8 bg-base-200 border-t border-base-300 flex items-center px-4 text-xs gap-4 text-base-content/70">
 
@@ -98,9 +108,11 @@ pub fn StatusBar() -> impl IntoView {
                     role="button"
                     class="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors select-none"
                     title="Global Download Speed - Click to Set Limit"
-                    on:click=move |_| {
-                        logging::log!("Current Down Limit: {:?}", stats.get().down_limit);
-                        set_down_menu_open.update(|v| *v = !*v)
+                    on:click=move |e| {
+                        e.stop_propagation();
+                        set_down_menu_open.update(|v| *v = !*v);
+                        set_up_menu_open.set(false);
+                        set_theme_open.set(false);
                     }
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
@@ -114,14 +126,11 @@ pub fn StatusBar() -> impl IntoView {
                     </Show>
                 </div>
 
-                <Show when=move || down_menu_open.get() fallback=|| ()>
-                    <div
-                        class="fixed inset-0 z-[99] cursor-default"
-                        on:click=move |_| set_down_menu_open.set(false)
-                    ></div>
-                </Show>
-
-                <ul tabindex="0" class="dropdown-content z-[100] menu p-2 shadow bg-base-200 rounded-box w-40 mb-2 border border-base-300">
+                <ul 
+                    tabindex="0" 
+                    class="dropdown-content z-[100] menu p-2 shadow bg-base-200 rounded-box w-40 mb-2 border border-base-300"
+                    on:click=move |e| e.stop_propagation()
+                >
                     {
                         limits.clone().into_iter().map(|(val, label)| {
                             let is_active = move || {
@@ -132,7 +141,10 @@ pub fn StatusBar() -> impl IntoView {
                                 <li>
                                     <button
                                         class=move || if is_active() { "bg-primary/10 text-primary font-bold text-xs flex justify-between" } else { "text-xs flex justify-between" }
-                                        on:click=move |_| set_limit("down", val)
+                                        on:click=move |_| {
+                                            set_limit("down", val);
+                                            set_down_menu_open.set(false);
+                                        }
                                     >
                                         {label}
                                         <Show when=is_active fallback=|| ()>
@@ -174,14 +186,11 @@ pub fn StatusBar() -> impl IntoView {
                     </Show>
                 </div>
 
-                <Show when=move || up_menu_open.get() fallback=|| ()>
-                    <div
-                        class="fixed inset-0 z-[99] cursor-default"
-                        on:click=move |_| set_up_menu_open.set(false)
-                    ></div>
-                </Show>
-
-                <ul tabindex="0" class="dropdown-content z-[100] menu p-2 shadow bg-base-200 rounded-box w-40 mb-2 border border-base-300">
+                <ul 
+                    tabindex="0" 
+                    class="dropdown-content z-[100] menu p-2 shadow bg-base-200 rounded-box w-40 mb-2 border border-base-300"
+                    on:click=move |e| e.stop_propagation()
+                >
                     {
                         limits.clone().into_iter().map(|(val, label)| {
                             let is_active = move || {
@@ -192,7 +201,10 @@ pub fn StatusBar() -> impl IntoView {
                                 <li>
                                     <button
                                         class=move || if is_active() { "bg-primary/10 text-primary font-bold text-xs flex justify-between" } else { "text-xs flex justify-between" }
-                                        on:click=move |_| set_limit("up", val)
+                                        on:click=move |_| {
+                                            set_limit("up", val);
+                                            set_up_menu_open.set(false);
+                                        }
                                     >
                                         {label}
                                         <Show when=is_active fallback=|| ()>
@@ -232,38 +244,23 @@ pub fn StatusBar() -> impl IntoView {
                         </svg>
                     </div>
 
-                    <Show when=move || theme_open.get() fallback=|| ()>
-                        <div
-                            class="fixed inset-0 z-[99] cursor-default"
-                            on:click=move |_| set_theme_open.set(false)
-                        ></div>
-                    </Show>
-
-                    <ul tabindex="0" class="dropdown-content z-[100] menu p-2 shadow bg-base-200 rounded-box w-52 mb-2 border border-base-300 max-h-96 overflow-y-auto block">
+                    <ul 
+                        tabindex="0" 
+                        class="dropdown-content z-[100] menu p-2 shadow bg-base-200 rounded-box w-52 mb-2 border border-base-300 max-h-96 overflow-y-auto block"
+                        on:click=move |e| e.stop_propagation()
+                    >
                         {
                             let themes = vec![
-                                "light", "dark", "cupcake", "dracula", "cyberpunk",
-                                "emerald", "luxury", "nord", "sunset", "winter",
-                                "night", "synthwave", "retro", "forest"
+                                "light", "dark", "cupcake", "bumblebee", "emerald", "corporate", "synthwave", "retro", "cyberpunk", "valentine", "halloween", "garden", "forest", "aqua", "lofi", "pastel", "fantasy", "wireframe", "black", "luxury", "dracula", "cmyk", "autumn", "business", "acid", "lemonade", "night", "coffee", "winter", "dim", "nord", "sunset"
                             ];
                             themes.into_iter().map(|theme| {
                                 view! {
                                     <li>
                                         <button
-                                            class="text-xs capitalize"
+                                            class=move || if theme == "dim" { "bg-primary/10 text-primary font-bold text-xs capitalize" } else { "text-xs capitalize" }
                                             on:click=move |_| {
                                                 let doc = web_sys::window().unwrap().document().unwrap();
                                                 let _ = doc.document_element().unwrap().set_attribute("data-theme", theme);
-
-                                                if let Some(meta) = doc.query_selector("meta[name='theme-color']").unwrap() {
-                                                    let window = web_sys::window().unwrap();
-                                                    if let Ok(Some(style)) = window.get_computed_style(&doc.body().unwrap()) {
-                                                        if let Ok(color) = style.get_property_value("background-color") {
-                                                            let _ = meta.set_attribute("content", &color);
-                                                        }
-                                                    }
-                                                }
-
                                                 set_theme_open.set(false);
                                             }
                                         >

@@ -68,6 +68,7 @@ pub fn TorrentTable() -> impl IntoView {
                             || (t.status == shared::TorrentStatus::Paused
                                 && t.percent_complete >= 100.0)
                     } // Approximate
+                    crate::store::FilterStatus::Paused => t.status == shared::TorrentStatus::Paused,
                     crate::store::FilterStatus::Inactive => {
                         t.status == shared::TorrentStatus::Paused
                             || t.status == shared::TorrentStatus::Error

@@ -595,20 +595,23 @@ pub async fn set_global_limit_handler(
 ) -> impl IntoResponse {
     let client = xmlrpc::RtorrentClient::new(&state.scgi_socket_path);
 
-    // Switch to using set_kb which is often more reliable or the standard way for limits
+    // Use throttle.global_*.max_rate.set_kb which is more reliable than .set (which is buggy)
+    // The .set_kb method expects KB/s, so we convert bytes to KB
 
     if let Some(down) = payload.max_download_rate {
+        // Convert bytes/s to KB/s (divide by 1024)
         let down_kb = down / 1024;
+        tracing::info!("Setting download limit: {} bytes/s = {} KB/s", down, down_kb);
+        
+        // Use set_kb with empty string as first param (throttle name), then value
         if let Err(e) = client
-            .call(
-                "throttle.global_down.max_rate.set_kb",
-                &[RpcParam::Int(down_kb)],
-            )
+            .call("throttle.global_down.max_rate.set_kb", &[
+                RpcParam::from(""),
+                RpcParam::Int(down_kb),
+            ])
             .await
         {
-            // Fallback or error?
-            // Maybe log and ignore?
-            // Let's assume set_kb works if set didn't (or vice versa).
+            tracing::error!("Failed to set download limit: {}", e);
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("Failed to set down limit: {}", e),
@@ -618,14 +621,18 @@ pub async fn set_global_limit_handler(
     }
 
     if let Some(up) = payload.max_upload_rate {
+        // Convert bytes/s to KB/s
         let up_kb = up / 1024;
+        tracing::info!("Setting upload limit: {} bytes/s = {} KB/s", up, up_kb);
+        
         if let Err(e) = client
-            .call(
-                "throttle.global_up.max_rate.set_kb",
-                &[RpcParam::Int(up_kb)],
-            )
+            .call("throttle.global_up.max_rate.set_kb", &[
+                RpcParam::from(""),
+                RpcParam::Int(up_kb),
+            ])
             .await
         {
+            tracing::error!("Failed to set upload limit: {}", e);
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("Failed to set up limit: {}", e),

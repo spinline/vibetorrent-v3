@@ -1,4 +1,5 @@
 use leptos::*;
+use wasm_bindgen::JsCast;
 use shared::GlobalLimitRequest;
 
 fn format_bytes(bytes: i64) -> String {
@@ -25,104 +26,25 @@ fn format_speed(bytes_per_sec: i64) -> String {
 pub fn StatusBar() -> impl IntoView {
     let store = use_context::<crate::store::TorrentStore>().expect("store not provided");
     let stats = store.global_stats;
-    let (theme_open, set_theme_open) = create_signal(false);
-
-    // Dropdown states
-    let (down_menu_open, set_down_menu_open) = create_signal(false);
-    let (up_menu_open, set_up_menu_open) = create_signal(false);
-
-    // Preset limits in bytes/s
-    let limits: Vec<(i64, &str)> = vec![
-        (0, "Unlimited"),
-        (100 * 1024, "100 KB/s"),
-        (500 * 1024, "500 KB/s"),
-        (1024 * 1024, "1 MB/s"),
-        (2 * 1024 * 1024, "2 MB/s"),
-        (5 * 1024 * 1024, "5 MB/s"),
-        (10 * 1024 * 1024, "10 MB/s"),
-        (20 * 1024 * 1024, "20 MB/s"),
-    ];
-
-    let set_limit = move |limit_type: &str, val: i64| {
-        let limit_type = limit_type.to_string();
-        logging::log!("Setting {} limit to {}", limit_type, val);
-
-        spawn_local(async move {
-            let req_body = if limit_type == "down" {
-                GlobalLimitRequest {
-                    max_download_rate: Some(val),
-                    max_upload_rate: None,
-                }
-            } else {
-                GlobalLimitRequest {
-                    max_download_rate: None,
-                    max_upload_rate: Some(val),
-                }
-            };
-
-            let client =
-                gloo_net::http::Request::post("/api/settings/global-limits").json(&req_body);
-
-            match client {
-                Ok(req) => match req.send().await {
-                    Ok(resp) => {
-                        if !resp.ok() {
-                            logging::error!(
-                                "Failed to set limit: {} {}",
-                                resp.status(),
-                                resp.status_text()
-                            );
-                        } else {
-                            logging::log!("Limit set successfully");
-                        }
-                    }
-                    Err(e) => logging::error!("Network error setting limit: {}", e),
-                },
-                Err(e) => logging::error!("Failed to create request: {}", e),
+    // Helper to close dropdowns by blurring the active element
+    let close_dropdown = move || {
+        if let Some(doc) = web_sys::window().and_then(|w| w.document()) {
+            if let Some(active) = doc.active_element() {
+                let _ = active.dyn_into::<web_sys::HtmlElement>().map(|el| el.blur());
             }
-        });
-        set_down_menu_open.set(false);
-        set_up_menu_open.set(false);
+        }
     };
-
-    // Register global click/touch listener to close menus when clicking outside
-    let close_menus = move || {
-        if down_menu_open.get_untracked() { set_down_menu_open.set(false); }
-        if up_menu_open.get_untracked() { set_up_menu_open.set(false); }
-        if theme_open.get_untracked() { set_theme_open.set(false); }
-    };
-    
-    // Use window_event_listener from leptos for both click and touchstart (for iOS)
-    let _ = window_event_listener(ev::click, {
-        let close = close_menus.clone();
-        move |_| close()
-    });
-    let _ = window_event_listener(ev::touchstart, move |_| close_menus());
 
     view! {
         <div class="h-8 min-h-8 bg-base-200 border-t border-base-300 flex items-center px-4 text-xs gap-4 text-base-content/70">
 
             // --- DOWNLOAD SPEED DROPDOWN ---
-            <div class=move || {
-                let base = "dropdown dropdown-top dropdown-start";
-                if down_menu_open.get() { format!("{} dropdown-open", base) } else { base.to_string() }
-            }>
+            <div class="dropdown dropdown-top dropdown-start">
                 <div
                     tabindex="0"
                     role="button"
                     class="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors select-none"
                     title="Global Download Speed - Click to Set Limit"
-                    on:click=move |e| {
-                        e.stop_propagation();
-                        set_down_menu_open.update(|v| *v = !*v);
-                        set_up_menu_open.set(false);
-                        set_theme_open.set(false);
-                    }
-                    on:touchstart=move |e| {
-                        e.stop_propagation();
-                        // touchstart will trigger click usually, but we stop propagation here so window listener doesn't fire.
-                        // We rely on click for the toggle logic to avoid double toggle.
-                    }
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3" />
@@ -138,8 +60,6 @@ pub fn StatusBar() -> impl IntoView {
                 <ul 
                     tabindex="0" 
                     class="dropdown-content z-[100] menu p-2 shadow bg-base-200 rounded-box w-40 mb-2 border border-base-300"
-                    on:click=move |e| e.stop_propagation()
-                    on:touchstart=move |e| e.stop_propagation()
                 >
                     {
                         limits.clone().into_iter().map(|(val, label)| {
@@ -147,13 +67,14 @@ pub fn StatusBar() -> impl IntoView {
                                 let current = stats.get().down_limit.unwrap_or(0);
                                 (current - val).abs() < 1024
                             };
+                            let close = close_dropdown.clone();
                             view! {
                                 <li>
                                     <button
                                         class=move || if is_active() { "bg-primary/10 text-primary font-bold text-xs flex justify-between" } else { "text-xs flex justify-between" }
                                         on:click=move |_| {
                                             set_limit("down", val);
-                                            set_down_menu_open.set(false);
+                                            close();
                                         }
                                     >
                                         {label}
@@ -169,24 +90,12 @@ pub fn StatusBar() -> impl IntoView {
             </div>
 
             // --- UPLOAD SPEED DROPDOWN ---
-            <div class=move || {
-                let base = "dropdown dropdown-top dropdown-start";
-                if up_menu_open.get() { format!("{} dropdown-open", base) } else { base.to_string() }
-            }>
+            <div class="dropdown dropdown-top dropdown-start">
                 <div
                     tabindex="0"
                     role="button"
                     class="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors select-none"
                     title="Global Upload Speed - Click to Set Limit"
-                    on:click=move |e| {
-                        e.stop_propagation();
-                        set_up_menu_open.update(|v| *v = !*v);
-                        set_down_menu_open.set(false);
-                        set_theme_open.set(false);
-                    }
-                    on:touchstart=move |e| {
-                        e.stop_propagation();
-                    }
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M15 11.25l-3-3m0 0l-3 3m3-3v7.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -202,8 +111,6 @@ pub fn StatusBar() -> impl IntoView {
                 <ul 
                     tabindex="0" 
                     class="dropdown-content z-[100] menu p-2 shadow bg-base-200 rounded-box w-40 mb-2 border border-base-300"
-                    on:click=move |e| e.stop_propagation()
-                    on:touchstart=move |e| e.stop_propagation()
                 >
                     {
                         limits.clone().into_iter().map(|(val, label)| {
@@ -211,13 +118,14 @@ pub fn StatusBar() -> impl IntoView {
                                 let current = stats.get().up_limit.unwrap_or(0);
                                 (current - val).abs() < 1024
                             };
+                            let close = close_dropdown.clone();
                             view! {
                                 <li>
                                     <button
                                         class=move || if is_active() { "bg-primary/10 text-primary font-bold text-xs flex justify-between" } else { "text-xs flex justify-between" }
                                         on:click=move |_| {
                                             set_limit("up", val);
-                                            set_up_menu_open.set(false);
+                                            close();
                                         }
                                     >
                                         {label}
@@ -233,28 +141,12 @@ pub fn StatusBar() -> impl IntoView {
             </div>
 
             <div class="ml-auto flex items-center gap-4">
-                <div class=move || {
-                    let base = "dropdown dropdown-top dropdown-end";
-                    if theme_open.get() {
-                        format!("{} dropdown-open", base)
-                    } else {
-                        base.to_string()
-                    }
-                }>
+                <div class="dropdown dropdown-top dropdown-end">
                     <div
                         tabindex="0"
                         role="button"
                         class="btn btn-ghost btn-xs btn-square"
                         title="Change Theme"
-                        on:click=move |e| {
-                            e.stop_propagation();
-                            set_theme_open.update(|v| *v = !*v);
-                            set_down_menu_open.set(false);
-                            set_up_menu_open.set(false);
-                        }
-                        on:touchstart=move |e| {
-                            e.stop_propagation();
-                        }
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M4.098 19.902a3.75 3.75 0 0 0 5.304 0l6.401-6.402M6.75 21A3.75 3.75 0 0 1 3 17.25V4.125C3 3.504 3.504 3 4.125 3h5.25c.621 0 1.125.504 1.125 1.125v4.072c0 .657.66 1.175 1.312 1.133 3.421-.22 6.187 2.546 6.187 5.965 0 1.595-.572 3.064-1.524 4.195" />
@@ -264,14 +156,14 @@ pub fn StatusBar() -> impl IntoView {
                     <ul 
                         tabindex="0" 
                         class="dropdown-content z-[100] menu p-2 shadow bg-base-200 rounded-box w-52 mb-2 border border-base-300 max-h-96 overflow-y-auto block"
-                        on:click=move |e| e.stop_propagation()
-                        on:touchstart=move |e| e.stop_propagation()
                     >
                         {
                             let themes = vec![
                                 "light", "dark", "cupcake", "bumblebee", "emerald", "corporate", "synthwave", "retro", "cyberpunk", "valentine", "halloween", "garden", "forest", "aqua", "lofi", "pastel", "fantasy", "wireframe", "black", "luxury", "dracula", "cmyk", "autumn", "business", "acid", "lemonade", "night", "coffee", "winter", "dim", "nord", "sunset"
                             ];
+                            let close = close_dropdown.clone();
                             themes.into_iter().map(|theme| {
+                                let close = close.clone();
                                 view! {
                                     <li>
                                         <button
@@ -279,7 +171,7 @@ pub fn StatusBar() -> impl IntoView {
                                             on:click=move |_| {
                                                 let doc = web_sys::window().unwrap().document().unwrap();
                                                 let _ = doc.document_element().unwrap().set_attribute("data-theme", theme);
-                                                set_theme_open.set(false);
+                                                close();
                                             }
                                         >
                                             {theme}

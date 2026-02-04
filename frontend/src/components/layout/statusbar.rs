@@ -27,18 +27,31 @@ pub fn StatusBar() -> impl IntoView {
     let store = use_context::<crate::store::TorrentStore>().expect("store not provided");
     let stats = store.global_stats;
 
-    let (current_theme, set_current_theme) = create_signal("light".to_string());
+    let initial_theme = if let Some(win) = web_sys::window() {
+        if let Some(doc) = win.document() {
+            doc.document_element()
+                .and_then(|el| el.get_attribute("data-theme"))
+                .unwrap_or_else(|| "dark".to_string())
+        } else {
+            "dark".to_string()
+        }
+    } else {
+        "dark".to_string()
+    };
+
+    let (current_theme, set_current_theme) = create_signal(initial_theme);
 
     create_effect(move |_| {
         if let Some(win) = web_sys::window() {
             if let Some(storage) = win.local_storage().ok().flatten() {
                 if let Ok(Some(stored_theme)) = storage.get_item("vibetorrent_theme") {
-                    set_current_theme.set(stored_theme.clone());
+                    let theme = stored_theme.to_lowercase();
+                    set_current_theme.set(theme.clone());
                     if let Some(doc) = win.document() {
                         let _ = doc
                             .document_element()
                             .unwrap()
-                            .set_attribute("data-theme", &stored_theme);
+                            .set_attribute("data-theme", &theme);
                     }
                 }
             }

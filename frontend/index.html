@@ -1,108 +1,128 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
+    <head>
+        <meta charset="utf-8" />
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+        />
+        <title>VibeTorrent</title>
 
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport"
-    content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <title>VibeTorrent</title>
+        <!-- PWA & Mobile Capable -->
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="theme-color" content="#111827" />
+        <link rel="manifest" href="manifest.json" />
+        <link rel="apple-touch-icon" href="icon-192.png" />
 
-  <!-- PWA & Mobile Capable -->
-  <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="theme-color" content="#111827" />
-  <link rel="manifest" href="manifest.json" />
-  <link rel="apple-touch-icon" href="icon-192.png" />
+        <!-- Trunk Assets -->
+        <link data-trunk rel="rust" href="Cargo.toml" data-wasm-opt="0" />
+        <link data-trunk rel="css" href="public/tailwind.css" />
+        <link data-trunk rel="copy-file" href="manifest.json" />
+        <link data-trunk rel="copy-file" href="icon-192.png" />
+        <script>
+            (function () {
+                var localTheme = localStorage.getItem("vibetorrent_theme");
+                var t = localTheme || "dark";
+                if (t === "Amoled") t = "black";
+                if (t === "Light") t = "light";
+                if (t === "Dark" || t === "Midnight") t = "dark";
 
-  <!-- Trunk Assets -->
-  <link data-trunk rel="rust" href="Cargo.toml" data-wasm-opt="0" />
-  <link data-trunk rel="css" href="public/tailwind.css" />
-  <link data-trunk rel="copy-file" href="manifest.json" />
-  <link data-trunk rel="copy-file" href="icon-192.png" />
-  <script>
-    (function () {
-      var localTheme = localStorage.getItem("vibetorrent_theme");
-      var t = localTheme || "dark";
-      if (t === "Amoled") t = "black";
-      if (t === "Light") t = "light";
-      if (t === "Dark" || t === "Midnight") t = "dark";
+                var theme = t.toLowerCase();
+                document.documentElement.setAttribute("data-theme", theme);
+                if (!localTheme) {
+                    localStorage.setItem("vibetorrent_theme", "dark");
+                }
 
-      var theme = t.toLowerCase();
-      document.documentElement.setAttribute("data-theme", theme);
-      if (!localTheme) {
-        localStorage.setItem("vibetorrent_theme", "Dark");
-      }
+                var meta = document.querySelector('meta[name="theme-color"]');
+                if (meta) {
+                    var colorMap = {
+                        light: "#ffffff",
+                        cupcake: "#faf7f5",
+                        bumblebee: "#ffffff",
+                        emerald: "#ffffff",
+                        corporate: "#ffffff",
+                        synthwave: "#2d1b69",
+                        retro: "#ece3ca",
+                        cyberpunk: "#ffee00",
+                        valentine: "#f0d6e8",
+                        halloween: "#212121",
+                        garden: "#e9e7e7",
+                        forest: "#171212",
+                        aqua: "#345da7",
+                        lofi: "#ffffff",
+                        pastel: "#ffffff",
+                        fantasy: "#ffffff",
+                        wireframe: "#ffffff",
+                        black: "#000000",
+                        luxury: "#09090b",
+                        dracula: "#282a36",
+                        cmyk: "#ffffff",
+                        autumn: "#8C0327",
+                        business: "#202020",
+                        acid: "#fafafa",
+                        lemonade: "#F1F8E8",
+                        night: "#0f1729",
+                        coffee: "#20161f",
+                        winter: "#ffffff",
+                        dark: "#1d232a",
+                    };
+                    var color = colorMap[theme] || "#1d232a";
+                    meta.setAttribute("content", color);
+                }
+            })();
+        </script>
+    </head>
 
-      var meta = document.querySelector('meta[name="theme-color"]');
-      if (meta) {
-        var colorMap = {
-          "light": "#ffffff",
-          "cupcake": "#faf7f5",
-          "bumblebee": "#ffffff",
-          "emerald": "#ffffff",
-          "corporate": "#ffffff",
-          "synthwave": "#2d1b69",
-          "retro": "#ece3ca",
-          "cyberpunk": "#ffee00",
-          "valentine": "#f0d6e8",
-          "halloween": "#212121",
-          "garden": "#e9e7e7",
-          "forest": "#171212",
-          "aqua": "#345da7",
-          "lofi": "#ffffff",
-          "pastel": "#ffffff",
-          "fantasy": "#ffffff",
-          "wireframe": "#ffffff",
-          "black": "#000000",
-          "luxury": "#09090b",
-          "dracula": "#282a36",
-          "cmyk": "#ffffff",
-          "autumn": "#8C0327",
-          "business": "#202020",
-          "acid": "#fafafa",
-          "lemonade": "#F1F8E8",
-          "night": "#0f1729",
-          "coffee": "#20161f",
-          "winter": "#ffffff",
-          "dark": "#1d232a"
-        };
-        var color = colorMap[theme] || "#1d232a";
-        meta.setAttribute("content", color);
-      }
-    })();
-  </script>
-</head>
+    <body>
+        <div
+            id="app-loading"
+            style="
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 100vh;
+            "
+        >
+            <div
+                style="
+                    width: 40px;
+                    height: 40px;
+                    border: 3px solid currentColor;
+                    border-top-color: transparent;
+                    border-radius: 50%;
+                    animation: spin 0.8s linear infinite;
+                    opacity: 0.5;
+                "
+            ></div>
+        </div>
+        <style>
+            @keyframes spin {
+                to {
+                    transform: rotate(360deg);
+                }
+            }
 
-<body>
-  <div id="app-loading" style="display: flex; justify-content: center; align-items: center; height: 100vh;">
-    <div
-      style="width: 40px; height: 40px; border: 3px solid currentColor; border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite; opacity: 0.5;">
-    </div>
-  </div>
-  <style>
-    @keyframes spin {
-      to {
-        transform: rotate(360deg);
-      }
-    }
-
-    body.app-loaded #app-loading {
-      display: none !important;
-    }
-  </style>
-  <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
-          .then(registration => {
-            console.log('SW registered: ', registration);
-          })
-          .catch(registrationError => {
-            console.log('SW registration failed: ', registrationError);
-          });
-      });
-    }
-  </script>
-</body>
-
+            body.app-loaded #app-loading {
+                display: none !important;
+            }
+        </style>
+        <script>
+            if ("serviceWorker" in navigator) {
+                window.addEventListener("load", () => {
+                    navigator.serviceWorker
+                        .register("/sw.js")
+                        .then((registration) => {
+                            console.log("SW registered: ", registration);
+                        })
+                        .catch((registrationError) => {
+                            console.log(
+                                "SW registration failed: ",
+                                registrationError,
+                            );
+                        });
+                });
+            }
+        </script>
+    </body>
 </html>

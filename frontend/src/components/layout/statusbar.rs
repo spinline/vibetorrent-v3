@@ -263,7 +263,7 @@ pub fn StatusBar() -> impl IntoView {
 
                     <ul
                         tabindex="0"
-                        class="dropdown-content z-[100] menu p-2 shadow bg-base-200 rounded-box w-52 mb-2 border border-base-300 max-h-96 overflow-y-auto block"
+                        class="dropdown-content z-[100] menu p-2 shadow bg-base-200 rounded-box w-52 mb-2 border border-base-300 max-h-96 overflow-y-auto"
                     >
                         {
                             let themes = vec![

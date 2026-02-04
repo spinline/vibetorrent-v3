@@ -32,7 +32,7 @@ pub fn StatusBar() -> impl IntoView {
     let (up_menu_open, set_up_menu_open) = create_signal(false);
 
     // Preset limits in bytes/s
-    let limits = vec![
+    let limits: Vec<(i64, &str)> = vec![
         (0, "Unlimited"),
         (100 * 1024, "100 KB/s"),
         (500 * 1024, "500 KB/s"),
@@ -127,7 +127,7 @@ pub fn StatusBar() -> impl IntoView {
                         limits.clone().into_iter().map(|(val, label)| {
                             let is_active = move || {
                                 let current = stats.get().down_limit.unwrap_or(0);
-                                current == val
+                                (current - val).abs() < 1024
                             };
                             view! {
                                 <li>
@@ -180,7 +180,7 @@ pub fn StatusBar() -> impl IntoView {
                         limits.clone().into_iter().map(|(val, label)| {
                             let is_active = move || {
                                 let current = stats.get().up_limit.unwrap_or(0);
-                                current == val
+                                (current - val).abs() < 1024
                             };
                             view! {
                                 <li>

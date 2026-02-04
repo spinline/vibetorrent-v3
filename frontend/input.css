@@ -2,11 +2,11 @@
 @config "./tailwind.config.js";
 
 @plugin "daisyui" {
-    themes: light, dark, dim, nord;
+    themes:
+        light, dark, dim, nord, cupcake, dracula, cyberpunk, emerald, sunset;
 }
 
 @layer base {
-
     html,
     body {
         @apply min-h-[100dvh] w-full overflow-hidden bg-base-100 text-base-content overscroll-y-none;

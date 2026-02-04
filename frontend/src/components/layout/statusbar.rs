@@ -85,16 +85,6 @@ pub fn StatusBar() -> impl IntoView {
         set_up_menu_open.set(false);
     };
 
-    // Register global click listener to close menus when clicking outside
-    let close_menus = move |_| {
-        set_down_menu_open.set(false);
-        set_up_menu_open.set(false);
-        set_theme_open.set(false);
-    };
-    
-    // Use window_event_listener from leptos
-    let _ = window_event_listener(ev::click, close_menus);
-
     view! {
         <div class="h-8 min-h-8 bg-base-200 border-t border-base-300 flex items-center px-4 text-xs gap-4 text-base-content/70">
 
@@ -106,7 +96,7 @@ pub fn StatusBar() -> impl IntoView {
                 <div
                     tabindex="0"
                     role="button"
-                    class="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors select-none"
+                    class="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors select-none relative z-[10001]"
                     title="Global Download Speed - Click to Set Limit"
                     on:click=move |e| {
                         e.stop_propagation();
@@ -116,7 +106,7 @@ pub fn StatusBar() -> impl IntoView {
                     }
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75l3 3m0 0l3-3m-3 3v-7.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3" />
                     </svg>
                     <span class="font-mono">{move || format_speed(stats.get().down_rate)}</span>
                     <Show when=move || (stats.get().down_limit.unwrap_or(0) > 0) fallback=|| ()>
@@ -126,9 +116,18 @@ pub fn StatusBar() -> impl IntoView {
                     </Show>
                 </div>
 
+                <Show when=move || down_menu_open.get() fallback=|| ()>
+                    <div
+                        class="fixed inset-0 z-[9999] cursor-default"
+                        role="button"
+                        tabindex="-1"
+                        on:click=move |_| set_down_menu_open.set(false)
+                    ></div>
+                </Show>
+
                 <ul 
                     tabindex="0" 
-                    class="dropdown-content z-[100] menu p-2 shadow bg-base-200 rounded-box w-40 mb-2 border border-base-300"
+                    class="dropdown-content z-[10000] menu p-2 shadow bg-base-200 rounded-box w-40 mb-2 border border-base-300"
                     on:click=move |e| e.stop_propagation()
                 >
                     {
@@ -166,7 +165,7 @@ pub fn StatusBar() -> impl IntoView {
                 <div
                     tabindex="0"
                     role="button"
-                    class="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors select-none"
+                    class="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors select-none relative z-[10001]"
                     title="Global Upload Speed - Click to Set Limit"
                     on:click=move |e| {
                         e.stop_propagation();
@@ -186,9 +185,18 @@ pub fn StatusBar() -> impl IntoView {
                     </Show>
                 </div>
 
+                <Show when=move || up_menu_open.get() fallback=|| ()>
+                    <div
+                        class="fixed inset-0 z-[9999] cursor-default"
+                        role="button"
+                        tabindex="-1"
+                        on:click=move |_| set_up_menu_open.set(false)
+                    ></div>
+                </Show>
+
                 <ul 
                     tabindex="0" 
-                    class="dropdown-content z-[100] menu p-2 shadow bg-base-200 rounded-box w-40 mb-2 border border-base-300"
+                    class="dropdown-content z-[10000] menu p-2 shadow bg-base-200 rounded-box w-40 mb-2 border border-base-300"
                     on:click=move |e| e.stop_propagation()
                 >
                     {
@@ -230,7 +238,7 @@ pub fn StatusBar() -> impl IntoView {
                     <div
                         tabindex="0"
                         role="button"
-                        class="btn btn-ghost btn-xs btn-square"
+                        class="btn btn-ghost btn-xs btn-square relative z-[10001]"
                         title="Change Theme"
                         on:click=move |e| {
                             e.stop_propagation();
@@ -244,9 +252,18 @@ pub fn StatusBar() -> impl IntoView {
                         </svg>
                     </div>
 
+                    <Show when=move || theme_open.get() fallback=|| ()>
+                        <div
+                            class="fixed inset-0 z-[9999] cursor-default"
+                            role="button"
+                            tabindex="-1"
+                            on:click=move |_| set_theme_open.set(false)
+                        ></div>
+                    </Show>
+
                     <ul 
                         tabindex="0" 
-                        class="dropdown-content z-[100] menu p-2 shadow bg-base-200 rounded-box w-52 mb-2 border border-base-300 max-h-96 overflow-y-auto block"
+                        class="dropdown-content z-[10000] menu p-2 shadow bg-base-200 rounded-box w-52 mb-2 border border-base-300 max-h-96 overflow-y-auto block"
                         on:click=move |e| e.stop_propagation()
                     >
                         {

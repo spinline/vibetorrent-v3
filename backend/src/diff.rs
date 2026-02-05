@@ -1,4 +1,4 @@
-use shared::{AppEvent, Torrent, TorrentUpdate};
+use shared::{AppEvent, NotificationLevel, SystemNotification, Torrent, TorrentStatus, TorrentUpdate};
 
 #[derive(Debug)]
 pub enum DiffResult {
@@ -74,6 +74,14 @@ pub fn diff_torrents(old: &[Torrent], new: &[Torrent]) -> DiffResult {
         if old_t.status != new_t.status {
             update.status = Some(new_t.status.clone());
             has_changes = true;
+
+            // Check for torrent completion: Downloading -> Seeding
+            if old_t.status == TorrentStatus::Downloading && new_t.status == TorrentStatus::Seeding {
+                events.push(AppEvent::Notification(SystemNotification {
+                    level: NotificationLevel::Success,
+                    message: format!("Torrent tamamlandı: {}", new_t.name),
+                }));
+            }
         }
         if old_t.error_message != new_t.error_message {
             update.error_message = Some(new_t.error_message.clone());

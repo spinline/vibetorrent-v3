@@ -11,35 +11,39 @@ pub fn App() -> impl IntoView {
     crate::store::provide_torrent_store();
 
     view! {
-        <div class="drawer lg:drawer-open h-screen w-full" style="height: 100dvh;">
-            <input id="my-drawer" type="checkbox" class="drawer-toggle" />
+        // Main app wrapper - ensures proper stacking context
+        <div class="relative w-full h-screen" style="height: 100dvh;">
+            // Drawer layout
+            <div class="drawer lg:drawer-open h-full w-full">
+                <input id="my-drawer" type="checkbox" class="drawer-toggle" />
 
-            <div class="drawer-content flex flex-col h-full overflow-hidden bg-base-100 text-base-content text-sm select-none">
-                // Toolbar at the top
-                <Toolbar />
+                <div class="drawer-content flex flex-col h-full overflow-hidden bg-base-100 text-base-content text-sm select-none">
+                    // Toolbar at the top
+                    <Toolbar />
 
-                <main class="flex-1 flex flex-col min-w-0 bg-base-100 overflow-hidden">
-                    <Router>
-                        <Routes>
-                            <Route path="/" view=move || view! { <TorrentTable /> } />
-                            <Route path="/settings" view=move || view! { <div class="p-4">"Settings Page (Coming Soon)"</div> } />
-                        </Routes>
-                    </Router>
-                </main>
+                    <main class="flex-1 flex flex-col min-w-0 bg-base-100 overflow-hidden">
+                        <Router>
+                            <Routes>
+                                <Route path="/" view=move || view! { <TorrentTable /> } />
+                                <Route path="/settings" view=move || view! { <div class="p-4">"Settings Page (Coming Soon)"</div> } />
+                            </Routes>
+                        </Router>
+                    </main>
 
-                 // Status Bar at the bottom
-                <StatusBar />
-            </div>
+                     // Status Bar at the bottom
+                    <StatusBar />
+                </div>
 
-            <div class="drawer-side z-40 transition-none duration-0">
-                <label for="my-drawer" aria-label="close sidebar" class="drawer-overlay transition-none duration-0"></label>
-                <div class="menu p-0 min-h-full bg-base-200 text-base-content border-r border-base-300 transition-none duration-0">
-                    <Sidebar />
+                <div class="drawer-side z-40 transition-none duration-0">
+                    <label for="my-drawer" aria-label="close sidebar" class="drawer-overlay transition-none duration-0"></label>
+                    <div class="menu p-0 min-h-full bg-base-200 text-base-content border-r border-base-300 transition-none duration-0">
+                        <Sidebar />
+                    </div>
                 </div>
             </div>
+            
+            // Toast container - fixed positioning relative to viewport
+            <ToastContainer />
         </div>
-        
-        // Toast container - outside drawer for correct fixed positioning
-        <ToastContainer />
     }
 }

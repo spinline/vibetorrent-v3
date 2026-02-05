@@ -71,16 +71,22 @@ pub fn ToastContainer() -> impl IntoView {
     let notifications = store.notifications;
 
     view! {
-        <div class="fixed bottom-4 right-4 z-[9999] flex flex-col gap-2 items-end">
+        // Fixed to viewport with explicit inset values for reliable positioning
+        <div 
+            class="fixed flex flex-col gap-2 items-end pointer-events-none"
+            style="bottom: 16px; right: 16px; z-index: 99999;"
+        >
             <For
                 each=move || notifications.get()
                 key=|item| item.id
                 children=move |item| {
                     view! {
-                        <ToastItem
-                            level=item.notification.level
-                            message=item.notification.message
-                        />
+                        <div class="pointer-events-auto">
+                            <ToastItem
+                                level=item.notification.level
+                                message=item.notification.message
+                            />
+                        </div>
                     }
                 }
             />

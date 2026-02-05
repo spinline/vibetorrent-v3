@@ -11,6 +11,16 @@ pub fn is_ios() -> bool {
         || user_agent.contains("iPod")
 }
 
+/// Check if running on Safari browser
+pub fn is_safari() -> bool {
+    let window = web_sys::window().expect("window should exist");
+    let navigator = window.navigator();
+    let user_agent = navigator.user_agent().unwrap_or_default();
+    
+    // Safari has 'Safari' in UA but Chrome/Edge also have it, so check for Chrome/Chromium absence
+    user_agent.contains("Safari") && !user_agent.contains("Chrome") && !user_agent.contains("Chromium")
+}
+
 /// Check if running as a standalone PWA (installed on home screen)
 pub fn is_standalone() -> bool {
     let window = web_sys::window().expect("window should exist");
@@ -41,28 +51,34 @@ pub fn is_standalone() -> bool {
 }
 
 /// Check if push notifications are supported
-/// Only iOS Safari supports Web Push Notifications (iOS 16.4+)
-/// macOS Safari does NOT support Web Push Notifications
+/// - iOS Safari: Supports Web Push (iOS 16.4+) only in standalone/PWA mode
+/// - macOS Safari: Does NOT support Web Push
+/// - Chrome/Firefox/Edge: Support Web Push on all platforms
 pub fn supports_push_notifications() -> bool {
-    // Only iOS supports web push, not macOS Safari
-    if !is_ios() {
-        return false;
-    }
-    
     let window = web_sys::window().expect("window should exist");
     
-    // Check if Notification API exists
-    if let Ok(notification_class) = js_sys::Reflect::get(&window, &"Notification".into()) {
-        if notification_class.is_undefined() {
+    // If Safari, only iOS Safari supports it (macOS Safari does not)
+    if is_safari() {
+        if !is_ios() {
+            // macOS Safari does not support Web Push
             return false;
         }
-    } else {
-        return false;
+        // iOS Safari supports it, will be checked further in app
+        return true;
     }
     
-    // For iOS, we'll attempt subscription which will check for PushManager
-    // If it's not available, the subscription will fail gracefully
-    true
+    // For non-Safari browsers (Chrome, Firefox, Edge), check for PushManager
+    if let Ok(navigator) = js_sys::Reflect::get(&window, &"navigator".into()) {
+        if let Ok(service_worker) = js_sys::Reflect::get(&navigator, &"serviceWorker".into()) {
+            if !service_worker.is_undefined() {
+                // ServiceWorker exists, assume PushManager support
+                // The actual PushManager check will happen during subscription
+                return true;
+            }
+        }
+    }
+    
+    false
 }
 
 /// Get platform-specific notification message

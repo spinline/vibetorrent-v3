@@ -34,9 +34,7 @@ pub async fn request_notification_permission() -> bool {
 /// Check if browser notifications are supported and permitted
 pub fn is_notification_supported() -> bool {
     let window = web_sys::window().expect("no global window");
-    let supported = js_sys::Reflect::has(&window, &JsValue::from_str("Notification")).unwrap_or(false);
-    log::debug!("📢 Notification API supported: {}", supported);
-    supported
+    js_sys::Reflect::has(&window, &JsValue::from_str("Notification")).unwrap_or(false)
 }
 
 /// Get current notification permission status
@@ -60,14 +58,10 @@ pub fn get_notification_permission() -> String {
 pub fn show_browser_notification(title: &str, body: &str, icon: Option<&str>) -> bool {
     // Check permission first
     let permission = get_notification_permission();
-    log::info!("📢 Notification permission: {}", permission);
-    
     if permission != "granted" {
-        log::warn!("❌ Notification permission not granted: {}", permission);
+        log::warn!("Notification permission not granted: {}", permission);
         return false;
     }
-    
-    log::info!("✅ Permission granted, creating notification: {}", title);
     
     // Create notification options
     let opts = NotificationOptions::new();
@@ -78,17 +72,13 @@ pub fn show_browser_notification(title: &str, body: &str, icon: Option<&str>) ->
     opts.set_require_interaction(false);
     opts.set_silent(Some(false));
     
-    log::info!("🔧 Notification options created");
-    
     // Create and show notification
     match Notification::new_with_options(title, &opts) {
         Ok(_notification) => {
-            log::info!("🔔 Browser notification shown: {}", title);
-            // Note: Tarayıcı 5 saniye sonra otomatik kapatıyor, close() çağrısı gerekmiyor
             true
         }
         Err(e) => {
-            log::error!("❌ Failed to create notification: {:?}", e);
+            log::error!("Failed to create notification: {:?}", e);
             false
         }
     }
@@ -96,8 +86,6 @@ pub fn show_browser_notification(title: &str, body: &str, icon: Option<&str>) ->
 
 /// Show notification only if enabled in settings and permission granted
 pub fn show_notification_if_enabled(title: &str, body: &str) -> bool {
-    log::info!("📬 Checking if notification should be shown: {}", title);
-    
     // Check localStorage for user preference
     let window = web_sys::window().expect("no global window");
     let storage = window.local_storage().ok().flatten();
@@ -109,17 +97,9 @@ pub fn show_notification_if_enabled(title: &str, body: &str) -> bool {
             .flatten()
             .unwrap_or("true".to_string());
         
-        log::info!("💾 Browser notification enabled in settings: {}", enabled);
-        
         if enabled == "true" {
-            let result = show_browser_notification(title, body, None);
-            log::info!("📬 Notification result: {}", if result { "✅ shown" } else { "❌ failed" });
-            return result;
-        } else {
-            log::info!("📭 Browser notifications disabled in settings");
+            return show_browser_notification(title, body, None);
         }
-    } else {
-        log::warn!("⚠️ localStorage not available");
     }
     
     false

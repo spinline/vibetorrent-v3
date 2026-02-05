@@ -1,4 +1,4 @@
-use shared::{AppEvent, NotificationLevel, SystemNotification, Torrent, TorrentStatus, TorrentUpdate};
+use shared::{AppEvent, NotificationLevel, SystemNotification, Torrent, TorrentUpdate};
 
 #[derive(Debug)]
 pub enum DiffResult {
@@ -62,6 +62,15 @@ pub fn diff_torrents(old: &[Torrent], new: &[Torrent]) -> DiffResult {
         if (old_t.percent_complete - new_t.percent_complete).abs() > 0.01 {
             update.percent_complete = Some(new_t.percent_complete);
             has_changes = true;
+
+            // Check for torrent completion: reached 100%
+            if old_t.percent_complete < 100.0 && new_t.percent_complete >= 100.0 {
+                tracing::info!("Torrent completed: {} ({})", new_t.name, new_t.hash);
+                events.push(AppEvent::Notification(SystemNotification {
+                    level: NotificationLevel::Success,
+                    message: format!("Torrent tamamlandı: {}", new_t.name),
+                }));
+            }
         }
         if old_t.completed != new_t.completed {
             update.completed = Some(new_t.completed);
@@ -75,13 +84,11 @@ pub fn diff_torrents(old: &[Torrent], new: &[Torrent]) -> DiffResult {
             update.status = Some(new_t.status.clone());
             has_changes = true;
 
-            // Check for torrent completion: Downloading -> Seeding
-            if old_t.status == TorrentStatus::Downloading && new_t.status == TorrentStatus::Seeding {
-                events.push(AppEvent::Notification(SystemNotification {
-                    level: NotificationLevel::Success,
-                    message: format!("Torrent tamamlandı: {}", new_t.name),
-                }));
-            }
+            // Log status changes for debugging
+            tracing::info!(
+                "Torrent status changed: {} ({}) {:?} -> {:?}",
+                new_t.name, new_t.hash, old_t.status, new_t.status
+            );
         }
         if old_t.error_message != new_t.error_message {
             update.error_message = Some(new_t.error_message.clone());

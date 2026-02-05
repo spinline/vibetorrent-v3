@@ -33,7 +33,7 @@ fn ToastItem(
     view! {
         <div 
             class={format!("alert {} shadow-xl", alert_class)}
-            style="min-width: 300px; padding: 12px 16px;"
+            style="min-width: 200px; max-width: calc(100vw - 40px); padding: 12px 16px;"
         >
             <span style="font-size: 18px;">{icon}</span>
             <span style="font-size: 14px; font-weight: 500;">{message}</span>

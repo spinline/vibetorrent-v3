@@ -18,7 +18,7 @@ pub fn App() -> impl IntoView {
             
             // Check if running on iOS and not standalone
             if let Some(ios_message) = crate::utils::platform::get_ios_notification_info() {
-                tracing::warn!("iOS detected: {}", ios_message);
+                log::warn!("iOS detected: {}", ios_message);
                 
                 // Show toast to inform user
                 if let Some(store) = use_context::<crate::store::TorrentStore>() {
@@ -33,7 +33,7 @@ pub fn App() -> impl IntoView {
             
             // Check if push notifications are supported
             if !crate::utils::platform::supports_push_notifications() {
-                tracing::warn!("Push notifications not supported on this platform");
+                log::warn!("Push notifications not supported on this platform");
                 return;
             }
             
@@ -44,10 +44,10 @@ pub fn App() -> impl IntoView {
                     if let Ok(permission) = js_sys::Reflect::get(&notification_class, &"permission".into()) {
                         if let Some(perm_str) = permission.as_string() {
                             if perm_str == "granted" {
-                                tracing::info!("Notification permission granted, subscribing to push...");
+                                log::info!("Notification permission granted, subscribing to push...");
                                 crate::store::subscribe_to_push_notifications().await;
                             } else {
-                                tracing::info!("Notification permission not granted yet: {}", perm_str);
+                                log::info!("Notification permission not granted yet: {}", perm_str);
                             }
                         }
                     }

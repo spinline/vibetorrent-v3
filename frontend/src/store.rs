@@ -311,7 +311,7 @@ pub async fn subscribe_to_push_notifications() {
     let public_key_response = match Request::get("/api/push/public-key").send().await {
         Ok(resp) => resp,
         Err(e) => {
-            tracing::error!("Failed to get VAPID public key: {:?}", e);
+            log::error!("Failed to get VAPID public key: {:?}", e);
             return;
         }
     };
@@ -319,7 +319,7 @@ pub async fn subscribe_to_push_notifications() {
     let public_key_data: serde_json::Value = match public_key_response.json().await {
         Ok(data) => data,
         Err(e) => {
-            tracing::error!("Failed to parse VAPID public key: {:?}", e);
+            log::error!("Failed to parse VAPID public key: {:?}", e);
             return;
         }
     };
@@ -327,7 +327,7 @@ pub async fn subscribe_to_push_notifications() {
     let public_key = match public_key_data.get("publicKey").and_then(|v| v.as_str()) {
         Some(key) => key,
         None => {
-            tracing::error!("Missing publicKey in response");
+            log::error!("Missing publicKey in response");
             return;
         }
     };
@@ -336,7 +336,7 @@ pub async fn subscribe_to_push_notifications() {
     let public_key_array = match url_base64_to_uint8array(public_key) {
         Ok(arr) => arr,
         Err(e) => {
-            tracing::error!("Failed to convert VAPID key: {:?}", e);
+            log::error!("Failed to convert VAPID key: {:?}", e);
             return;
         }
     };
@@ -349,7 +349,7 @@ pub async fn subscribe_to_push_notifications() {
     let registration_promise = match service_worker.ready() {
         Ok(promise) => promise,
         Err(e) => {
-            tracing::error!("Failed to get ready promise: {:?}", e);
+            log::error!("Failed to get ready promise: {:?}", e);
             return;
         }
     };
@@ -359,7 +359,7 @@ pub async fn subscribe_to_push_notifications() {
     let registration = match registration_future.await {
         Ok(reg) => reg,
         Err(e) => {
-            tracing::error!("Failed to get service worker registration: {:?}", e);
+            log::error!("Failed to get service worker registration: {:?}", e);
             return;
         }
     };
@@ -372,7 +372,7 @@ pub async fn subscribe_to_push_notifications() {
     let push_manager = match service_worker_registration.push_manager() {
         Ok(pm) => pm,
         Err(e) => {
-            tracing::error!("Failed to get push manager: {:?}", e);
+            log::error!("Failed to get push manager: {:?}", e);
             return;
         }
     };
@@ -384,7 +384,7 @@ pub async fn subscribe_to_push_notifications() {
     let subscribe_promise = match push_manager.subscribe_with_options(&subscribe_options) {
         Ok(promise) => promise,
         Err(e) => {
-            tracing::error!("Failed to subscribe to push: {:?}", e);
+            log::error!("Failed to subscribe to push: {:?}", e);
             return;
         }
     };
@@ -394,7 +394,7 @@ pub async fn subscribe_to_push_notifications() {
     let subscription = match subscription_future.await {
         Ok(sub) => sub,
         Err(e) => {
-            tracing::error!("Failed to get push subscription: {:?}", e);
+            log::error!("Failed to get push subscription: {:?}", e);
             return;
         }
     };
@@ -410,13 +410,13 @@ pub async fn subscribe_to_push_notifications() {
             match json_func.call0(&push_subscription) {
                 Ok(result) => result,
                 Err(e) => {
-                    tracing::error!("Failed to call toJSON: {:?}", e);
+                    log::error!("Failed to call toJSON: {:?}", e);
                     return;
                 }
             }
         }
         _ => {
-            tracing::error!("toJSON method not found on PushSubscription");
+            log::error!("toJSON method not found on PushSubscription");
             return;
         }
     };
@@ -424,20 +424,20 @@ pub async fn subscribe_to_push_notifications() {
     let json_value = match js_sys::JSON::stringify(&json_result) {
         Ok(val) => val,
         Err(e) => {
-            tracing::error!("Failed to stringify subscription: {:?}", e);
+            log::error!("Failed to stringify subscription: {:?}", e);
             return;
         }
     };
     
     let subscription_json_str = json_value.as_string().expect("should be string");
     
-    tracing::info!("Push subscription: {}", subscription_json_str);
+    log::info!("Push subscription: {}", subscription_json_str);
     
     // Parse and send to backend
     let subscription_data: serde_json::Value = match serde_json::from_str(&subscription_json_str) {
         Ok(data) => data,
         Err(e) => {
-            tracing::error!("Failed to parse subscription JSON: {:?}", e);
+            log::error!("Failed to parse subscription JSON: {:?}", e);
             return;
         }
     };
@@ -479,15 +479,15 @@ pub async fn subscribe_to_push_notifications() {
     {
         Ok(resp) => resp,
         Err(e) => {
-            tracing::error!("Failed to send subscription to backend: {:?}", e);
+            log::error!("Failed to send subscription to backend: {:?}", e);
             return;
         }
     };
     
     if response.ok() {
-        tracing::info!("Successfully subscribed to push notifications");
+        log::info!("Successfully subscribed to push notifications");
     } else {
-        tracing::error!("Backend rejected push subscription: {:?}", response.status());
+        log::error!("Backend rejected push subscription: {:?}", response.status());
     }
 }
 

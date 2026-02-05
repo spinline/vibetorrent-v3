@@ -9,23 +9,67 @@ use shared::{AppEvent, GlobalStats, Torrent, TorrentStatus};
 use std::convert::Infallible;
 use tokio_stream::StreamExt;
 
+// Field definitions to keep query and parser in sync
+mod fields {
+    pub const IDX_HASH: usize = 0;
+    pub const CMD_HASH: &str = "d.hash=";
+
+    pub const IDX_NAME: usize = 1;
+    pub const CMD_NAME: &str = "d.name=";
+
+    pub const IDX_SIZE: usize = 2;
+    pub const CMD_SIZE: &str = "d.size_bytes=";
+
+    pub const IDX_COMPLETED: usize = 3;
+    pub const CMD_COMPLETED: &str = "d.bytes_done=";
+
+    pub const IDX_DOWN_RATE: usize = 4;
+    pub const CMD_DOWN_RATE: &str = "d.down.rate=";
+
+    pub const IDX_UP_RATE: usize = 5;
+    pub const CMD_UP_RATE: &str = "d.up.rate=";
+
+    pub const IDX_STATE: usize = 6;
+    pub const CMD_STATE: &str = "d.state=";
+
+    pub const IDX_COMPLETE: usize = 7;
+    pub const CMD_COMPLETE: &str = "d.complete=";
+
+    pub const IDX_MESSAGE: usize = 8;
+    pub const CMD_MESSAGE: &str = "d.message=";
+
+    pub const IDX_LEFT_BYTES: usize = 9;
+    pub const CMD_LEFT_BYTES: &str = "d.left_bytes=";
+
+    pub const IDX_CREATION_DATE: usize = 10;
+    pub const CMD_CREATION_DATE: &str = "d.creation_date=";
+
+    pub const IDX_HASHING: usize = 11;
+    pub const CMD_HASHING: &str = "d.hashing=";
+
+    pub const IDX_LABEL: usize = 12;
+    pub const CMD_LABEL: &str = "d.custom1=";
+}
+
+use fields::*;
+
 // Constants for rTorrent fields to ensure query and parser stay in sync
 const RTORRENT_FIELDS: &[&str] = &[
-    "",                 // 0: default (ignored)
-    "main",             // 1: view
-    "d.hash=",          // 0 -> row index starts after view
-    "d.name=",          // 1
-    "d.size_bytes=",    // 2
-    "d.bytes_done=",    // 3
-    "d.down.rate=",     // 4
-    "d.up.rate=",       // 5
-    "d.state=",         // 6
-    "d.complete=",      // 7
-    "d.message=",       // 8
-    "d.left_bytes=",    // 9
-    "d.creation_date=", // 10
-    "d.hashing=",       // 11
-    "d.custom1=",       // 12 (Label)
+    "",     // Ignored by multicall pattern
+    "main", // View
+    CMD_HASH,
+    CMD_NAME,
+    CMD_SIZE,
+    CMD_COMPLETED,
+    CMD_DOWN_RATE,
+    CMD_UP_RATE,
+    CMD_STATE,
+    CMD_COMPLETE,
+    CMD_MESSAGE,
+    CMD_LEFT_BYTES,
+    CMD_CREATION_DATE,
+    CMD_HASHING,
+    CMD_LABEL,
 ];
 
 fn parse_long(s: Option<&String>) -> i64 {
@@ -38,21 +82,20 @@ fn parse_string(s: Option<&String>) -> String {
 
 /// Converts a raw row of strings from rTorrent XML-RPC into a generic Torrent struct
 fn from_rtorrent_row(row: Vec<String>) -> Torrent {
-    // Indexes correspond to the params list below (excluding the first two view/target args)
-    let hash = parse_string(row.get(0));
-    let name = parse_string(row.get(1));
-    let size = parse_long(row.get(2));
-    let completed = parse_long(row.get(3));
-    let down_rate = parse_long(row.get(4));
-    let up_rate = parse_long(row.get(5));
+    let hash = parse_string(row.get(IDX_HASH));
+    let name = parse_string(row.get(IDX_NAME));
+    let size = parse_long(row.get(IDX_SIZE));
+    let completed = parse_long(row.get(IDX_COMPLETED));
+    let down_rate = parse_long(row.get(IDX_DOWN_RATE));
+    let up_rate = parse_long(row.get(IDX_UP_RATE));
 
-    let state = parse_long(row.get(6));
-    let is_complete = parse_long(row.get(7));
-    let message = parse_string(row.get(8));
-    let left_bytes = parse_long(row.get(9));
-    let added_date = parse_long(row.get(10));
-    let is_hashing = parse_long(row.get(11));
-    let label_raw = parse_string(row.get(12));
+    let state = parse_long(row.get(IDX_STATE));
+    let is_complete = parse_long(row.get(IDX_COMPLETE));
+    let message = parse_string(row.get(IDX_MESSAGE));
+    let left_bytes = parse_long(row.get(IDX_LEFT_BYTES));
+    let added_date = parse_long(row.get(IDX_CREATION_DATE));
+    let is_hashing = parse_long(row.get(IDX_HASHING));
+    let label_raw = parse_string(row.get(IDX_LABEL));
 
     let label = if label_raw.is_empty() {
         None

@@ -3,7 +3,7 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use utoipa::ToSchema;
 use web_push::{
-    IsahcWebPushClient, SubscriptionInfo, VapidSignatureBuilder, WebPushClient, WebPushMessageBuilder,
+    HyperWebPushClient, SubscriptionInfo, VapidSignatureBuilder, WebPushClient, WebPushMessageBuilder,
 };
 
 // VAPID keys - PRODUCTION'DA ENVIRONMENT VARIABLE'DAN ALINMALI!
@@ -81,7 +81,7 @@ pub async fn send_push_notification(
         "tag": "vibetorrent"
     });
 
-    let client = IsahcWebPushClient::new()?;
+    let client = HyperWebPushClient::new();
 
     for subscription in subscriptions {
         let subscription_info = SubscriptionInfo {

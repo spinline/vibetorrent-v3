@@ -30,6 +30,6 @@ thiserror = "2.0.18"
 dotenvy = "0.15.7"
 utoipa = { version = "5.4.0", features = ["axum_extras"] }
 utoipa-swagger-ui = { version = "9.0.2", features = ["axum"] }
-web-push = { version = "0.10", optional = true }
+web-push = { version = "0.10", default-features = false, features = ["hyper-client"], optional = true }
 base64 = "0.22"
 openssl = { version = "0.10", features = ["vendored"], optional = true }

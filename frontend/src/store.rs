@@ -213,6 +213,8 @@ pub fn provide_torrent_store() {
                                                     global_stats.set(stats);
                                                 }
                                                 AppEvent::Notification(n) => {
+                                                    log::info!("📬 Received notification: {} - {}", n.level == shared::NotificationLevel::Success, n.message);
+                                                    
                                                     // Show toast notification
                                                     show_toast_with_signal(notifications, n.level.clone(), n.message.clone());
                                                     
@@ -225,6 +227,7 @@ pub fn provide_torrent_store() {
                                                         || n.level == shared::NotificationLevel::Error;
                                                     
                                                     if is_critical {
+                                                        log::info!("🔴 Critical notification detected: {}", n.message);
                                                         let title = match n.level {
                                                             shared::NotificationLevel::Success => "✅ VibeTorrent",
                                                             shared::NotificationLevel::Error => "❌ VibeTorrent",

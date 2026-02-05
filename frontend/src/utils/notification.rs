@@ -82,16 +82,9 @@ pub fn show_browser_notification(title: &str, body: &str, icon: Option<&str>) ->
     
     // Create and show notification
     match Notification::new_with_options(title, &opts) {
-        Ok(notification) => {
+        Ok(_notification) => {
             log::info!("🔔 Browser notification shown: {}", title);
-            
-            let title_owned = title.to_string();
-            // Auto-close after 5 seconds
-            let _ = gloo_timers::callback::Timeout::new(5000, move || {
-                log::info!("⏰ Notification auto-closed: {}", title_owned);
-                notification.close();
-            }).forget();
-            
+            // Note: Tarayıcı 5 saniye sonra otomatik kapatıyor, close() çağrısı gerekmiyor
             true
         }
         Err(e) => {

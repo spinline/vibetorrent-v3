@@ -1,9 +1,10 @@
+use crate::components::layout::sidebar::Sidebar;
+use crate::components::layout::statusbar::StatusBar;
+use crate::components::layout::toolbar::Toolbar;
+use crate::components::toast::ToastContainer;
+use crate::components::torrent::table::TorrentTable;
 use leptos::*;
 use leptos_router::*;
-use crate::components::layout::sidebar::Sidebar;
-use crate::components::layout::toolbar::Toolbar;
-use crate::components::layout::statusbar::StatusBar;
-use crate::components::torrent::table::TorrentTable;
 
 #[component]
 pub fn App() -> impl IntoView {
@@ -12,7 +13,7 @@ pub fn App() -> impl IntoView {
     view! {
         <div class="drawer lg:drawer-open h-screen w-full" style="height: 100dvh;">
             <input id="my-drawer" type="checkbox" class="drawer-toggle" />
-            
+
             <div class="drawer-content flex flex-col h-full overflow-hidden bg-base-100 text-base-content text-sm select-none">
                 // Toolbar at the top
                 <Toolbar />
@@ -25,7 +26,7 @@ pub fn App() -> impl IntoView {
                         </Routes>
                     </Router>
                 </main>
-                
+
                  // Status Bar at the bottom
                 <StatusBar />
             </div>
@@ -36,6 +37,8 @@ pub fn App() -> impl IntoView {
                     <Sidebar />
                 </div>
             </div>
+
+            <ToastContainer />
         </div>
     }
 }

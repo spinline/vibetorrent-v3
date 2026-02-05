@@ -1,7 +1,13 @@
 use futures::StreamExt;
 use gloo_net::eventsource::futures::EventSource;
 use leptos::*;
-use shared::{AppEvent, GlobalStats, Torrent};
+use shared::{AppEvent, GlobalStats, SystemNotification, Torrent};
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct NotificationItem {
+    pub id: u64,
+    pub notification: SystemNotification,
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FilterStatus {
@@ -36,6 +42,7 @@ pub struct TorrentStore {
     pub filter: RwSignal<FilterStatus>,
     pub search_query: RwSignal<String>,
     pub global_stats: RwSignal<GlobalStats>,
+    pub notifications: RwSignal<Vec<NotificationItem>>,
 }
 
 pub fn provide_torrent_store() {
@@ -43,12 +50,14 @@ pub fn provide_torrent_store() {
     let filter = create_rw_signal(FilterStatus::All);
     let search_query = create_rw_signal(String::new());
     let global_stats = create_rw_signal(GlobalStats::default());
+    let notifications = create_rw_signal(Vec::<NotificationItem>::new());
 
     let store = TorrentStore {
         torrents,
         filter,
         search_query,
         global_stats,
+        notifications,
     };
     provide_context(store);
 
@@ -104,6 +113,25 @@ pub fn provide_torrent_store() {
                             }
                             AppEvent::Stats(stats) => {
                                 global_stats.set(stats);
+                            }
+                            AppEvent::Notification(n) => {
+                                let id = js_sys::Date::now() as u64;
+                                let item = NotificationItem {
+                                    id,
+                                    notification: n,
+                                };
+                                notifications.update(|list| list.push(item));
+
+                                // Auto-remove after 5 seconds
+                                let notifications = notifications;
+                                let _ = set_timeout(
+                                    move || {
+                                        notifications.update(|list| {
+                                            list.retain(|i| i.id != id);
+                                        });
+                                    },
+                                    std::time::Duration::from_secs(5),
+                                );
                             }
                         }
                     }

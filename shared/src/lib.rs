@@ -36,6 +36,21 @@ pub enum AppEvent {
     },
     Update(TorrentUpdate),
     Stats(GlobalStats),
+    Notification(SystemNotification),
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
+pub struct SystemNotification {
+    pub level: NotificationLevel,
+    pub message: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema, PartialEq, Eq)]
+pub enum NotificationLevel {
+    Info,
+    Success,
+    Warning,
+    Error,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, ToSchema, Default)]

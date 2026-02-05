@@ -147,6 +147,8 @@ async fn main() {
     tokio::spawn(async move {
         let client = xmlrpc::RtorrentClient::new(&socket_path);
         let mut previous_torrents: Vec<Torrent> = Vec::new();
+        let mut consecutive_errors = 0;
+        let mut backoff_duration = Duration::from_secs(1);
 
         loop {
             // 1. Fetch Torrents
@@ -158,6 +160,21 @@ async fn main() {
             // Handle Torrents
             match torrents_result {
                 Ok(new_torrents) => {
+                    // Check if we recovered from an error state
+                    if consecutive_errors > 0 {
+                        tracing::info!(
+                            "Reconnected to rTorrent after {} failures.",
+                            consecutive_errors
+                        );
+                        let _ =
+                            event_bus_tx.send(AppEvent::Notification(shared::SystemNotification {
+                                level: shared::NotificationLevel::Success,
+                                message: "Reconnected to rTorrent".to_string(),
+                            }));
+                        consecutive_errors = 0;
+                        backoff_duration = Duration::from_secs(1);
+                    }
+
                     // Update latest state
                     let _ = tx_clone.send(new_torrents.clone());
 
@@ -186,6 +203,23 @@ async fn main() {
                 }
                 Err(e) => {
                     tracing::error!("Error fetching torrents in background: {}", e);
+                    consecutive_errors += 1;
+
+                    // If this is the first error after success (or startup), notify clients
+                    if consecutive_errors == 1 {
+                        let _ =
+                            event_bus_tx.send(AppEvent::Notification(shared::SystemNotification {
+                                level: shared::NotificationLevel::Error,
+                                message: format!("Lost connection to rTorrent: {}", e),
+                            }));
+                    }
+
+                    // Exponential backoff with a cap of 30 seconds
+                    backoff_duration = std::cmp::min(backoff_duration * 2, Duration::from_secs(30));
+                    tracing::warn!(
+                        "Backoff: Sleeping for {:?} due to rTorrent error.",
+                        backoff_duration
+                    );
                 }
             }
 
@@ -199,7 +233,7 @@ async fn main() {
                 }
             }
 
-            tokio::time::sleep(Duration::from_secs(1)).await;
+            tokio::time::sleep(backoff_duration).await;
         }
     });
 

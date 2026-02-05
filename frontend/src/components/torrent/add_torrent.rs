@@ -89,7 +89,7 @@ pub fn AddTorrentModal(
     };
 
     view! {
-        <dialog node_ref=dialog_ref class="modal modal-bottom sm:modal-middle" on:close=move |_| on_close.call(())>
+        <dialog node_ref=dialog_ref class="modal modal-bottom sm:modal-middle">
             <div class="modal-box">
                 <h3 class="font-bold text-lg">"Add Torrent"</h3>
                 <p class="py-4">"Enter a Magnet URI or direct URL to a .torrent file."</p>

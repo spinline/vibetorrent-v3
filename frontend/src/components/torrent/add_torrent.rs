@@ -1,5 +1,6 @@
 use leptos::*;
 use leptos::html::Dialog;
+use crate::store::{toast_success, toast_error, toast_warning};
 
 
 #[component]
@@ -22,6 +23,7 @@ pub fn AddTorrentModal(
     let handle_submit = move |_| {
         let uri_val = uri.get();
         if uri_val.is_empty() {
+            toast_warning("Lütfen bir Magnet URI veya URL girin");
             set_error_msg.set(Some("Please enter a Magnet URI or URL".to_string()));
             return;
         }
@@ -42,6 +44,7 @@ pub fn AddTorrentModal(
                         Ok(resp) => {
                             if resp.ok() {
                                 logging::log!("Torrent added successfully");
+                                toast_success("Torrent eklendi");
                                 set_loading.set(false);
                                 if let Some(dialog) = dialog_ref.get() {
                                     dialog.close();
@@ -51,12 +54,14 @@ pub fn AddTorrentModal(
                                 let status = resp.status();
                                 let text = resp.text().await.unwrap_or_default();
                                 logging::error!("Failed to add torrent: {} - {}", status, text);
+                                toast_error("Torrent eklenemedi");
                                 set_error_msg.set(Some(format!("Error {}: {}", status, text)));
                                 set_loading.set(false);
                             }
                         }
                         Err(e) => {
                             logging::error!("Network error: {}", e);
+                            toast_error("Bağlantı hatası");
                             set_error_msg.set(Some(format!("Network Error: {}", e)));
                             set_loading.set(false);
                         }
@@ -64,6 +69,7 @@ pub fn AddTorrentModal(
                 }
                 Err(e) => {
                     logging::error!("Serialization error: {}", e);
+                    toast_error("İstek hatası");
                     set_error_msg.set(Some(format!("Request Error: {}", e)));
                     set_loading.set(false);
                 }

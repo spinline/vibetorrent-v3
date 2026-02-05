@@ -1,12 +1,78 @@
 use futures::StreamExt;
 use gloo_net::eventsource::futures::EventSource;
 use leptos::*;
-use shared::{AppEvent, GlobalStats, SystemNotification, Torrent};
+use shared::{AppEvent, GlobalStats, NotificationLevel, SystemNotification, Torrent};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct NotificationItem {
     pub id: u64,
     pub notification: SystemNotification,
+}
+
+// ============================================================================
+// Toast Helper Functions (Clean Code: Single Responsibility)
+// ============================================================================
+
+/// Shows a toast notification with the given level and message.
+/// Auto-removes after 5 seconds.
+pub fn show_toast(level: NotificationLevel, message: impl Into<String>) {
+    if let Some(store) = use_context::<TorrentStore>() {
+        let id = js_sys::Date::now() as u64;
+        let notification = SystemNotification {
+            level,
+            message: message.into(),
+        };
+        let item = NotificationItem { id, notification };
+        
+        store.notifications.update(|list| list.push(item));
+        
+        // Auto-remove after 5 seconds
+        let notifications = store.notifications;
+        let _ = set_timeout(
+            move || {
+                notifications.update(|list| list.retain(|i| i.id != id));
+            },
+            std::time::Duration::from_secs(5),
+        );
+    }
+}
+
+/// Convenience function for success toasts
+pub fn toast_success(message: impl Into<String>) {
+    show_toast(NotificationLevel::Success, message);
+}
+
+/// Convenience function for error toasts
+pub fn toast_error(message: impl Into<String>) {
+    show_toast(NotificationLevel::Error, message);
+}
+
+/// Convenience function for info toasts
+pub fn toast_info(message: impl Into<String>) {
+    show_toast(NotificationLevel::Info, message);
+}
+
+/// Convenience function for warning toasts
+pub fn toast_warning(message: impl Into<String>) {
+    show_toast(NotificationLevel::Warning, message);
+}
+
+// ============================================================================
+// Action Message Mapping (Clean Code: DRY Principle)
+// ============================================================================
+
+/// Maps torrent action strings to user-friendly Turkish messages.
+/// Returns (success_message, error_message)
+pub fn get_action_messages(action: &str) -> (&'static str, &'static str) {
+    match action {
+        "start" => ("Torrent başlatıldı", "Torrent başlatılamadı"),
+        "stop" => ("Torrent durduruldu", "Torrent durdurulamadı"),
+        "pause" => ("Torrent duraklatıldı", "Torrent duraklatılamadı"),
+        "delete" => ("Torrent silindi", "Torrent silinemedi"),
+        "delete_with_data" => ("Torrent ve verileri silindi", "Torrent silinemedi"),
+        "recheck" => ("Torrent kontrol ediliyor", "Kontrol başlatılamadı"),
+        _ => ("İşlem tamamlandı", "İşlem başarısız"),
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

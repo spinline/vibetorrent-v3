@@ -1,6 +1,7 @@
 use leptos::*;
 use wasm_bindgen::closure::Closure;
 use wasm_bindgen::JsCast;
+use crate::store::{get_action_messages, toast_success, toast_error};
 
 fn format_bytes(bytes: i64) -> String {
     const UNITS: [&str; 6] = ["B", "KB", "MB", "GB", "TB", "PB"];
@@ -181,6 +182,11 @@ pub fn TorrentTable() -> impl IntoView {
         logging::log!("TorrentTable Action: {} on {}", action, hash);
         set_menu_visible.set(false); // Close menu immediately
 
+        // Get action messages for toast (Clean Code: DRY)
+        let (success_msg, error_msg) = get_action_messages(&action);
+        let success_msg = success_msg.to_string();
+        let error_msg = error_msg.to_string();
+
         spawn_local(async move {
             let action_req = if action == "delete_with_data" {
                 "delete_with_data"
@@ -204,13 +210,21 @@ pub fn TorrentTable() -> impl IntoView {
                                 resp.status(),
                                 resp.status_text()
                             );
+                            toast_error(error_msg);
                         } else {
                             logging::log!("Action {} executed successfully", action);
+                            toast_success(success_msg);
                         }
                     }
-                    Err(e) => logging::error!("Network error executing action: {}", e),
+                    Err(e) => {
+                        logging::error!("Network error executing action: {}", e);
+                        toast_error(format!("{}: Bağlantı hatası", error_msg));
+                    }
                 },
-                Err(e) => logging::error!("Failed to serialize request: {}", e),
+                Err(e) => {
+                    logging::error!("Failed to serialize request: {}", e);
+                    toast_error(error_msg);
+                }
             }
         });
     };

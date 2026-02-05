@@ -10,6 +10,31 @@ use leptos_router::*;
 pub fn App() -> impl IntoView {
     crate::store::provide_torrent_store();
 
+    // Initialize push notifications after user grants permission
+    create_effect(move |_| {
+        spawn_local(async {
+            // Wait a bit for service worker to be ready
+            gloo_timers::future::TimeoutFuture::new(2000).await;
+            
+            // Check if Notification API is available and permission is granted
+            let window = web_sys::window().expect("window should exist");
+            if let Ok(notification_class) = js_sys::Reflect::get(&window, &"Notification".into()) {
+                if !notification_class.is_undefined() {
+                    if let Ok(permission) = js_sys::Reflect::get(&notification_class, &"permission".into()) {
+                        if let Some(perm_str) = permission.as_string() {
+                            if perm_str == "granted" {
+                                tracing::info!("Notification permission granted, subscribing to push...");
+                                crate::store::subscribe_to_push_notifications().await;
+                            } else {
+                                tracing::info!("Notification permission not granted yet: {}", perm_str);
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    });
+
     view! {
         // Main app wrapper - ensures proper stacking context
         <div class="relative w-full h-screen" style="height: 100dvh;">

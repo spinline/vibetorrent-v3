@@ -282,3 +282,234 @@ pub fn provide_torrent_store() {
         });
     });
 }
+
+// ============================================================================
+// Push Notification Subscription
+// ============================================================================
+
+use serde::{Deserialize, Serialize};
+use wasm_bindgen::prelude::*;
+
+#[derive(Serialize, Deserialize, Debug)]
+struct PushSubscriptionData {
+    endpoint: String,
+    keys: PushKeys,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct PushKeys {
+    p256dh: String,
+    auth: String,
+}
+
+/// Subscribe user to push notifications
+/// Call this after service worker is registered and notification permission is granted
+pub async fn subscribe_to_push_notifications() {
+    use gloo_net::http::Request;
+    
+    // Get VAPID public key from backend
+    let public_key_response = match Request::get("/api/push/public-key").send().await {
+        Ok(resp) => resp,
+        Err(e) => {
+            tracing::error!("Failed to get VAPID public key: {:?}", e);
+            return;
+        }
+    };
+    
+    let public_key_data: serde_json::Value = match public_key_response.json().await {
+        Ok(data) => data,
+        Err(e) => {
+            tracing::error!("Failed to parse VAPID public key: {:?}", e);
+            return;
+        }
+    };
+    
+    let public_key = match public_key_data.get("publicKey").and_then(|v| v.as_str()) {
+        Some(key) => key,
+        None => {
+            tracing::error!("Missing publicKey in response");
+            return;
+        }
+    };
+    
+    // Convert VAPID public key to Uint8Array
+    let public_key_array = match url_base64_to_uint8array(public_key) {
+        Ok(arr) => arr,
+        Err(e) => {
+            tracing::error!("Failed to convert VAPID key: {:?}", e);
+            return;
+        }
+    };
+    
+    // Get service worker registration
+    let window = web_sys::window().expect("window should exist");
+    let navigator = window.navigator();
+    let service_worker = navigator.service_worker();
+    
+    let registration_promise = match service_worker.ready() {
+        Ok(promise) => promise,
+        Err(e) => {
+            tracing::error!("Failed to get ready promise: {:?}", e);
+            return;
+        }
+    };
+    
+    let registration_future = wasm_bindgen_futures::JsFuture::from(registration_promise);
+    
+    let registration = match registration_future.await {
+        Ok(reg) => reg,
+        Err(e) => {
+            tracing::error!("Failed to get service worker registration: {:?}", e);
+            return;
+        }
+    };
+    
+    let service_worker_registration = registration
+        .dyn_into::<web_sys::ServiceWorkerRegistration>()
+        .expect("should be ServiceWorkerRegistration");
+    
+    // Subscribe to push
+    let push_manager = match service_worker_registration.push_manager() {
+        Ok(pm) => pm,
+        Err(e) => {
+            tracing::error!("Failed to get push manager: {:?}", e);
+            return;
+        }
+    };
+    
+    let subscribe_options = web_sys::PushSubscriptionOptionsInit::new();
+    subscribe_options.set_user_visible_only(true);
+    subscribe_options.set_application_server_key(&public_key_array);
+    
+    let subscribe_promise = match push_manager.subscribe_with_options(&subscribe_options) {
+        Ok(promise) => promise,
+        Err(e) => {
+            tracing::error!("Failed to subscribe to push: {:?}", e);
+            return;
+        }
+    };
+    
+    let subscription_future = wasm_bindgen_futures::JsFuture::from(subscribe_promise);
+    
+    let subscription = match subscription_future.await {
+        Ok(sub) => sub,
+        Err(e) => {
+            tracing::error!("Failed to get push subscription: {:?}", e);
+            return;
+        }
+    };
+    
+    let push_subscription = subscription
+        .dyn_into::<web_sys::PushSubscription>()
+        .expect("should be PushSubscription");
+    
+    // Get subscription JSON using toJSON() method
+    let json_result = match js_sys::Reflect::get(&push_subscription, &"toJSON".into()) {
+        Ok(func) if func.is_function() => {
+            let json_func = js_sys::Function::from(func);
+            match json_func.call0(&push_subscription) {
+                Ok(result) => result,
+                Err(e) => {
+                    tracing::error!("Failed to call toJSON: {:?}", e);
+                    return;
+                }
+            }
+        }
+        _ => {
+            tracing::error!("toJSON method not found on PushSubscription");
+            return;
+        }
+    };
+    
+    let json_value = match js_sys::JSON::stringify(&json_result) {
+        Ok(val) => val,
+        Err(e) => {
+            tracing::error!("Failed to stringify subscription: {:?}", e);
+            return;
+        }
+    };
+    
+    let subscription_json_str = json_value.as_string().expect("should be string");
+    
+    tracing::info!("Push subscription: {}", subscription_json_str);
+    
+    // Parse and send to backend
+    let subscription_data: serde_json::Value = match serde_json::from_str(&subscription_json_str) {
+        Ok(data) => data,
+        Err(e) => {
+            tracing::error!("Failed to parse subscription JSON: {:?}", e);
+            return;
+        }
+    };
+    
+    // Extract endpoint and keys
+    let endpoint = subscription_data
+        .get("endpoint")
+        .and_then(|v| v.as_str())
+        .expect("endpoint should exist")
+        .to_string();
+    
+    let keys_obj = subscription_data
+        .get("keys")
+        .expect("keys should exist");
+    
+    let p256dh = keys_obj
+        .get("p256dh")
+        .and_then(|v| v.as_str())
+        .expect("p256dh should exist")
+        .to_string();
+    
+    let auth = keys_obj
+        .get("auth")
+        .and_then(|v| v.as_str())
+        .expect("auth should exist")
+        .to_string();
+    
+    let push_data = PushSubscriptionData {
+        endpoint,
+        keys: PushKeys { p256dh, auth },
+    };
+    
+    // Send to backend
+    let response = match Request::post("/api/push/subscribe")
+        .json(&push_data)
+        .expect("serialization should succeed")
+        .send()
+        .await
+    {
+        Ok(resp) => resp,
+        Err(e) => {
+            tracing::error!("Failed to send subscription to backend: {:?}", e);
+            return;
+        }
+    };
+    
+    if response.ok() {
+        tracing::info!("Successfully subscribed to push notifications");
+    } else {
+        tracing::error!("Backend rejected push subscription: {:?}", response.status());
+    }
+}
+
+/// Helper to convert URL-safe base64 string to Uint8Array
+fn url_base64_to_uint8array(base64_string: &str) -> Result<js_sys::Uint8Array, JsValue> {
+    // Add padding
+    let padding = (4 - (base64_string.len() % 4)) % 4;
+    let mut padded = base64_string.to_string();
+    padded.push_str(&"=".repeat(padding));
+    
+    // Replace URL-safe characters
+    let standard_base64 = padded.replace('-', "+").replace('_', "/");
+    
+    // Decode base64
+    let window = web_sys::window().ok_or_else(|| JsValue::from_str("no window"))?;
+    let decoded = window.atob(&standard_base64)?;
+    
+    // Convert to Uint8Array
+    let array = js_sys::Uint8Array::new_with_length(decoded.len() as u32);
+    for (i, byte) in decoded.bytes().enumerate() {
+        array.set_index(i as u32, byte);
+    }
+    
+    Ok(array)
+}

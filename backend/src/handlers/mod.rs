@@ -1,4 +1,5 @@
 use crate::{
+    push,
     xmlrpc::{self, RpcParam},
     AppState,
 };
@@ -672,4 +673,40 @@ pub async fn handle_timeout_error(err: BoxError) -> (StatusCode, &'static str) {
             "Unhandled internal error",
         )
     }
+}
+
+// --- PUSH NOTIFICATION HANDLERS ---
+
+/// Get VAPID public key for push subscription
+#[utoipa::path(
+    get,
+    path = "/api/push/public-key",
+    responses(
+        (status = 200, description = "VAPID public key", body = String)
+    )
+)]
+pub async fn get_push_public_key_handler() -> impl IntoResponse {
+    let public_key = push::get_vapid_public_key();
+    (StatusCode::OK, Json(serde_json::json!({ "publicKey": public_key }))).into_response()
+}
+
+/// Subscribe to push notifications
+#[utoipa::path(
+    post,
+    path = "/api/push/subscribe",
+    request_body = push::PushSubscription,
+    responses(
+        (status = 200, description = "Subscription saved"),
+        (status = 400, description = "Invalid subscription data")
+    )
+)]
+pub async fn subscribe_push_handler(
+    State(state): State<AppState>,
+    Json(subscription): Json<push::PushSubscription>,
+) -> impl IntoResponse {
+    tracing::info!("Received push subscription: {:?}", subscription);
+    
+    state.push_store.add_subscription(subscription).await;
+    
+    (StatusCode::OK, "Subscription saved").into_response()
 }

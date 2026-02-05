@@ -1,5 +1,6 @@
 mod diff;
 mod handlers;
+mod push;
 mod scgi;
 mod sse;
 mod xmlrpc;
@@ -30,6 +31,7 @@ pub struct AppState {
     pub tx: Arc<watch::Sender<Vec<Torrent>>>,
     pub event_bus: broadcast::Sender<AppEvent>,
     pub scgi_socket_path: String,
+    pub push_store: push::PushSubscriptionStore,
 }
 
 #[derive(Parser, Debug)]
@@ -61,7 +63,9 @@ struct Args {
         handlers::set_file_priority_handler,
         handlers::set_label_handler,
         handlers::get_global_limit_handler,
-        handlers::set_global_limit_handler
+        handlers::set_global_limit_handler,
+        handlers::get_push_public_key_handler,
+        handlers::subscribe_push_handler
     ),
     components(
         schemas(
@@ -74,7 +78,9 @@ struct Args {
             shared::TorrentTracker,
             shared::SetFilePriorityRequest,
             shared::SetLabelRequest,
-            shared::GlobalLimitRequest
+            shared::GlobalLimitRequest,
+            push::PushSubscription,
+            push::PushKeys
         )
     ),
     tags(
@@ -137,12 +143,14 @@ async fn main() {
         tx: tx.clone(),
         event_bus: event_bus.clone(),
         scgi_socket_path: args.socket.clone(),
+        push_store: push::PushSubscriptionStore::new(),
     };
 
     // Spawn background task to poll rTorrent
     let tx_clone = tx.clone();
     let event_bus_tx = event_bus.clone();
     let socket_path = args.socket.clone(); // Clone for background task
+    let push_store_clone = app_state.push_store.clone();
 
     tokio::spawn(async move {
         let client = xmlrpc::RtorrentClient::new(&socket_path);
@@ -193,6 +201,26 @@ async fn main() {
                         }
                         diff::DiffResult::Partial(updates) => {
                             for update in updates {
+                                // Check if this is a torrent completion notification
+                                if let AppEvent::Notification(ref notif) = update {
+                                    if notif.message.contains("tamamlandı") {
+                                        // Send push notification in background
+                                        let push_store = push_store_clone.clone();
+                                        let title = "Torrent Tamamlandı".to_string();
+                                        let body = notif.message.clone();
+                                        tokio::spawn(async move {
+                                            if let Err(e) = push::send_push_notification(
+                                                &push_store,
+                                                &title,
+                                                &body,
+                                            )
+                                            .await
+                                            {
+                                                tracing::error!("Failed to send push notification: {}", e);
+                                            }
+                                        });
+                                    }
+                                }
                                 let _ = event_bus_tx.send(update);
                             }
                         }
@@ -267,6 +295,8 @@ async fn main() {
             "/api/settings/global-limits",
             get(handlers::get_global_limit_handler).post(handlers::set_global_limit_handler),
         )
+        .route("/api/push/public-key", get(handlers::get_push_public_key_handler))
+        .route("/api/push/subscribe", post(handlers::subscribe_push_handler))
         .fallback(handlers::static_handler) // Serve static files for everything else
         .layer(TraceLayer::new_for_http())
         .layer(

@@ -41,7 +41,13 @@ web-sys = { version = "0.3", features = [
     "Navigator",
     "Notification",
     "NotificationOptions",
-    "NotificationPermission"
+    "NotificationPermission",
+    "ServiceWorkerContainer",
+    "ServiceWorkerRegistration",
+    "PushManager",
+    "PushSubscription",
+    "PushSubscriptionOptions",
+    "PushSubscriptionOptionsInit"
 ] }
 shared = { path = "../shared" }
 tailwind_fuse = "0.3.2"

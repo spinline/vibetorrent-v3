@@ -41,19 +41,28 @@ pub fn is_standalone() -> bool {
 }
 
 /// Check if push notifications are supported
+/// Only iOS Safari supports Web Push Notifications (iOS 16.4+)
+/// macOS Safari does NOT support Web Push Notifications
 pub fn supports_push_notifications() -> bool {
-    let window = web_sys::window().expect("window should exist");
-    
-    // Check if PushManager exists
-    if let Ok(navigator) = js_sys::Reflect::get(&window, &"navigator".into()) {
-        if let Ok(service_worker) = js_sys::Reflect::get(&navigator, &"serviceWorker".into()) {
-            if let Ok(push_manager) = js_sys::Reflect::get(&service_worker, &"PushManager".into()) {
-                return !push_manager.is_undefined();
-            }
-        }
+    // Only iOS supports web push, not macOS Safari
+    if !is_ios() {
+        return false;
     }
     
-    false
+    let window = web_sys::window().expect("window should exist");
+    
+    // Check if Notification API exists
+    if let Ok(notification_class) = js_sys::Reflect::get(&window, &"Notification".into()) {
+        if notification_class.is_undefined() {
+            return false;
+        }
+    } else {
+        return false;
+    }
+    
+    // For iOS, we'll attempt subscription which will check for PushManager
+    // If it's not available, the subscription will fail gracefully
+    true
 }
 
 /// Get platform-specific notification message

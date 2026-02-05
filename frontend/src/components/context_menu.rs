@@ -11,10 +11,9 @@ pub fn ContextMenu(
     let handle_action = move |action: &str| {
         let hash = torrent_hash.clone();
         let action_str = action.to_string();
-        
+
         logging::log!("ContextMenu: Action '{}' for hash '{}'", action_str, hash);
-        on_action.call((action_str, hash)); // Delegate FIRST
-        on_close.call(()); // Close menu AFTER
+        on_action.call((action_str, hash)); // Delegate to parent
     };
 
     if !visible {
@@ -23,24 +22,24 @@ pub fn ContextMenu(
 
     view! {
         // Backdrop to catch clicks outside
-        <div 
-            class="fixed inset-0 z-[99] cursor-default" 
+        <div
+            class="fixed inset-0 z-[99] cursor-default"
             role="button"
             tabindex="-1"
             on:click=move |_| on_close.call(())
             on:contextmenu=move |e| e.prevent_default()
         ></div>
 
-        <div 
+        <div
             class="fixed z-[100] min-w-[200px] animate-in fade-in zoom-in-95 duration-100"
             style=format!("left: {}px; top: {}px", position.0, position.1)
             on:contextmenu=move |e| e.prevent_default()
         >
             <ul class="menu bg-base-200 text-base-content rounded-box shadow-xl border border-white/5 p-2 gap-1">
 
-                
+
                 <li>
-                    <button 
+                    <button
                         class="gap-3 active:bg-primary active:text-primary-content"
                         on:click={
                             let handle_action = handle_action.clone();
@@ -52,8 +51,8 @@ pub fn ContextMenu(
                     </button>
                 </li>
 
-                <li>    
-                    <button 
+                <li>
+                    <button
                         class="gap-3 active:bg-primary active:text-primary-content"
                         on:click={
                             let handle_action = handle_action.clone();
@@ -64,11 +63,11 @@ pub fn ContextMenu(
                         "Pause"
                     </button>
                 </li>
-                
+
                 <div class="divider my-0 h-px p-0 opacity-10"></div>
-                
+
                 <li>
-                    <button 
+                    <button
                         class="gap-3 text-error hover:bg-error/10 active:bg-error active:text-error-content"
                         on:click={
                             let handle_action = handle_action.clone();
@@ -79,9 +78,9 @@ pub fn ContextMenu(
                         "Delete"
                     </button>
                 </li>
-                
+
                 <li>
-                    <button 
+                    <button
                         class="gap-3 text-error hover:bg-error/10 active:bg-error active:text-error-content text-xs"
                         on:click={
                             let handle_action = handle_action.clone();

@@ -10,3 +10,15 @@ command_arguments = ["-c", "npx @tailwindcss/cli -i input.css -o public/tailwind
 [build]
 target = "index.html"
 dist = "dist"
+
+[[copy]]
+source = "manifest.json"
+target = "manifest.json"
+
+[[copy]]
+source = "icon-192.png"
+target = "icon-192.png"
+
+[[copy]]
+source = "sw.js"
+target = "sw.js"

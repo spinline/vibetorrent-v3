@@ -204,6 +204,29 @@ pub fn TorrentTable() -> impl IntoView {
                                 resp.status(),
                                 resp.status_text()
                             );
+
+                            // Add notification
+                            let id = js_sys::Date::now() as u64;
+                            store.notifications.update(|list| {
+                                list.push(crate::store::NotificationItem {
+                                    id,
+                                    notification: shared::SystemNotification {
+                                        level: shared::NotificationLevel::Error,
+                                        message: format!("Action failed: {}", resp.status_text()),
+                                    },
+                                });
+                            });
+
+                            // Auto-remove notification
+                            let notifications = store.notifications;
+                            let _ = set_timeout(
+                                move || {
+                                    notifications.update(|list| {
+                                        list.retain(|i| i.id != id);
+                                    });
+                                },
+                                std::time::Duration::from_secs(5),
+                            );
                         } else {
                             logging::log!("Action {} executed successfully", action);
                         }

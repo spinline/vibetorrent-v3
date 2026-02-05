@@ -37,24 +37,9 @@ pub fn App() -> impl IntoView {
                 return;
             }
             
-            // Check if Notification API is available
-            let window = web_sys::window().expect("window should exist");
-            if let Ok(notification_class) = js_sys::Reflect::get(&window, &"Notification".into()) {
-                if !notification_class.is_undefined() {
-                    if let Ok(permission) = js_sys::Reflect::get(&notification_class, &"permission".into()) {
-                        if let Some(perm_str) = permission.as_string() {
-                            // Subscribe if permission is granted or default (not denied)
-                            // The browser will show permission prompt if needed
-                            if perm_str != "denied" {
-                                log::info!("Subscribing to push notifications (permission: {})", perm_str);
-                                crate::store::subscribe_to_push_notifications().await;
-                            } else {
-                                log::info!("Notification permission denied");
-                            }
-                        }
-                    }
-                }
-            }
+            // Attempt to subscribe - this will request permission if needed
+            log::info!("Attempting to subscribe to push notifications...");
+            crate::store::subscribe_to_push_notifications().await;
         });
     });
 

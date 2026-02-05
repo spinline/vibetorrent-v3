@@ -303,9 +303,39 @@ struct PushKeys {
 }
 
 /// Subscribe user to push notifications
-/// Call this after service worker is registered and notification permission is granted
+/// Requests notification permission if needed, then subscribes to push
 pub async fn subscribe_to_push_notifications() {
     use gloo_net::http::Request;
+    
+    // First, request notification permission if not already granted
+    let window = web_sys::window().expect("window should exist");
+    if let Ok(notification_class) = js_sys::Reflect::get(&window, &"Notification".into()) {
+        if !notification_class.is_undefined() {
+            if let Ok(request_fn) = js_sys::Reflect::get(&notification_class, &"requestPermission".into()) {
+                if request_fn.is_function() {
+                    let request_fn_typed = js_sys::Function::from(request_fn);
+                    match request_fn_typed.call0(&notification_class) {
+                        Ok(promise_val) => {
+                            let request_future = wasm_bindgen_futures::JsFuture::from(
+                                web_sys::js_sys::Promise::from(promise_val)
+                            );
+                            match request_future.await {
+                                Ok(_) => {
+                                    log::info!("Notification permission requested");
+                                }
+                                Err(e) => {
+                                    log::warn!("Failed to request notification permission: {:?}", e);
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            log::warn!("Failed to call requestPermission: {:?}", e);
+                        }
+                    }
+                }
+            }
+        }
+    }
     
     // Get VAPID public key from backend
     let public_key_response = match Request::get("/api/push/public-key").send().await {

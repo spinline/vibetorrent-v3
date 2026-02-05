@@ -37,8 +37,9 @@ pub fn App() -> impl IntoView {
                     <Sidebar />
                 </div>
             </div>
-
-            <ToastContainer />
         </div>
+        
+        // Toast container - outside drawer for correct fixed positioning
+        <ToastContainer />
     }
 }

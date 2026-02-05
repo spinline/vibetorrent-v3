@@ -71,7 +71,7 @@ pub fn ToastContainer() -> impl IntoView {
     let notifications = store.notifications;
 
     view! {
-        <div class="toast toast-end toast-bottom z-[9999] gap-2">
+        <div class="fixed bottom-4 right-4 z-[9999] flex flex-col gap-2 items-end">
             <For
                 each=move || notifications.get()
                 key=|item| item.id

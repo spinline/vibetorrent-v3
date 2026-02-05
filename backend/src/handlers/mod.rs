@@ -85,24 +85,12 @@ pub async fn add_torrent_handler(
                 tracing::error!("rTorrent returned fault: {}", response);
                 return StatusCode::INTERNAL_SERVER_ERROR;
             }
-            let _ =
-                state
-                    .event_bus
-                    .send(shared::AppEvent::Notification(shared::SystemNotification {
-                        level: shared::NotificationLevel::Success,
-                        message: "Torrent added successfully".to_string(),
-                    }));
+            // Note: Frontend shows its own toast, no SSE notification needed
             StatusCode::OK
         }
         Err(e) => {
             tracing::error!("Failed to add torrent: {}", e);
-            let _ =
-                state
-                    .event_bus
-                    .send(shared::AppEvent::Notification(shared::SystemNotification {
-                        level: shared::NotificationLevel::Error,
-                        message: format!("Failed to add torrent: {}", e),
-                    }));
+            // Note: Frontend shows its own toast, no SSE notification needed
             StatusCode::INTERNAL_SERVER_ERROR
         }
     }
@@ -136,12 +124,7 @@ pub async fn handle_torrent_action(
     if payload.action == "delete_with_data" {
         return match delete_torrent_with_data(&client, &payload.hash).await {
             Ok(msg) => {
-                let _ = state.event_bus.send(shared::AppEvent::Notification(
-                    shared::SystemNotification {
-                        level: shared::NotificationLevel::Success,
-                        message: format!("Torrent deleted with data: {}", payload.hash),
-                    },
-                ));
+                // Note: Frontend shows its own toast
                 (StatusCode::OK, msg).into_response()
             }
             Err((status, msg)) => (status, msg).into_response(),
@@ -159,13 +142,7 @@ pub async fn handle_torrent_action(
 
     match client.call(method, &params).await {
         Ok(_) => {
-            let _ =
-                state
-                    .event_bus
-                    .send(shared::AppEvent::Notification(shared::SystemNotification {
-                        level: shared::NotificationLevel::Info,
-                        message: format!("Action '{}' executed on torrent", payload.action),
-                    }));
+            // Note: Frontend shows its own toast, no SSE notification needed
             (StatusCode::OK, "Action executed").into_response()
         }
         Err(e) => {

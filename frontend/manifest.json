@@ -3,6 +3,7 @@
     "short_name": "VibeTorrent",
     "description": "Modern web-based torrent client with real-time updates",
     "start_url": "/",
+    "scope": "/",
     "display": "standalone",
     "background_color": "#1d232a",
     "theme_color": "#1d232a",

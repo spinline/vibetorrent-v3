@@ -16,6 +16,27 @@ pub fn App() -> impl IntoView {
             // Wait a bit for service worker to be ready
             gloo_timers::future::TimeoutFuture::new(2000).await;
             
+            // Check if running on iOS and not standalone
+            if let Some(ios_message) = crate::utils::platform::get_ios_notification_info() {
+                tracing::warn!("iOS detected: {}", ios_message);
+                
+                // Show toast to inform user
+                if let Some(store) = use_context::<crate::store::TorrentStore>() {
+                    crate::store::show_toast_with_signal(
+                        store.notifications,
+                        shared::NotificationLevel::Info,
+                        ios_message,
+                    );
+                }
+                return;
+            }
+            
+            // Check if push notifications are supported
+            if !crate::utils::platform::supports_push_notifications() {
+                tracing::warn!("Push notifications not supported on this platform");
+                return;
+            }
+            
             // Check if Notification API is available and permission is granted
             let window = web_sys::window().expect("window should exist");
             if let Ok(notification_class) = js_sys::Reflect::get(&window, &"Notification".into()) {

@@ -110,6 +110,13 @@ self.addEventListener('push', (event) => {
         badge: data.badge || '/icon-192.png',
         tag: data.tag || 'vibetorrent-notification',
         requireInteraction: false,
+        // iOS-specific: vibrate pattern (if supported)
+        vibrate: [200, 100, 200],
+        // Add data for notification click handling
+        data: {
+            url: data.url || '/',
+            timestamp: Date.now()
+        }
     };
     
     console.log('[Service Worker] Showing notification:', title, options);

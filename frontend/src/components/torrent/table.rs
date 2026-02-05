@@ -181,7 +181,8 @@ pub fn TorrentTable() -> impl IntoView {
 
     let on_action = move |(action, hash): (String, String)| {
         logging::log!("TorrentTable Action: {} on {}", action, hash);
-        set_menu_visible.set(false); // Close menu immediately
+        // Note: Don't close menu here - ContextMenu's on_close handles it
+        // Closing here would dispose ContextMenu while still in callback chain
 
         // Get action messages for toast (Clean Code: DRY)
         let (success_msg, error_msg) = get_action_messages(&action);

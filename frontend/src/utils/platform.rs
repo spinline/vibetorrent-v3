@@ -51,34 +51,39 @@ pub fn is_standalone() -> bool {
 }
 
 /// Check if push notifications are supported
-/// - iOS Safari: Supports Web Push (iOS 16.4+) only in standalone/PWA mode
-/// - macOS Safari: Does NOT support Web Push
+/// - Safari 16+ (macOS Ventura+): Supports Web Push
+/// - iOS Safari 16.4+: Supports Web Push in standalone/PWA mode
 /// - Chrome/Firefox/Edge: Support Web Push on all platforms
+/// 
+/// Simple approach: Check if ServiceWorker and Notification APIs exist
+/// The browser will handle the rest during subscription
 pub fn supports_push_notifications() -> bool {
     let window = web_sys::window().expect("window should exist");
     
-    // If Safari, only iOS Safari supports it (macOS Safari does not)
-    if is_safari() {
-        if !is_ios() {
-            // macOS Safari does not support Web Push
-            return false;
-        }
-        // iOS Safari supports it, will be checked further in app
-        return true;
-    }
-    
-    // For non-Safari browsers (Chrome, Firefox, Edge), check for PushManager
+    // Check if ServiceWorker is available
     if let Ok(navigator) = js_sys::Reflect::get(&window, &"navigator".into()) {
         if let Ok(service_worker) = js_sys::Reflect::get(&navigator, &"serviceWorker".into()) {
-            if !service_worker.is_undefined() {
-                // ServiceWorker exists, assume PushManager support
-                // The actual PushManager check will happen during subscription
-                return true;
+            if service_worker.is_undefined() {
+                return false;
             }
+        } else {
+            return false;
         }
+    } else {
+        return false;
     }
     
-    false
+    // Check if Notification API is available
+    if let Ok(notification_class) = js_sys::Reflect::get(&window, &"Notification".into()) {
+        if notification_class.is_undefined() {
+            return false;
+        }
+    } else {
+        return false;
+    }
+    
+    // Both APIs exist, push notifications should be supported
+    true
 }
 
 /// Get platform-specific notification message

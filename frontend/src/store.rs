@@ -362,9 +362,14 @@ pub async fn subscribe_to_push_notifications() {
         }
     };
     
+    log::info!("VAPID public key from backend: {} (len: {})", public_key, public_key.len());
+    
     // Convert VAPID public key to Uint8Array
     let public_key_array = match url_base64_to_uint8array(public_key) {
-        Ok(arr) => arr,
+        Ok(arr) => {
+            log::info!("VAPID key converted to Uint8Array (length: {})", arr.length());
+            arr
+        }
         Err(e) => {
             log::error!("Failed to convert VAPID key: {:?}", e);
             return;

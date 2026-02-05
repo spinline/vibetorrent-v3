@@ -37,7 +37,21 @@ pub fn App() -> impl IntoView {
                 return;
             }
             
-            // Attempt to subscribe - this will request permission if needed
+            // Safari requires user gesture for notification permission
+            // Don't auto-request on Safari - user should click a button
+            if crate::utils::platform::is_safari() {
+                log::info!("Safari detected - notification permission requires user interaction. Please click notification settings.");
+                if let Some(store) = use_context::<crate::store::TorrentStore>() {
+                    crate::store::show_toast_with_signal(
+                        store.notifications,
+                        shared::NotificationLevel::Info,
+                        "Bildirim izni için lütfen ayarlara gidin ve izin verin.".to_string(),
+                    );
+                }
+                return;
+            }
+            
+            // For non-Safari browsers (Chrome, Firefox, Edge), attempt auto-subscribe
             log::info!("Attempting to subscribe to push notifications...");
             crate::store::subscribe_to_push_notifications().await;
         });

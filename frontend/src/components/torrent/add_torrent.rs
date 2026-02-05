@@ -1,6 +1,7 @@
 use leptos::*;
 use leptos::html::Dialog;
-use crate::store::{toast_success, toast_error, toast_warning};
+use crate::store::{show_toast_with_signal, TorrentStore};
+use shared::NotificationLevel;
 
 
 #[component]
@@ -8,6 +9,9 @@ pub fn AddTorrentModal(
     #[prop(into)]
     on_close: Callback<()>,
 ) -> impl IntoView {
+    let store = use_context::<TorrentStore>().expect("TorrentStore not provided");
+    let notifications = store.notifications;
+    
     let dialog_ref = create_node_ref::<Dialog>();
     let (uri, set_uri) = create_signal(String::new());
     let (is_loading, set_loading) = create_signal(false);
@@ -23,7 +27,7 @@ pub fn AddTorrentModal(
     let handle_submit = move |_| {
         let uri_val = uri.get();
         if uri_val.is_empty() {
-            toast_warning("Lütfen bir Magnet URI veya URL girin");
+            show_toast_with_signal(notifications, NotificationLevel::Warning, "Lütfen bir Magnet URI veya URL girin");
             set_error_msg.set(Some("Please enter a Magnet URI or URL".to_string()));
             return;
         }
@@ -44,7 +48,7 @@ pub fn AddTorrentModal(
                         Ok(resp) => {
                             if resp.ok() {
                                 logging::log!("Torrent added successfully");
-                                toast_success("Torrent eklendi");
+                                show_toast_with_signal(notifications, NotificationLevel::Success, "Torrent eklendi");
                                 set_loading.set(false);
                                 if let Some(dialog) = dialog_ref.get() {
                                     dialog.close();
@@ -54,14 +58,14 @@ pub fn AddTorrentModal(
                                 let status = resp.status();
                                 let text = resp.text().await.unwrap_or_default();
                                 logging::error!("Failed to add torrent: {} - {}", status, text);
-                                toast_error("Torrent eklenemedi");
+                                show_toast_with_signal(notifications, NotificationLevel::Error, "Torrent eklenemedi");
                                 set_error_msg.set(Some(format!("Error {}: {}", status, text)));
                                 set_loading.set(false);
                             }
                         }
                         Err(e) => {
                             logging::error!("Network error: {}", e);
-                            toast_error("Bağlantı hatası");
+                            show_toast_with_signal(notifications, NotificationLevel::Error, "Bağlantı hatası");
                             set_error_msg.set(Some(format!("Network Error: {}", e)));
                             set_loading.set(false);
                         }
@@ -69,7 +73,7 @@ pub fn AddTorrentModal(
                 }
                 Err(e) => {
                     logging::error!("Serialization error: {}", e);
-                    toast_error("İstek hatası");
+                    show_toast_with_signal(notifications, NotificationLevel::Error, "İstek hatası");
                     set_error_msg.set(Some(format!("Request Error: {}", e)));
                     set_loading.set(false);
                 }

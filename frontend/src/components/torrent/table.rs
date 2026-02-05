@@ -1,7 +1,8 @@
 use leptos::*;
 use wasm_bindgen::closure::Closure;
 use wasm_bindgen::JsCast;
-use crate::store::{get_action_messages, toast_success, toast_error};
+use crate::store::{get_action_messages, show_toast_with_signal};
+use shared::NotificationLevel;
 
 fn format_bytes(bytes: i64) -> String {
     const UNITS: [&str; 6] = ["B", "KB", "MB", "GB", "TB", "PB"];
@@ -186,6 +187,9 @@ pub fn TorrentTable() -> impl IntoView {
         let (success_msg, error_msg) = get_action_messages(&action);
         let success_msg = success_msg.to_string();
         let error_msg = error_msg.to_string();
+        
+        // Capture notifications signal before async (use_context unavailable in spawn_local)
+        let notifications = store.notifications;
 
         spawn_local(async move {
             let action_req = if action == "delete_with_data" {
@@ -210,20 +214,20 @@ pub fn TorrentTable() -> impl IntoView {
                                 resp.status(),
                                 resp.status_text()
                             );
-                            toast_error(error_msg);
+                            show_toast_with_signal(notifications, NotificationLevel::Error, error_msg);
                         } else {
                             logging::log!("Action {} executed successfully", action);
-                            toast_success(success_msg);
+                            show_toast_with_signal(notifications, NotificationLevel::Success, success_msg);
                         }
                     }
                     Err(e) => {
                         logging::error!("Network error executing action: {}", e);
-                        toast_error(format!("{}: Bağlantı hatası", error_msg));
+                        show_toast_with_signal(notifications, NotificationLevel::Error, format!("{}: Bağlantı hatası", error_msg));
                     }
                 },
                 Err(e) => {
                     logging::error!("Failed to serialize request: {}", e);
-                    toast_error(error_msg);
+                    show_toast_with_signal(notifications, NotificationLevel::Error, error_msg);
                 }
             }
         });

@@ -13,46 +13,57 @@ pub struct NotificationItem {
 // Toast Helper Functions (Clean Code: Single Responsibility)
 // ============================================================================
 
+/// Shows a toast notification using a direct signal reference.
+/// Use this version inside async blocks (spawn_local) where use_context is unavailable.
+/// Auto-removes after 5 seconds.
+pub fn show_toast_with_signal(
+    notifications: RwSignal<Vec<NotificationItem>>,
+    level: NotificationLevel,
+    message: impl Into<String>,
+) {
+    let id = js_sys::Date::now() as u64;
+    let notification = SystemNotification {
+        level,
+        message: message.into(),
+    };
+    let item = NotificationItem { id, notification };
+    
+    notifications.update(|list| list.push(item));
+    
+    // Auto-remove after 5 seconds
+    let _ = set_timeout(
+        move || {
+            notifications.update(|list| list.retain(|i| i.id != id));
+        },
+        std::time::Duration::from_secs(5),
+    );
+}
+
 /// Shows a toast notification with the given level and message.
+/// Only works within reactive scope (components, effects). For async, use show_toast_with_signal.
 /// Auto-removes after 5 seconds.
 pub fn show_toast(level: NotificationLevel, message: impl Into<String>) {
     if let Some(store) = use_context::<TorrentStore>() {
-        let id = js_sys::Date::now() as u64;
-        let notification = SystemNotification {
-            level,
-            message: message.into(),
-        };
-        let item = NotificationItem { id, notification };
-        
-        store.notifications.update(|list| list.push(item));
-        
-        // Auto-remove after 5 seconds
-        let notifications = store.notifications;
-        let _ = set_timeout(
-            move || {
-                notifications.update(|list| list.retain(|i| i.id != id));
-            },
-            std::time::Duration::from_secs(5),
-        );
+        show_toast_with_signal(store.notifications, level, message);
     }
 }
 
-/// Convenience function for success toasts
+/// Convenience function for success toasts (reactive scope only)
 pub fn toast_success(message: impl Into<String>) {
     show_toast(NotificationLevel::Success, message);
 }
 
-/// Convenience function for error toasts
+/// Convenience function for error toasts (reactive scope only)
 pub fn toast_error(message: impl Into<String>) {
     show_toast(NotificationLevel::Error, message);
 }
 
-/// Convenience function for info toasts
+/// Convenience function for info toasts (reactive scope only)
 pub fn toast_info(message: impl Into<String>) {
     show_toast(NotificationLevel::Info, message);
 }
 
-/// Convenience function for warning toasts
+/// Convenience function for warning toasts (reactive scope only)
 pub fn toast_warning(message: impl Into<String>) {
     show_toast(NotificationLevel::Warning, message);
 }

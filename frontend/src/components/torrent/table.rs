@@ -229,6 +229,32 @@ pub fn TorrentTable() -> impl IntoView {
                             );
                         } else {
                             logging::log!("Action {} executed successfully", action);
+
+                            // Add success notification
+                            let id = js_sys::Date::now() as u64;
+                            store.notifications.update(|list| {
+                                list.push(crate::store::NotificationItem {
+                                    id,
+                                    notification: shared::SystemNotification {
+                                        level: shared::NotificationLevel::Success,
+                                        message: format!(
+                                            "Action '{}' executed successfully",
+                                            action
+                                        ),
+                                    },
+                                });
+                            });
+
+                            // Auto-remove notification
+                            let notifications = store.notifications;
+                            let _ = set_timeout(
+                                move || {
+                                    notifications.update(|list| {
+                                        list.retain(|i| i.id != id);
+                                    });
+                                },
+                                std::time::Duration::from_secs(3),
+                            );
                         }
                     }
                     Err(e) => logging::error!("Network error executing action: {}", e),

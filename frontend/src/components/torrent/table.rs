@@ -384,7 +384,7 @@ pub fn TorrentTable() -> impl IntoView {
                         shared::TorrentStatus::Error => "badge-error badge-soft",
                         _ => "badge-ghost"
                     };
-                    let t_hash = t.hash.clone();
+                    let _t_hash = t.hash.clone();
                     let t_hash_click = t.hash.clone();
 
                     let (timer_id, set_timer_id) = create_signal(Option::<i32>::None);

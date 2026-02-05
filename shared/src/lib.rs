@@ -39,7 +39,7 @@ pub enum AppEvent {
     Notification(SystemNotification),
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema, PartialEq, Eq)]
 pub struct SystemNotification {
     pub level: NotificationLevel,
     pub message: String,

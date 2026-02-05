@@ -55,7 +55,7 @@ jobs:
         CROSS_NO_WARNINGS: 0
       run: |
         cd backend
-        cross build --target mips-unknown-linux-musl --release -Z build-std=std,panic_abort
+        cross build --target mips-unknown-linux-musl --release --no-default-features -Z build-std=std,panic_abort
 
     - name: Debug - List Files
       run: |

@@ -3,6 +3,10 @@ name = "backend"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+default = ["push-notifications"]
+push-notifications = ["web-push", "openssl"]
+
 [dependencies]
 axum = { version = "0.8", features = ["macros", "ws"] }
 tokio = { version = "1", features = ["full"] }
@@ -26,6 +30,6 @@ thiserror = "2.0.18"
 dotenvy = "0.15.7"
 utoipa = { version = "5.4.0", features = ["axum_extras"] }
 utoipa-swagger-ui = { version = "9.0.2", features = ["axum"] }
-web-push = "0.10"
+web-push = { version = "0.10", optional = true }
 base64 = "0.22"
-openssl = { version = "0.10", features = ["vendored"] }
+openssl = { version = "0.10", features = ["vendored"], optional = true }

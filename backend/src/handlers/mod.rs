@@ -1,8 +1,9 @@
 use crate::{
-    push,
     xmlrpc::{self, RpcParam},
     AppState,
 };
+#[cfg(feature = "push-notifications")]
+use crate::push;
 use axum::{
     extract::{Json, Path, State},
     http::{header, StatusCode, Uri},
@@ -677,6 +678,7 @@ pub async fn handle_timeout_error(err: BoxError) -> (StatusCode, &'static str) {
 
 // --- PUSH NOTIFICATION HANDLERS ---
 
+#[cfg(feature = "push-notifications")]
 /// Get VAPID public key for push subscription
 #[utoipa::path(
     get,
@@ -690,6 +692,8 @@ pub async fn get_push_public_key_handler() -> impl IntoResponse {
     (StatusCode::OK, Json(serde_json::json!({ "publicKey": public_key }))).into_response()
 }
 
+
+#[cfg(feature = "push-notifications")]
 /// Subscribe to push notifications
 #[utoipa::path(
     post,

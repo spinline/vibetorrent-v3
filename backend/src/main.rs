@@ -1,5 +1,6 @@
 mod diff;
 mod handlers;
+#[cfg(feature = "push-notifications")]
 mod push;
 mod scgi;
 mod sse;
@@ -31,6 +32,7 @@ pub struct AppState {
     pub tx: Arc<watch::Sender<Vec<Torrent>>>,
     pub event_bus: broadcast::Sender<AppEvent>,
     pub scgi_socket_path: String,
+    #[cfg(feature = "push-notifications")]
     pub push_store: push::PushSubscriptionStore,
 }
 
@@ -51,6 +53,7 @@ struct Args {
     port: u16,
 }
 
+#[cfg(feature = "push-notifications")]
 #[derive(OpenApi)]
 #[openapi(
     paths(
@@ -81,6 +84,41 @@ struct Args {
             shared::GlobalLimitRequest,
             push::PushSubscription,
             push::PushKeys
+        )
+    ),
+    tags(
+        (name = "vibetorrent", description = "VibeTorrent API")
+    )
+)]
+struct ApiDoc;
+
+#[cfg(not(feature = "push-notifications"))]
+#[derive(OpenApi)]
+#[openapi(
+    paths(
+        handlers::add_torrent_handler,
+        handlers::handle_torrent_action,
+        handlers::get_version_handler,
+        handlers::get_files_handler,
+        handlers::get_peers_handler,
+        handlers::get_trackers_handler,
+        handlers::set_file_priority_handler,
+        handlers::set_label_handler,
+        handlers::get_global_limit_handler,
+        handlers::set_global_limit_handler
+    ),
+    components(
+        schemas(
+            handlers::AddTorrentRequest,
+            shared::TorrentActionRequest,
+            shared::Torrent,
+            shared::TorrentStatus,
+            shared::TorrentFile,
+            shared::TorrentPeer,
+            shared::TorrentTracker,
+            shared::SetFilePriorityRequest,
+            shared::SetLabelRequest,
+            shared::GlobalLimitRequest
         )
     ),
     tags(
@@ -143,6 +181,7 @@ async fn main() {
         tx: tx.clone(),
         event_bus: event_bus.clone(),
         scgi_socket_path: args.socket.clone(),
+        #[cfg(feature = "push-notifications")]
         push_store: push::PushSubscriptionStore::new(),
     };
 
@@ -150,6 +189,7 @@ async fn main() {
     let tx_clone = tx.clone();
     let event_bus_tx = event_bus.clone();
     let socket_path = args.socket.clone(); // Clone for background task
+    #[cfg(feature = "push-notifications")]
     let push_store_clone = app_state.push_store.clone();
 
     tokio::spawn(async move {
@@ -202,6 +242,7 @@ async fn main() {
                         diff::DiffResult::Partial(updates) => {
                             for update in updates {
                                 // Check if this is a torrent completion notification
+                                #[cfg(feature = "push-notifications")]
                                 if let AppEvent::Notification(ref notif) = update {
                                     if notif.message.contains("tamamlandı") {
                                         // Send push notification in background
@@ -295,9 +336,14 @@ async fn main() {
             "/api/settings/global-limits",
             get(handlers::get_global_limit_handler).post(handlers::set_global_limit_handler),
         )
+        .fallback(handlers::static_handler); // Serve static files for everything else
+    
+    #[cfg(feature = "push-notifications")]
+    let app = app
         .route("/api/push/public-key", get(handlers::get_push_public_key_handler))
-        .route("/api/push/subscribe", post(handlers::subscribe_push_handler))
-        .fallback(handlers::static_handler) // Serve static files for everything else
+        .route("/api/push/subscribe", post(handlers::subscribe_push_handler));
+    
+    let app = app
         .layer(TraceLayer::new_for_http())
         .layer(
             CompressionLayer::new()

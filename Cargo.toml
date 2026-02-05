@@ -9,3 +9,6 @@ lto = true
 codegen-units = 1
 panic = "abort"
 strip = true
+
+[patch.crates-io]
+coarsetime = { path = "third_party/coarsetime" }

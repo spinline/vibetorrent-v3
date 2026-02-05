@@ -28,3 +28,4 @@ utoipa = { version = "5.4.0", features = ["axum_extras"] }
 utoipa-swagger-ui = { version = "9.0.2", features = ["axum"] }
 web-push = "0.10"
 base64 = "0.22"
+openssl = { version = "0.10", features = ["vendored"] }

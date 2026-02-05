@@ -18,6 +18,7 @@ serde_json = "1"
 gloo-net = "0.5"
 gloo-timers = { version = "0.3", features = ["futures"] }
 wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
 uuid = { version = "1", features = ["v4", "js"] }
 futures = "0.3"
 chrono = { version = "0.4", features = ["serde"] }
@@ -37,7 +38,10 @@ web-sys = { version = "0.3", features = [
     "TouchEvent",
     "TouchList",
     "Touch",
-    "Navigator"
+    "Navigator",
+    "Notification",
+    "NotificationOptions",
+    "NotificationPermission"
 ] }
 shared = { path = "../shared" }
 tailwind_fuse = "0.3.2"

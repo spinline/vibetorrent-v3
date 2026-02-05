@@ -20,6 +20,8 @@
         <link data-trunk rel="css" href="public/tailwind.css" />
         <link data-trunk rel="copy-file" href="manifest.json" />
         <link data-trunk rel="copy-file" href="icon-192.png" />
+        <link data-trunk rel="copy-file" href="icon-512.png" />
+        <link data-trunk rel="copy-file" href="sw.js" />
         <script>
             (function () {
                 var localTheme = localStorage.getItem("vibetorrent_theme");
@@ -107,24 +109,35 @@
                 display: none !important;
             }
         </style>
-        <!-- Service Worker disabled - file names don't match Trunk's hashed output
+        
+        <!-- Service Worker Registration & PWA Setup -->
         <script>
             if ("serviceWorker" in navigator) {
                 window.addEventListener("load", () => {
                     navigator.serviceWorker
                         .register("/sw.js")
                         .then((registration) => {
-                            console.log("SW registered: ", registration);
+                            console.log("✅ Service Worker registered:", registration);
+                            
+                            // Request notification permission after a delay (better UX)
+                            setTimeout(() => {
+                                if ("Notification" in window && Notification.permission === "default") {
+                                    // Only request if user hasn't decided yet
+                                    const shouldRequest = localStorage.getItem("vibetorrent_notification_prompt_shown");
+                                    if (!shouldRequest) {
+                                        Notification.requestPermission().then((permission) => {
+                                            console.log("Notification permission:", permission);
+                                            localStorage.setItem("vibetorrent_notification_prompt_shown", "true");
+                                        });
+                                    }
+                                }
+                            }, 3000); // Wait 3 seconds before asking
                         })
-                        .catch((registrationError) => {
-                            console.log(
-                                "SW registration failed: ",
-                                registrationError,
-                            );
+                        .catch((error) => {
+                            console.warn("⚠️ Service Worker registration failed:", error);
                         });
                 });
             }
         </script>
-        -->
     </body>
 </html>

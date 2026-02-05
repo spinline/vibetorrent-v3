@@ -1,11 +1,13 @@
 {
     "name": "VibeTorrent",
     "short_name": "VibeTorrent",
+    "description": "Modern web-based torrent client with real-time updates",
     "start_url": "/",
     "display": "standalone",
     "background_color": "#1d232a",
     "theme_color": "#1d232a",
     "orientation": "any",
+    "categories": ["productivity", "utilities"],
     "icons": [
         {
             "src": "icon-512.png",

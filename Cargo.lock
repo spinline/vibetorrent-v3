@@ -706,6 +706,7 @@ dependencies = [
  "tailwind_fuse",
  "uuid",
  "wasm-bindgen",
+ "wasm-bindgen-futures",
  "web-sys",
 ]
 

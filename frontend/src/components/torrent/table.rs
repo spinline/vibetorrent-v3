@@ -429,8 +429,12 @@ pub fn TorrentTable() -> impl IntoView {
                                     set_menu_position.set((x, y));
                                     set_selected_hash.set(Some(hash.clone()));
                                     set_menu_visible.set(true);
+                                    
+                                    // Haptic feedback (iOS Safari doesn't support vibrate)
                                     let navigator = window().navigator();
-                                    let _ = navigator.vibrate_with_duration(50);
+                                    if js_sys::Reflect::has(&navigator, &wasm_bindgen::JsValue::from_str("vibrate")).unwrap_or(false) {
+                                        let _ = navigator.vibrate_with_duration(50);
+                                    }
                                 }) as Box<dyn Fn()>);
 
                                 let id = window()

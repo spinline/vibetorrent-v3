@@ -527,6 +527,7 @@ pub async fn subscribe_to_push_notifications() {
 }
 
 /// Helper to convert URL-safe base64 string to Uint8Array
+/// Uses JavaScript to properly decode binary data (avoids UTF-8 encoding issues)
 fn url_base64_to_uint8array(base64_string: &str) -> Result<js_sys::Uint8Array, JsValue> {
     // Add padding
     let padding = (4 - (base64_string.len() % 4)) % 4;
@@ -536,15 +537,24 @@ fn url_base64_to_uint8array(base64_string: &str) -> Result<js_sys::Uint8Array, J
     // Replace URL-safe characters
     let standard_base64 = padded.replace('-', "+").replace('_', "/");
     
-    // Decode base64
-    let window = web_sys::window().ok_or_else(|| JsValue::from_str("no window"))?;
-    let decoded = window.atob(&standard_base64)?;
+    // Decode using JavaScript to avoid UTF-8 encoding issues
+    // Create a JavaScript function to decode the base64 and convert to Uint8Array
+    let js_code = format!(
+        r#"
+        (function() {{
+            const binaryString = atob('{}');
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {{
+                bytes[i] = binaryString.charCodeAt(i);
+            }}
+            return bytes;
+        }})()
+        "#,
+        standard_base64
+    );
     
-    // Convert to Uint8Array
-    let array = js_sys::Uint8Array::new_with_length(decoded.len() as u32);
-    for (i, byte) in decoded.bytes().enumerate() {
-        array.set_index(i as u32, byte);
-    }
+    let result = js_sys::eval(&js_code)?;
+    let array = result.dyn_into::<js_sys::Uint8Array>()?;
     
     Ok(array)
 }

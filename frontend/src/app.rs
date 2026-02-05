@@ -40,12 +40,12 @@ pub fn App() -> impl IntoView {
             // Safari requires user gesture for notification permission
             // Don't auto-request on Safari - user should click a button
             if crate::utils::platform::is_safari() {
-                log::info!("Safari detected - notification permission requires user interaction. Please click notification settings.");
+                log::info!("Safari detected - notification permission requires user interaction");
                 if let Some(store) = use_context::<crate::store::TorrentStore>() {
                     crate::store::show_toast_with_signal(
                         store.notifications,
                         shared::NotificationLevel::Info,
-                        "Bildirim izni için lütfen ayarlara gidin ve izin verin.".to_string(),
+                        "Bildirim izni için sağ alttaki ayarlar ⚙️ ikonuna basın.".to_string(),
                     );
                 }
                 return;

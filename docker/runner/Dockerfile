@@ -34,7 +34,6 @@ RUN ARCH=$(dpkg --print-architecture) && \
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain nightly --profile minimal && \
     . "$HOME/.cargo/env" && \
     rustup target add wasm32-unknown-unknown && \
-    rustup target add mips-unknown-linux-musl && \
     rustup component add rust-src
 
 # 4. Install Zig (for Cross Compilation)
@@ -65,7 +64,7 @@ RUN . "$HOME/.cargo/env" && \
 # We fetch the binary directly to run as the entrypoint
 RUN ARCH=$(dpkg --print-architecture) && \
     VERSION="0.2.11" && \
-    curl -fsSL -o /usr/local/bin/act_runner "https://gitea.com/gitea/act_runner/releases/download/v$VERSION/act_runner-$VERSION-linux-$ARCH" && \
+    curl -fsSL -o /usr/local/bin/act_runner "https://dl.gitea.com/act_runner/$VERSION/act_runner-$VERSION-linux-$ARCH" && \
     chmod +x /usr/local/bin/act_runner
 
 # Create a volume for registration data

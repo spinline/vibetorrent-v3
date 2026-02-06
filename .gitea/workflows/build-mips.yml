@@ -29,9 +29,19 @@ jobs:
         fi
         . "$HOME/.cargo/env"
         rustup toolchain install nightly --profile minimal
-        rustup target add wasm32-unknown-unknown --toolchain nightly
-        rustup component add rust-src --toolchain nightly
-        rustc +nightly --version
+        rustup default nightly
+        rustup target add wasm32-unknown-unknown
+        rustup component add rust-src
+        rustc --version
+
+    - name: Setup Node.js
+      run: |
+        if ! command -v node >/dev/null 2>&1 || [ "$(node -v | cut -d. -f1 | tr -d v)" -lt 20 ]; then
+          curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+          apt-get install -y -qq nodejs
+        fi
+        node -v
+        npm -v
 
     - name: Install Trunk
       run: |

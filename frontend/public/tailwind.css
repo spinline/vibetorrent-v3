@@ -1328,40 +1328,15 @@
       --toast-x: 0;
     }
   }
-  .dropdown-end {
-    @layer daisyui.l1.l2 {
-      --anchor-h: span-left;
-      :where(.dropdown-content) {
-        inset-inline-end: calc(0.25rem * 0);
-        translate: 0 0;
-        [dir="rtl"] & {
-          translate: 0 0;
-        }
-      }
-      &.dropdown-left {
-        --anchor-h: left;
-        --anchor-v: span-top;
-        .dropdown-content {
-          top: auto;
-          bottom: calc(0.25rem * 0);
-        }
-      }
-      &.dropdown-right {
-        --anchor-h: right;
-        --anchor-v: span-top;
-        .dropdown-content {
-          top: auto;
-          bottom: calc(0.25rem * 0);
-        }
-      }
-    }
-  }
   .toast-bottom {
     @layer daisyui.l1.l2 {
       top: auto;
       bottom: calc(0.25rem * 4);
       --toast-y: 0;
     }
+  }
+  .top-full {
+    top: 100%;
   }
   .right-0 {
     right: calc(var(--spacing) * 0);
@@ -1595,6 +1570,9 @@
       justify-content: flex-end;
       gap: calc(0.25rem * 2);
     }
+  }
+  .mt-1 {
+    margin-top: calc(var(--spacing) * 1);
   }
   .mt-2 {
     margin-top: calc(var(--spacing) * 2);

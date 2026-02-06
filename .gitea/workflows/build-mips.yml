@@ -35,12 +35,14 @@ jobs:
 
     - name: Install Trunk
       run: |
+        . "$HOME/.cargo/env"
         if ! command -v trunk &> /dev/null; then
           cargo install trunk --locked
         fi
 
     - name: Build Frontend
       run: |
+        . "$HOME/.cargo/env"
         cd frontend
         npm install
         trunk build --release

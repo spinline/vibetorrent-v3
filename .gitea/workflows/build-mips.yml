@@ -41,11 +41,10 @@ jobs:
 
     - name: Build Backend (MIPS)
       env:
-        RUSTUP_TOOLCHAIN: nightly
         CROSS_NO_WARNINGS: 0
       run: |
         cd backend
-        cross build --target mips-unknown-linux-musl --release -Z build-std=std,panic_abort
+        cross +nightly build --target mips-unknown-linux-musl --release -Z build-std=std,panic_abort
 
     - name: Rename Binary
       run: mv target/mips-unknown-linux-musl/release/backend target/mips-unknown-linux-musl/release/vibetorrent-mips

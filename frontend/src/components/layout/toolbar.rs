@@ -6,15 +6,15 @@ pub fn Toolbar() -> impl IntoView {
     let store = use_context::<crate::store::TorrentStore>().expect("store not provided");
 
     view! {
-        <div class="navbar min-h-14 h-14 bg-base-100 p-0">
+        <div class="navbar min-h-14 h-auto bg-base-100 p-0 pt-[env(safe-area-inset-top)]">
             <div class="navbar-start gap-4 px-4">
                 <label for="my-drawer" class="btn btn-square btn-ghost lg:hidden drawer-button">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-5 h-5 stroke-current"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
                 </label>
-                
+
                 <div class="flex gap-2">
-                    <button 
-                        class="btn btn-sm btn-primary gap-2 font-normal" 
+                    <button
+                        class="btn btn-sm btn-primary gap-2 font-normal"
                         title="Add Magnet Link"
                         on:click=move |_| set_show_add_modal.set(true)
                     >
@@ -30,10 +30,10 @@ pub fn Toolbar() -> impl IntoView {
 
             <div class="navbar-end gap-2 px-4">
                  <div class="join">
-                    <input 
-                        type="text" 
-                        placeholder="Search..." 
-                        class="input input-sm input-bordered join-item w-full max-w-xs focus:outline-none" 
+                    <input
+                        type="text"
+                        placeholder="Search..."
+                        class="input input-sm input-bordered join-item w-full max-w-xs focus:outline-none"
                         prop:value=move || store.search_query.get()
                         on:input=move |ev| store.search_query.set(event_target_value(&ev))
                         on:keydown=move |ev: web_sys::KeyboardEvent| {
@@ -43,7 +43,7 @@ pub fn Toolbar() -> impl IntoView {
                         }
                     />
                     <Show when=move || !store.search_query.get().is_empty()>
-                        <button 
+                        <button
                             class="btn btn-sm btn-ghost join-item border-base-content/20 border-l-0 px-2"
                             title="Clear Search"
                             on:click=move |_| store.search_query.set(String::new())

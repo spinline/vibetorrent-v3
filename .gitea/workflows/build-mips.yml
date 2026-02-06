@@ -24,6 +24,10 @@ jobs:
 
     - name: Setup Rust
       run: |
+        if ! command -v rustup >/dev/null 2>&1; then
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+        fi
+        . "$HOME/.cargo/env"
         rustup toolchain install nightly --profile minimal
         rustup target add wasm32-unknown-unknown --toolchain nightly
         rustup component add rust-src --toolchain nightly

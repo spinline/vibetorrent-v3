@@ -9,7 +9,7 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: mips-builder
 
     steps:
     - name: Checkout
@@ -18,133 +18,22 @@ jobs:
       run: |
         rm -rf .git
         git init .
-        git remote add origin https://admin:${GIT_TOKEN}@git.karatatar.com/admin/vibetorrent.git
+        git remote add origin https://admin:$\{GIT_TOKEN\}@git.karatatar.com/admin/vibetorrent.git
         git fetch --depth=1 origin ${{ gitea.sha }}
         git checkout FETCH_HEAD
 
-    - name: Setup Rust
-      run: |
-        if ! command -v rustup >/dev/null 2>&1; then
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-        fi
-        . "$HOME/.cargo/env"
-        rustup toolchain install nightly --profile minimal
-        rustup default nightly
-        rustup target add wasm32-unknown-unknown
-        rustup component add rust-src
-        rustc --version
-
-    - name: Setup Node.js
-      run: |
-        # Download and install Node.js manually to ensure correct version and PATH
-        NODE_VER="v20.11.1"
-        ARCH=""
-        case $(uname -m) in
-          x86_64) ARCH="x64" ;;
-          aarch64) ARCH="arm64" ;;
-          *) echo "Unsupported architecture: $(uname -m)"; exit 1 ;;
-        esac
-        
-        echo "Installing Node.js $NODE_VER for $ARCH..."
-        curl -fsSL "https://nodejs.org/dist/$NODE_VER/node-$NODE_VER-linux-$ARCH.tar.xz" -o node.tar.xz
-        
-        # Install to a local directory
-        mkdir -p "$HOME/.node"
-        tar -xJf node.tar.xz -C "$HOME/.node" --strip-components=1
-        
-        # Helper to update PATH for this step and future steps
-        echo "$HOME/.node/bin" >> $GITHUB_PATH
-        export PATH="$HOME/.node/bin:$PATH"
-        
-        echo "Node.js installed:"
-        node -v
-        npm -v
-
-    - name: Verify Node.js
-      run: |
-        node -v
-        npm -v
-
-    - name: Install Trunk & Tools
-      run: |
-        . "$HOME/.cargo/env"
-        # Download pre-built trunk binary to save huge compilation time
-        TRUNK_VER="v0.21.5"
-        ARCH=$(uname -m)
-        TRUNK_ARCH=""
-        
-        if [ "$ARCH" = "x86_64" ]; then
-             TRUNK_ARCH="x86_64-unknown-linux-gnu"
-        elif [ "$ARCH" = "aarch64" ]; then
-             TRUNK_ARCH="aarch64-unknown-linux-gnu"
-        fi
-        
-        if ! command -v trunk &> /dev/null; then
-          if [ -n "$TRUNK_ARCH" ]; then
-              echo "Downloading trunk $TRUNK_VER for $TRUNK_ARCH..."
-              wget -qO- "https://github.com/trunk-rs/trunk/releases/download/$TRUNK_VER/trunk-$TRUNK_ARCH.tar.gz" | tar -xzf -
-              mv trunk "$HOME/.cargo/bin/"
-              chmod +x "$HOME/.cargo/bin/trunk"
-          else
-              echo "No pre-built binary for $ARCH, compiling from source (slow)..."
-              cargo install trunk
-          fi
-        fi
-        trunk --version
-        
-        # Install wasm-bindgen-cli from source because the prebuilt binary downloaded
-        # by trunk relies on a newer glibc than this runner has.
-        REQUIRED_VER="0.2.108"
-        if ! command -v wasm-bindgen &> /dev/null || [ "$(wasm-bindgen --version | cut -d' ' -f2)" != "$REQUIRED_VER" ]; then
-             echo "Installing wasm-bindgen-cli $REQUIRED_VER from source..."
-             cargo install wasm-bindgen-cli --version "$REQUIRED_VER" --force
-        else
-             echo "wasm-bindgen-cli $REQUIRED_VER already installed."
-        fi
-
     - name: Build Frontend
       run: |
-        . "$HOME/.cargo/env"
         cd frontend
         npm install
-        # Run Tailwind manually first to debug any errors, as trunk swallows hook output sometimes
+        # Run Tailwind manually first
         npx @tailwindcss/cli -i input.css -o public/tailwind.css
         trunk build --release
 
-    - name: Setup Zig & Cross Setup
-      run: |
-        # Install Zig for cross-compilation (easier/cleaner than GCC + Cargo wrappers without Docker)
-        ZIG_VER="0.13.0"
-        ARCH=$(uname -m)
-        if [ "$ARCH" = "x86_64" ]; then ZIG_ARCH="x86_64"; fi
-        if [ "$ARCH" = "aarch64" ]; then ZIG_ARCH="aarch64"; fi
-        
-        echo "Downloading Zig $ZIG_VER for $ZIG_ARCH..."
-        curl -fsSL "https://ziglang.org/download/$ZIG_VER/zig-linux-$ZIG_ARCH-$ZIG_VER.tar.xz" -o zig.tar.xz
-        tar -xf zig.tar.xz
-        mv "zig-linux-$ZIG_ARCH-$ZIG_VER" "$HOME/zig"
-        
-        # Add Zig to PATH
-        echo "$HOME/zig" >> $GITHUB_PATH
-        export PATH="$HOME/zig:$PATH"
-        
-        zig version
-        
-        # Install cargo-zigbuild
-        . "$HOME/.cargo/env"
-        cargo install cargo-zigbuild
-
     - name: Build Backend (MIPS)
       run: |
-        . "$HOME/.cargo/env"
-        export PATH="$HOME/zig:$PATH"
         cd backend
-        
-        # Use cargo-zigbuild to cross-compile
-        # mips-unknown-linux-musl matches zig target mips-linux-musl
-        
         cargo zigbuild --target mips-unknown-linux-musl --release -Z build-std=std,panic_abort
-        
         file target/mips-unknown-linux-musl/release/backend
 
     - name: Rename Binary
@@ -163,10 +52,7 @@ jobs:
         API_URL="${{ gitea.server_url }}/api/v1"
 
         # Create release
-        RELEASE_RESPONSE=$(curl -s -X POST "${API_URL}/repos/${REPO}/releases" \
-          -H "Authorization: token ${RELEASE_TOKEN}" \
-          -H "Content-Type: application/json" \
-          -d "{
+        RELEASE_RESPONSE=$(curl -s -X POST "${API_URL}/repos/${REPO}/releases"           -H "Authorization: token ${RELEASE_TOKEN}"           -H "Content-Type: application/json"           -d "{
             \"tag_name\": \"${TAG}\",
             \"name\": \"Release ${TAG}\",
             \"body\": \"Automated build from commit ${{ gitea.sha }}\",
@@ -184,9 +70,6 @@ jobs:
         fi
 
         # Upload binary as release asset
-        curl -s -X POST "${API_URL}/repos/${REPO}/releases/${RELEASE_ID}/assets?name=vibetorrent-mips" \
-          -H "Authorization: token ${RELEASE_TOKEN}" \
-          -H "Content-Type: application/octet-stream" \
-          --data-binary @target/mips-unknown-linux-musl/release/vibetorrent-mips
+        curl -s -X POST "${API_URL}/repos/${REPO}/releases/${RELEASE_ID}/assets?name=vibetorrent-mips"           -H "Authorization: token ${RELEASE_TOKEN}"           -H "Content-Type: application/octet-stream"           --data-binary @target/mips-unknown-linux-musl/release/vibetorrent-mips
 
         echo "Release ${TAG} created with binary attached."

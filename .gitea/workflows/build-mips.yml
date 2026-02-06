@@ -33,27 +33,28 @@ jobs:
         npm install
         trunk build --release
 
-    - name: Install Cross
+    - name: Build MIPS Builder Image
       run: |
-        if ! command -v cross &> /dev/null; then
-          cargo install cross --locked
+        if ! docker image inspect vibetorrent-mips-builder >/dev/null 2>&1; then
+          docker build --platform linux/amd64 -t vibetorrent-mips-builder -f - . <<'DOCKERFILE'
+        FROM ghcr.io/cross-rs/mips-unknown-linux-musl:main
+        RUN apt-get update -qq && \
+            apt-get install -y -qq curl ca-certificates && \
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain nightly --component rust-src && \
+            rm -rf /var/lib/apt/lists/*
+        ENV PATH="/root/.cargo/bin:${PATH}"
+        DOCKERFILE
         fi
 
     - name: Build Backend (MIPS)
       run: |
-        docker run --rm --platform linux/amd64 \
+        docker run --rm \
           -v "$PWD":/project \
-          -v cargo-cache:/usr/local/cargo/registry \
-          -w /project \
-          rust:latest \
+          -v cargo-mips-registry:/root/.cargo/registry \
+          -w /project/backend \
+          vibetorrent-mips-builder \
           bash -c '
-            rustup toolchain install nightly --component rust-src &&
-            apt-get update -qq && apt-get install -y -qq musl-tools wget >/dev/null 2>&1 &&
-            wget -qO- https://musl.cc/mips-linux-musl-cross.tgz | tar xz -C /opt/ &&
-            export PATH="/opt/mips-linux-musl-cross/bin:$PATH" &&
-            export CARGO_TARGET_MIPS_UNKNOWN_LINUX_MUSL_LINKER=mips-linux-musl-gcc &&
-            cd backend &&
-            cargo +nightly build --target mips-unknown-linux-musl --release -Z build-std=std,panic_abort &&
+            cargo build --target mips-unknown-linux-musl --release -Z build-std=std,panic_abort &&
             file /project/target/mips-unknown-linux-musl/release/backend
           '
 

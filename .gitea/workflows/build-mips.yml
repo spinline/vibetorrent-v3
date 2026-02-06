@@ -22,7 +22,46 @@ jobs:
         git fetch --depth=1 origin ${{ gitea.sha }}
         git checkout FETCH_HEAD
 
+    - name: Cache Cargo & Tools
+      uses: actions/cache@v3
+      id: cache-cargo
+      with:
+        path: |
+          ~/.cargo/bin
+          ~/.cargo/registry
+          ~/.cargo/git
+        key: ${{ runner.os }}-cargo-tools-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-tools-
+
+    - name: Cache Node.js & Zig
+      uses: actions/cache@v3
+      id: cache-tools
+      with:
+        path: |
+          ~/.node
+          ~/zig
+        key: ${{ runner.os }}-tools-node-20-zig-0.13.0
+
+    - name: Check Cache & Skip Installs
+      id: check-cache
+      run: |
+        if [ -d "$HOME/.node/bin" ]; then
+          echo "Node.js found in cache."
+          echo "NODE_CACHED=true" >> $GITHUB_ENV
+          echo "$HOME/.node/bin" >> $GITHUB_PATH
+        fi
+        if [ -d "$HOME/zig" ]; then
+          echo "Zig found in cache."
+          echo "ZIG_CACHED=true" >> $GITHUB_ENV
+          echo "$HOME/zig" >> $GITHUB_PATH
+        else
+          # Ensure path is added for fresh install
+          echo "$HOME/zig" >> $GITHUB_PATH
+        fi
+    
     - name: Setup Rust
+
       run: |
         if ! command -v rustup >/dev/null 2>&1; then
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
@@ -35,6 +74,7 @@ jobs:
         rustc --version
 
     - name: Setup Node.js
+      if: env.NODE_CACHED != 'true'
       run: |
         # Download and install Node.js manually to ensure correct version and PATH
         NODE_VER="v20.11.1"
@@ -57,6 +97,11 @@ jobs:
         export PATH="$HOME/.node/bin:$PATH"
         
         echo "Node.js installed:"
+        node -v
+        npm -v
+
+    - name: Verify Node.js
+      run: |
         node -v
         npm -v
 
@@ -87,6 +132,7 @@ jobs:
         trunk build --release
 
     - name: Setup Zig & Cross Setup
+      if: env.ZIG_CACHED != 'true'
       run: |
         # Install Zig for cross-compilation (easier/cleaner than GCC + Cargo wrappers without Docker)
         ZIG_VER="0.13.0"

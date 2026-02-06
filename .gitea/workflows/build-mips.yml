@@ -65,6 +65,8 @@ jobs:
         . "$HOME/.cargo/env"
         cd frontend
         npm install
+        # Run Tailwind manually first to debug any errors, as trunk swallows hook output sometimes
+        npx @tailwindcss/cli -i input.css -o public/tailwind.css
         trunk build --release
 
     - name: Build MIPS Builder Image

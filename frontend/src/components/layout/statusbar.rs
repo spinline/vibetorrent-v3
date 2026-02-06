@@ -110,9 +110,21 @@ pub fn StatusBar() -> impl IntoView {
         });
     };
 
-    // Helper to close dropdowns by blurring the active element
+    // Helper to close all details dropdowns
     let close_dropdown = move || {
         if let Some(doc) = web_sys::window().and_then(|w| w.document()) {
+            // Close all <details> elements in the status bar
+            let details_list = doc.query_selector_all("details.dropdown[open]");
+            if let Ok(nodes) = details_list {
+                for i in 0..nodes.length() {
+                    if let Some(node) = nodes.item(i) {
+                        if let Ok(el) = node.dyn_into::<web_sys::Element>() {
+                            el.remove_attribute("open").ok();
+                        }
+                    }
+                }
+            }
+            // Also blur active element as fallback
             if let Some(active) = doc.active_element() {
                 let _ = active
                     .dyn_into::<web_sys::HtmlElement>()
@@ -120,15 +132,25 @@ pub fn StatusBar() -> impl IntoView {
             }
         }
     };
+    
+    // Toggle dropdown: close all, the <details> native toggle handles opening
+    let toggle_dropdown = move |_id: u8| {
+        // No-op: <details> handles its own open/close natively
+        // We just need this for the close_dropdown helper
+    };
 
-    // Global listener to force blur on touchstart (for iOS "tap outside" closing)
+    // Global listener to close dropdowns on touchstart outside
     let force_blur = move |_| {
         if let Some(doc) = web_sys::window().and_then(|w| w.document()) {
-            if let Some(active) = doc.active_element() {
-                // If something is focused, blur it to close dropdowns
-                let _ = active
-                    .dyn_into::<web_sys::HtmlElement>()
-                    .map(|el| el.blur());
+            let details_list = doc.query_selector_all("details.dropdown[open]");
+            if let Ok(nodes) = details_list {
+                for i in 0..nodes.length() {
+                    if let Some(node) = nodes.item(i) {
+                        if let Ok(el) = node.dyn_into::<web_sys::Element>() {
+                            el.remove_attribute("open").ok();
+                        }
+                    }
+                }
             }
         }
     };
@@ -138,15 +160,14 @@ pub fn StatusBar() -> impl IntoView {
         <div class="h-8 min-h-8 bg-base-200 border-t border-base-300 flex items-center px-4 text-xs gap-4 text-base-content/70">
 
             // --- DOWNLOAD SPEED DROPDOWN ---
-            <div
+            <details
                 class="dropdown dropdown-top dropdown-start"
                 on:touchstart=move |e| e.stop_propagation()
             >
-                <div
-                    tabindex="0"
-                    role="button"
-                    class="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors select-none"
+                <summary
+                    class="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors select-none list-none [&::-webkit-details-marker]:hidden"
                     title="Global Download Speed - Click to Set Limit"
+                    on:click=move |_| toggle_dropdown(1)
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3" />
@@ -157,12 +178,9 @@ pub fn StatusBar() -> impl IntoView {
                             {move || format!("(Limit: {})", format_speed(stats.get().down_limit.unwrap_or(0)))}
                         </span>
                     </Show>
-                </div>
+                </summary>
 
-                <ul
-                    tabindex="0"
-                    class="dropdown-content z-[100] menu p-2 shadow bg-base-200 rounded-box w-40 mb-2 border border-base-300"
-                >
+                <ul class="dropdown-content z-[100] menu p-2 shadow bg-base-200 rounded-box w-40 mb-2 border border-base-300">
                     {
                         limits.clone().into_iter().map(|(val, label)| {
                             let is_active = move || {
@@ -189,18 +207,17 @@ pub fn StatusBar() -> impl IntoView {
                         }).collect::<Vec<_>>()
                     }
                 </ul>
-            </div>
+            </details>
 
             // --- UPLOAD SPEED DROPDOWN ---
-            <div
+            <details
                 class="dropdown dropdown-top dropdown-start"
-                 on:touchstart=move |e| e.stop_propagation()
+                on:touchstart=move |e| e.stop_propagation()
             >
-                <div
-                    tabindex="0"
-                    role="button"
-                    class="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors select-none"
+                <summary
+                    class="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors select-none list-none [&::-webkit-details-marker]:hidden"
                     title="Global Upload Speed - Click to Set Limit"
+                    on:click=move |_| toggle_dropdown(2)
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" />
@@ -211,12 +228,9 @@ pub fn StatusBar() -> impl IntoView {
                             {move || format!("(Limit: {})", format_speed(stats.get().up_limit.unwrap_or(0)))}
                         </span>
                     </Show>
-                </div>
+                </summary>
 
-                <ul
-                    tabindex="0"
-                    class="dropdown-content z-[100] menu p-2 shadow bg-base-200 rounded-box w-40 mb-2 border border-base-300"
-                >
+                <ul class="dropdown-content z-[100] menu p-2 shadow bg-base-200 rounded-box w-40 mb-2 border border-base-300">
                     {
                         limits.clone().into_iter().map(|(val, label)| {
                             let is_active = move || {
@@ -243,28 +257,24 @@ pub fn StatusBar() -> impl IntoView {
                         }).collect::<Vec<_>>()
                     }
                 </ul>
-            </div>
+            </details>
 
             <div class="ml-auto flex items-center gap-4">
-                <div
+                <details
                     class="dropdown dropdown-top dropdown-end"
-                     on:touchstart=move |e| e.stop_propagation()
+                    on:touchstart=move |e| e.stop_propagation()
                 >
-                    <div
-                        tabindex="0"
-                        role="button"
-                        class="btn btn-ghost btn-xs btn-square"
+                    <summary
+                        class="btn btn-ghost btn-xs btn-square list-none [&::-webkit-details-marker]:hidden"
                         title="Change Theme"
+                        on:click=move |_| toggle_dropdown(3)
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M9.53 16.122a3 3 0 0 0-5.78 1.128 2.25 2.25 0 0 1-2.4 2.245 4.5 4.5 0 0 0 8.4-2.245c0-.399-.078-.78-.22-1.128Zm0 0a15.998 15.998 0 0 0 3.388-1.62m-5.043-.025a15.994 15.994 0 0 1 1.622-3.395m3.42 3.42a15.995 15.995 0 0 0 4.764-4.648l3.876-5.814a1.151 1.151 0 0 0-1.597-1.597L14.146 6.32a15.996 15.996 0 0 0-4.649 4.763m3.42 3.42a6.776 6.776 0 0 0-3.42-3.42" />
                         </svg>
-                    </div>
+                    </summary>
 
-                    <ul
-                        tabindex="0"
-                        class="dropdown-content z-[100] menu p-2 shadow bg-base-200 rounded-box w-52 mb-2 border border-base-300 max-h-96 overflow-y-auto"
-                    >
+                    <ul class="dropdown-content z-[100] menu p-2 shadow bg-base-200 rounded-box w-52 mb-2 border border-base-300 max-h-96 overflow-y-auto">
                         {
                             let themes = vec![
                                 "light", "dark", "dim", "nord", "cupcake", "dracula", "cyberpunk", "emerald", "sunset", "abyss"
@@ -296,7 +306,7 @@ pub fn StatusBar() -> impl IntoView {
                             }).collect::<Vec<_>>()
                         }
                     </ul>
-                </div>
+                </details>
 
                 <button 
                     class="btn btn-ghost btn-xs btn-square" 

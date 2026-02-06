@@ -73,7 +73,7 @@ jobs:
 
     - name: Create Release
       env:
-        GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
+        RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
       run: |
         TAG="${{ steps.tag.outputs.release_tag }}"
         REPO="admin/vibetorrent"
@@ -81,7 +81,7 @@ jobs:
 
         # Create release
         RELEASE_RESPONSE=$(curl -s -X POST "${API_URL}/repos/${REPO}/releases" \
-          -H "Authorization: token ${GITEA_TOKEN}" \
+          -H "Authorization: token ${RELEASE_TOKEN}" \
           -H "Content-Type: application/json" \
           -d "{
             \"tag_name\": \"${TAG}\",
@@ -102,7 +102,7 @@ jobs:
 
         # Upload binary as release asset
         curl -s -X POST "${API_URL}/repos/${REPO}/releases/${RELEASE_ID}/assets?name=vibetorrent-mips" \
-          -H "Authorization: token ${GITEA_TOKEN}" \
+          -H "Authorization: token ${RELEASE_TOKEN}" \
           -H "Content-Type: application/octet-stream" \
           --data-binary @target/mips-unknown-linux-musl/release/vibetorrent-mips
 

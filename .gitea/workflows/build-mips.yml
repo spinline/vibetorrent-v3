@@ -43,11 +43,21 @@ jobs:
         node -v
         npm -v
 
-    - name: Install Trunk
+    - name: Install Trunk & Tools
       run: |
         . "$HOME/.cargo/env"
         if ! command -v trunk &> /dev/null; then
           cargo install trunk --locked
+        fi
+        
+        # Install wasm-bindgen-cli from source because the prebuilt binary downloaded
+        # by trunk relies on a newer glibc than this runner has.
+        REQUIRED_VER="0.2.108"
+        if ! command -v wasm-bindgen &> /dev/null || [ "$(wasm-bindgen --version | cut -d' ' -f2)" != "$REQUIRED_VER" ]; then
+             echo "Installing wasm-bindgen-cli $REQUIRED_VER from source..."
+             cargo install wasm-bindgen-cli --version "$REQUIRED_VER" --force
+        else
+             echo "wasm-bindgen-cli $REQUIRED_VER already installed."
         fi
 
     - name: Build Frontend

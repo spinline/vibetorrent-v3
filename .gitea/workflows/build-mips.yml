@@ -64,7 +64,7 @@ jobs:
       run: |
         . "$HOME/.cargo/env"
         if ! command -v trunk &> /dev/null; then
-          cargo install trunk --locked
+          cargo install trunk
         fi
         
         # Install wasm-bindgen-cli from source because the prebuilt binary downloaded

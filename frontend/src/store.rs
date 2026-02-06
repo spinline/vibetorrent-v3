@@ -145,7 +145,7 @@ pub fn provide_torrent_store() {
             let max_backoff_ms: u32 = 30000; // Max 30 seconds
             let mut was_connected = false;
             let mut disconnect_notified = false; // Track if we already showed disconnect toast
-            let mut got_first_message = false; // Only count as "connected" after receiving data
+            let mut got_first_message; // Only count as "connected" after receiving data
 
             loop {
                 let es_result = EventSource::new("/api/events");

@@ -14,29 +14,12 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20'
-
-    - name: Install Rust
-      uses: dtolnay/rust-toolchain@nightly
-      with:
-        targets: wasm32-unknown-unknown
-        components: rust-src
-
-    - name: Rust Cache
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cargo/bin/
-          ~/.cargo/registry/index/
-          ~/.cargo/registry/cache/
-          ~/.cargo/git/db/
-          target/
-        key: ${{ runner.os }}-cargo-mips-${{ hashFiles('**/Cargo.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-cargo-mips-
+    - name: Setup Rust
+      run: |
+        rustup toolchain install nightly --profile minimal
+        rustup target add wasm32-unknown-unknown --toolchain nightly
+        rustup component add rust-src --toolchain nightly
+        rustc +nightly --version
 
     - name: Install Trunk
       run: |

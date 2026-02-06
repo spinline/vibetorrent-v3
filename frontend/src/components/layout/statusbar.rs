@@ -111,13 +111,18 @@ pub fn StatusBar() -> impl IntoView {
 
     // Signal-based dropdown state: 0=none, 1=download, 2=upload, 3=theme
     let (active_dropdown, set_active_dropdown) = create_signal(0u8);
+    // Guard to prevent global close from firing right after toggle opens
+    let skip_next_close = store_value(false);
     
     // Toggle a specific dropdown
     let toggle = move |id: u8| {
-        if active_dropdown.get_untracked() == id {
+        let current = active_dropdown.get_untracked();
+        if current == id {
             set_active_dropdown.set(0);
         } else {
             set_active_dropdown.set(id);
+            // Mark that the next global close should be skipped
+            skip_next_close.set_value(true);
         }
     };
     
@@ -126,14 +131,17 @@ pub fn StatusBar() -> impl IntoView {
         set_active_dropdown.set(0);
     };
 
-    // Close dropdowns when tapping outside
-    let _ = window_event_listener(ev::pointerdown, move |_| {
-        // This fires first; dropdown buttons call stop_propagation to prevent closing
+    // Close dropdowns when tapping outside — uses click (fires after pointerdown)
+    let _ = window_event_listener(ev::click, move |_| {
+        if skip_next_close.get_value() {
+            skip_next_close.set_value(false);
+            return;
+        }
         set_active_dropdown.set(0);
     });
 
     view! {
-        <div class="h-8 min-h-8 bg-base-200 border-t border-base-300 flex items-center px-4 text-xs gap-4 text-base-content/70">
+        <div class="fixed bottom-0 left-0 right-0 h-8 min-h-8 bg-base-200 border-t border-base-300 flex items-center px-4 text-xs gap-4 text-base-content/70 z-[99]">
 
             // --- DOWNLOAD SPEED DROPDOWN ---
             <div class="relative">
@@ -171,7 +179,8 @@ pub fn StatusBar() -> impl IntoView {
                                 <li>
                                     <button
                                         class=move || if is_active() { "bg-primary/10 text-primary font-bold text-xs flex justify-between" } else { "text-xs flex justify-between" }
-                                        on:click=move |_| {
+                                        on:pointerdown=move |e| {
+                                            e.stop_propagation();
                                             set_limit("down", val);
                                             close_all();
                                         }
@@ -224,7 +233,8 @@ pub fn StatusBar() -> impl IntoView {
                                 <li>
                                     <button
                                         class=move || if is_active() { "bg-primary/10 text-primary font-bold text-xs flex justify-between" } else { "text-xs flex justify-between" }
-                                        on:click=move |_| {
+                                        on:pointerdown=move |e| {
+                                            e.stop_propagation();
                                             set_limit("up", val);
                                             close_all();
                                         }
@@ -270,7 +280,8 @@ pub fn StatusBar() -> impl IntoView {
                                     <li>
                                         <button
                                             class=move || if current_theme.get() == theme { "bg-primary/10 text-primary font-bold text-xs capitalize" } else { "text-xs capitalize" }
-                                            on:click=move |_| {
+                                            on:pointerdown=move |e| {
+                                                e.stop_propagation();
                                                 set_current_theme.set(theme.to_string());
                                                 if let Some(win) = web_sys::window() {
                                                     if let Some(doc) = win.document() {

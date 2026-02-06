@@ -64,22 +64,19 @@ pub fn App() -> impl IntoView {
             <div class="drawer lg:drawer-open h-full w-full">
                 <input id="my-drawer" type="checkbox" class="drawer-toggle" />
 
-                <div class="drawer-content flex flex-col h-full bg-base-100 text-base-content text-sm select-none">
-                    // Toolbar + main wrapped so overflow-hidden doesn't clip StatusBar dropdowns
-                    <div class="flex-1 flex flex-col overflow-hidden">
-                        <Toolbar />
+                <div class="drawer-content flex flex-col h-full overflow-hidden bg-base-100 text-base-content text-sm select-none">
+                    <Toolbar />
 
-                        <main class="flex-1 flex flex-col min-w-0 bg-base-100 overflow-hidden">
-                            <Router>
-                                <Routes>
-                                    <Route path="/" view=move || view! { <TorrentTable /> } />
-                                    <Route path="/settings" view=move || view! { <div class="p-4">"Settings Page (Coming Soon)"</div> } />
-                                </Routes>
-                            </Router>
-                        </main>
-                    </div>
+                    <main class="flex-1 flex flex-col min-w-0 bg-base-100 overflow-hidden pb-8">
+                        <Router>
+                            <Routes>
+                                <Route path="/" view=move || view! { <TorrentTable /> } />
+                                <Route path="/settings" view=move || view! { <div class="p-4">"Settings Page (Coming Soon)"</div> } />
+                            </Routes>
+                        </Router>
+                    </main>
 
-                     // Status Bar at the bottom - outside overflow-hidden so dropdowns can open upward
+                    // StatusBar is rendered via fixed positioning, just mount it here
                     <StatusBar />
                 </div>
 

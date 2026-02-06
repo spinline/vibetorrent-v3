@@ -1,0 +1,109 @@
+name: Build MIPS Binary
+
+on:
+  push:
+    branches: [ "main" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@nightly
+      with:
+        targets: wasm32-unknown-unknown
+        components: rust-src
+
+    - name: Rust Cache
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-cargo-mips-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-mips-
+
+    - name: Install Trunk
+      run: |
+        if ! command -v trunk &> /dev/null; then
+          cargo install trunk --locked
+        fi
+
+    - name: Build Frontend
+      run: |
+        cd frontend
+        npm install
+        trunk build --release
+
+    - name: Install Cross
+      run: |
+        if ! command -v cross &> /dev/null; then
+          cargo install cross --locked
+        fi
+
+    - name: Build Backend (MIPS)
+      env:
+        RUSTUP_TOOLCHAIN: nightly
+        CROSS_NO_WARNINGS: 0
+      run: |
+        cd backend
+        cross build --target mips-unknown-linux-musl --release -Z build-std=std,panic_abort
+
+    - name: Rename Binary
+      run: mv target/mips-unknown-linux-musl/release/backend target/mips-unknown-linux-musl/release/vibetorrent-mips
+
+    - name: Generate Release Tag
+      id: tag
+      run: echo "release_tag=release-$(date +'%Y%m%d-%H%M')" >> "$GITHUB_OUTPUT"
+
+    - name: Create Release
+      env:
+        GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
+      run: |
+        TAG="${{ steps.tag.outputs.release_tag }}"
+        REPO="admin/vibetorrent"
+        API_URL="${{ gitea.server_url }}/api/v1"
+
+        # Create release
+        RELEASE_RESPONSE=$(curl -s -X POST "${API_URL}/repos/${REPO}/releases" \
+          -H "Authorization: token ${GITEA_TOKEN}" \
+          -H "Content-Type: application/json" \
+          -d "{
+            \"tag_name\": \"${TAG}\",
+            \"name\": \"Release ${TAG}\",
+            \"body\": \"Automated build from commit ${{ gitea.sha }}\",
+            \"draft\": false,
+            \"prerelease\": false
+          }")
+
+        RELEASE_ID=$(echo "$RELEASE_RESPONSE" | jq -r '.id')
+        echo "Release ID: $RELEASE_ID"
+
+        if [ "$RELEASE_ID" = "null" ] || [ -z "$RELEASE_ID" ]; then
+          echo "Failed to create release:"
+          echo "$RELEASE_RESPONSE"
+          exit 1
+        fi
+
+        # Upload binary as release asset
+        curl -s -X POST "${API_URL}/repos/${REPO}/releases/${RELEASE_ID}/assets?name=vibetorrent-mips" \
+          -H "Authorization: token ${GITEA_TOKEN}" \
+          -H "Content-Type: application/octet-stream" \
+          --data-binary @target/mips-unknown-linux-musl/release/vibetorrent-mips
+
+        echo "Release ${TAG} created with binary attached."

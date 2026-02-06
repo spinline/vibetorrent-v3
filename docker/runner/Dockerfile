@@ -46,20 +46,18 @@ RUN ARCH=$(dpkg --print-architecture) && \
     mv "zig-linux-$ZIG_ARCH-$ZIG_VER" /root/zig && \
     rm zig.tar.xz
 
-# 5. Fix: Create libatomic.a shim for MIPS
-# MIPS musl static build often misses __atomic_is_lock_free.
-# We create a minimal implementation to satisfy the linker.
-# We rename the function to avoid builtin conflict and alias it via linker flags later.
+# 5. Fix: Create libatomic.a with __atomic_is_lock_free for MIPS
+# MIPS musl static build misses __atomic_is_lock_free.
+# We provide it via pure assembly to avoid Clang builtin conflicts.
 RUN . "$HOME/.cargo/env" && \
-    echo '#include <stdbool.h>' > atomic.c && \
-    echo 'bool __atomic_is_lock_free_shim(unsigned int size, const volatile void *ptr) { return size <= 4; }' >> atomic.c && \
-    /root/zig/zig cc -target mips-linux-musl -msoft-float -c -o atomic.o atomic.c && \
+    printf '.text\n.globl __atomic_is_lock_free\n.type __atomic_is_lock_free, @function\n__atomic_is_lock_free:\n  sltiu $v0, $a0, 5\n  jr $ra\n  nop\n.size __atomic_is_lock_free, .-__atomic_is_lock_free\n' > atomic.s && \
+    /root/zig/zig cc -target mips-linux-musl -msoft-float -c -o atomic.o atomic.s && \
     /root/zig/zig ar rcs libatomic.a atomic.o && \
     RUST_SYSROOT=$(rustc --print sysroot) && \
     TARGET_LIB_DIR="$RUST_SYSROOT/lib/rustlib/mips-unknown-linux-musl/lib" && \
     mkdir -p "$TARGET_LIB_DIR" && \
     cp libatomic.a "$TARGET_LIB_DIR/" && \
-    rm atomic.c atomic.o libatomic.a
+    rm atomic.s atomic.o libatomic.a
 
 # 6. Install Tools (Trunk, cargo-zigbuild, wasm-bindgen protocol aligned)
 # We install trunk binary to save time, others via cargo
@@ -74,19 +72,6 @@ RUN . "$HOME/.cargo/env" && \
     chmod +x /root/.cargo/bin/trunk && \
     # Install wasm-bindgen-cli (Compiling from source to avoid glibc issues, doing it ONCE here)
     cargo install wasm-bindgen-cli --version 0.2.108
-
-# 6. Fix: Create dummy libatomic.a for MIPS
-# openssl-sys demands -latomic, but Zig provides the symbols in compiler-rt.
-# We create an empty archive to satisfy the linker.
-RUN . "$HOME/.cargo/env" && \
-    echo '' > atomic.c && \
-    /root/zig/zig cc -target mips-linux-musl -c -o atomic.o atomic.c && \
-    /root/zig/zig ar rcs libatomic.a atomic.o && \
-    RUST_SYSROOT=$(rustc --print sysroot) && \
-    TARGET_LIB_DIR="$RUST_SYSROOT/lib/rustlib/mips-unknown-linux-musl/lib" && \
-    mkdir -p "$TARGET_LIB_DIR" && \
-    cp libatomic.a "$TARGET_LIB_DIR/" && \
-    rm atomic.c atomic.o libatomic.a
 
 # 7. Install Gitea Act Runner Binary
 # We fetch the binary directly to run as the entrypoint

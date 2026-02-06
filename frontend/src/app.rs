@@ -64,7 +64,7 @@ pub fn App() -> impl IntoView {
             <div class="drawer lg:drawer-open h-full w-full">
                 <input id="my-drawer" type="checkbox" class="drawer-toggle" />
 
-                <div class="drawer-content flex flex-col h-full overflow-hidden bg-base-100 text-base-content text-sm select-none">
+                <div class="drawer-content flex flex-col h-full overflow-x-hidden bg-base-100 text-base-content text-sm select-none">
                     // Toolbar at the top
                     <Toolbar />
 

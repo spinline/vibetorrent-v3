@@ -75,7 +75,7 @@ pub fn Sidebar() -> impl IntoView {
     };
 
     view! {
-        <div class="w-64 h-full flex flex-col bg-base-200 border-r border-base-300 pt-[env(safe-area-inset-top)]">
+        <div class="w-64 h-full flex flex-col bg-base-200 border-r border-base-300 pt-safe-top">
             <div class="p-2">
                 <ul class="menu w-full rounded-box gap-1">
                     <li class="menu-title text-primary uppercase font-bold px-4">"Filters"</li>

@@ -144,6 +144,8 @@ pub fn provide_torrent_store() {
             let mut backoff_ms: u32 = 1000; // Start with 1 second
             let max_backoff_ms: u32 = 30000; // Max 30 seconds
             let mut was_connected = false;
+            let mut disconnect_notified = false; // Track if we already showed disconnect toast
+            let mut got_first_message = false; // Only count as "connected" after receiving data
 
             loop {
                 let es_result = EventSource::new("/api/events");
@@ -152,20 +154,28 @@ pub fn provide_torrent_store() {
                     Ok(mut es) => {
                         match es.subscribe("message") {
                             Ok(mut stream) => {
-                                // Connection established
-                                if was_connected {
-                                    // We were previously connected and lost connection, now reconnected
-                                    show_toast_with_signal(
-                                        notifications,
-                                        NotificationLevel::Success,
-                                        "Sunucu bağlantısı yeniden kuruldu",
-                                    );
-                                }
-                                was_connected = true;
-                                backoff_ms = 1000; // Reset backoff on successful connection
+                                // Don't show "connected" toast yet - wait for first real message
+                                got_first_message = false;
 
                                 // Process messages
                                 while let Some(Ok((_, msg))) = stream.next().await {
+                                    // First successful message = truly connected
+                                    if !got_first_message {
+                                        got_first_message = true;
+                                        backoff_ms = 1000; // Reset backoff on real data
+                                        
+                                        if was_connected && disconnect_notified {
+                                            // We were previously connected, lost connection, and now truly reconnected
+                                            show_toast_with_signal(
+                                                notifications,
+                                                NotificationLevel::Success,
+                                                "Sunucu bağlantısı yeniden kuruldu",
+                                            );
+                                            disconnect_notified = false;
+                                        }
+                                        was_connected = true;
+                                    }
+
                                     if let Some(data_str) = msg.data().as_string() {
                                         if let Ok(event) = serde_json::from_str::<AppEvent>(&data_str) {
                                             match event {
@@ -218,9 +228,6 @@ pub fn provide_torrent_store() {
                                                     
                                                     // Show browser notification for critical events
                                                     let is_critical = n.message.contains("tamamlandı") 
-                                                        || n.message.contains("Reconnected")
-                                                        || n.message.contains("yeniden kuruldu")
-                                                        || n.message.contains("Lost connection")
                                                         || n.level == shared::NotificationLevel::Error;
                                                     
                                                     if is_critical {
@@ -243,34 +250,37 @@ pub fn provide_torrent_store() {
                                 }
 
                                 // Stream ended - connection lost
-                                if was_connected {
+                                if was_connected && !disconnect_notified {
                                     show_toast_with_signal(
                                         notifications,
                                         NotificationLevel::Warning,
                                         "Sunucu bağlantısı kesildi, yeniden bağlanılıyor...",
                                     );
+                                    disconnect_notified = true;
                                 }
                             }
                             Err(_) => {
-                                // Failed to subscribe
-                                if was_connected {
+                                // Failed to subscribe - only notify once
+                                if was_connected && !disconnect_notified {
                                     show_toast_with_signal(
                                         notifications,
                                         NotificationLevel::Warning,
                                         "Sunucu bağlantısı kesildi, yeniden bağlanılıyor...",
                                     );
+                                    disconnect_notified = true;
                                 }
                             }
                         }
                     }
                     Err(_) => {
-                        // Failed to create EventSource
-                        if was_connected {
+                        // Failed to create EventSource - only notify once
+                        if was_connected && !disconnect_notified {
                             show_toast_with_signal(
                                 notifications,
                                 NotificationLevel::Warning,
                                 "Sunucu bağlantısı kesildi, yeniden bağlanılıyor...",
                             );
+                            disconnect_notified = true;
                         }
                     }
                 }

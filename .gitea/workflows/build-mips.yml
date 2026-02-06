@@ -36,10 +36,27 @@ jobs:
 
     - name: Setup Node.js
       run: |
-        if ! command -v node >/dev/null 2>&1 || [ "$(node -v | cut -d. -f1 | tr -d v)" -lt 20 ]; then
-          curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
-          apt-get install -y -qq nodejs
-        fi
+        # Download and install Node.js manually to ensure correct version and PATH
+        NODE_VER="v20.11.1"
+        ARCH=""
+        case $(uname -m) in
+          x86_64) ARCH="x64" ;;
+          aarch64) ARCH="arm64" ;;
+          *) echo "Unsupported architecture: $(uname -m)"; exit 1 ;;
+        esac
+        
+        echo "Installing Node.js $NODE_VER for $ARCH..."
+        curl -fsSL "https://nodejs.org/dist/$NODE_VER/node-$NODE_VER-linux-$ARCH.tar.xz" -o node.tar.xz
+        
+        # Install to a local directory
+        mkdir -p "$HOME/.node"
+        tar -xJf node.tar.xz -C "$HOME/.node" --strip-components=1
+        
+        # Helper to update PATH for this step and future steps
+        echo "$HOME/.node/bin" >> $GITHUB_PATH
+        export PATH="$HOME/.node/bin:$PATH"
+        
+        echo "Node.js installed:"
         node -v
         npm -v
 

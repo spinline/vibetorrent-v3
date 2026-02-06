@@ -60,7 +60,20 @@ RUN . "$HOME/.cargo/env" && \
     # Install wasm-bindgen-cli (Compiling from source to avoid glibc issues, doing it ONCE here)
     cargo install wasm-bindgen-cli --version 0.2.108
 
-# 6. Install Gitea Act Runner Binary
+# 6. Fix: Create dummy libatomic.a for MIPS
+# openssl-sys demands -latomic, but Zig provides the symbols in compiler-rt.
+# We create an empty archive to satisfy the linker.
+RUN . "$HOME/.cargo/env" && \
+    echo '' > atomic.c && \
+    /root/zig/zig cc -target mips-linux-musl -c -o atomic.o atomic.c && \
+    /root/zig/zig ar rcs libatomic.a atomic.o && \
+    RUST_SYSROOT=$(rustc --print sysroot) && \
+    TARGET_LIB_DIR="$RUST_SYSROOT/lib/rustlib/mips-unknown-linux-musl/lib" && \
+    mkdir -p "$TARGET_LIB_DIR" && \
+    cp libatomic.a "$TARGET_LIB_DIR/" && \
+    rm atomic.c atomic.o libatomic.a
+
+# 7. Install Gitea Act Runner Binary
 # We fetch the binary directly to run as the entrypoint
 RUN ARCH=$(dpkg --print-architecture) && \
     VERSION="0.2.11" && \

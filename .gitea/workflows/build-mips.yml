@@ -31,9 +31,12 @@ jobs:
         trunk build --release
 
     - name: Build Backend (MIPS)
+      env:
+        # Ensure we are building a fully static binary
+        RUSTFLAGS: "-C target-feature=+crt-static"
       run: |
         cd backend
-        cargo zigbuild --target mips-unknown-linux-musl --release -Z build-std=std,panic_abort
+        cargo zigbuild --target mips-unknown-linux-musl --release
         file target/mips-unknown-linux-musl/release/backend
 
     - name: Rename Binary

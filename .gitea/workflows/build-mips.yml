@@ -36,7 +36,7 @@ jobs:
         RUSTFLAGS: "-C target-feature=+crt-static"
       run: |
         cd backend
-        cargo zigbuild --target mips-unknown-linux-musl --release
+        cargo zigbuild --target mips-unknown-linux-musl --release -Z build-std=std,panic_abort
         file target/mips-unknown-linux-musl/release/backend
 
     - name: Rename Binary

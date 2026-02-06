@@ -40,11 +40,13 @@ jobs:
         fi
 
     - name: Build Backend (MIPS)
-      env:
-        CROSS_NO_WARNINGS: 0
       run: |
-        cd backend
-        cross +nightly build --target mips-unknown-linux-musl --release -Z build-std=std,panic_abort
+        docker run --rm \
+          -v "$PWD":/project \
+          -v "$HOME/.cargo/registry":/root/.cargo/registry \
+          -w /project \
+          ghcr.io/cross-rs/mips-unknown-linux-musl:main \
+          sh -c 'rustup default nightly && rustup component add rust-src && cd backend && cargo build --target mips-unknown-linux-musl --release -Z build-std=std,panic_abort'
 
     - name: Rename Binary
       run: mv target/mips-unknown-linux-musl/release/backend target/mips-unknown-linux-musl/release/vibetorrent-mips

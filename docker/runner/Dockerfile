@@ -46,7 +46,22 @@ RUN ARCH=$(dpkg --print-architecture) && \
     mv "zig-linux-$ZIG_ARCH-$ZIG_VER" /root/zig && \
     rm zig.tar.xz
 
-# 5. Install Tools (Trunk, cargo-zigbuild, wasm-bindgen protocol aligned)
+# 5. Fix: Create libatomic.a shim for MIPS
+# MIPS musl static build often misses __atomic_is_lock_free.
+# We create a minimal implementation to satisfy the linker.
+# We rename the function to avoid builtin conflict and alias it via linker flags later.
+RUN . "$HOME/.cargo/env" && \
+    echo '#include <stdbool.h>' > atomic.c && \
+    echo 'bool __atomic_is_lock_free_shim(unsigned int size, const volatile void *ptr) { return size <= 4; }' >> atomic.c && \
+    /root/zig/zig cc -target mips-linux-musl -msoft-float -c -o atomic.o atomic.c && \
+    /root/zig/zig ar rcs libatomic.a atomic.o && \
+    RUST_SYSROOT=$(rustc --print sysroot) && \
+    TARGET_LIB_DIR="$RUST_SYSROOT/lib/rustlib/mips-unknown-linux-musl/lib" && \
+    mkdir -p "$TARGET_LIB_DIR" && \
+    cp libatomic.a "$TARGET_LIB_DIR/" && \
+    rm atomic.c atomic.o libatomic.a
+
+# 6. Install Tools (Trunk, cargo-zigbuild, wasm-bindgen protocol aligned)
 # We install trunk binary to save time, others via cargo
 RUN . "$HOME/.cargo/env" && \
     # Install cargo-zigbuild

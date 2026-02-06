@@ -34,7 +34,9 @@ jobs:
       env:
         # Ensure we are building a fully static binary
         # -C link-self-contained=no: Let Zig (the linker) handle CRT objects (crt1.o, etc.)
-        RUSTFLAGS: "-C target-feature=+crt-static -C link-self-contained=no"
+        # --defsym=__atomic_is_lock_free=... Maps the missing symbol to our shim
+        RUSTFLAGS: "-C target-feature=+crt-static -C link-self-contained=no -C link-arg=-msoft-float -C link-arg=-Wl,--defsym=__atomic_is_lock_free=__atomic_is_lock_free_shim"
+        CFLAGS_mips_unknown_linux_musl: "-msoft-float"
       run: |
         cd backend
         cargo zigbuild --target mips-unknown-linux-musl --release -Z build-std=std,panic_abort

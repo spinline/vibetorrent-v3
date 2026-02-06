@@ -12,7 +12,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout
+      env:
+        GIT_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+      run: |
+        rm -rf .git
+        git init .
+        git remote add origin https://admin:${GIT_TOKEN}@git.karatatar.com/admin/vibetorrent.git
+        git fetch --depth=1 origin ${{ gitea.sha }}
+        git checkout FETCH_HEAD
 
     - name: Setup Rust
       run: |

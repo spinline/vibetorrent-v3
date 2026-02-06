@@ -45,15 +45,15 @@ jobs:
           -v "$PWD":/project \
           -v cargo-cache:/usr/local/cargo/registry \
           -w /project \
-          rust:nightly \
+          rust:latest \
           bash -c '
-            rustup component add rust-src &&
+            rustup toolchain install nightly --component rust-src &&
             apt-get update -qq && apt-get install -y -qq musl-tools wget >/dev/null 2>&1 &&
             wget -qO- https://musl.cc/mips-linux-musl-cross.tgz | tar xz -C /opt/ &&
             export PATH="/opt/mips-linux-musl-cross/bin:$PATH" &&
             export CARGO_TARGET_MIPS_UNKNOWN_LINUX_MUSL_LINKER=mips-linux-musl-gcc &&
             cd backend &&
-            cargo build --target mips-unknown-linux-musl --release -Z build-std=std,panic_abort
+            cargo +nightly build --target mips-unknown-linux-musl --release -Z build-std=std,panic_abort
           '
 
     - name: Rename Binary

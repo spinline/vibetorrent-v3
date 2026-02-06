@@ -33,7 +33,8 @@ jobs:
     - name: Build Backend (MIPS)
       env:
         # Ensure we are building a fully static binary
-        RUSTFLAGS: "-C target-feature=+crt-static"
+        # -C link-self-contained=no: Let Zig (the linker) handle CRT objects (crt1.o, etc.)
+        RUSTFLAGS: "-C target-feature=+crt-static -C link-self-contained=no"
       run: |
         cd backend
         cargo zigbuild --target mips-unknown-linux-musl --release -Z build-std=std,panic_abort

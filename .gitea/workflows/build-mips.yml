@@ -52,7 +52,6 @@ jobs:
             wget -qO- https://musl.cc/mips-linux-musl-cross.tgz | tar xz -C /opt/ &&
             export PATH="/opt/mips-linux-musl-cross/bin:$PATH" &&
             export CARGO_TARGET_MIPS_UNKNOWN_LINUX_MUSL_LINKER=mips-linux-musl-gcc &&
-            export RUSTFLAGS="-C target-feature=+crt-static -C link-arg=-static" &&
             cd backend &&
             cargo +nightly build --target mips-unknown-linux-musl --release -Z build-std=std,panic_abort &&
             file /project/target/mips-unknown-linux-musl/release/backend

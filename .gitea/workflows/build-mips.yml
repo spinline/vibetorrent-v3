@@ -86,30 +86,41 @@ jobs:
         npx @tailwindcss/cli -i input.css -o public/tailwind.css
         trunk build --release
 
-    - name: Build MIPS Builder Image
+    - name: Setup Zig & Cross Setup
       run: |
-        if ! docker image inspect vibetorrent-mips-builder >/dev/null 2>&1; then
-          docker build --platform linux/amd64 -t vibetorrent-mips-builder -f - . <<'DOCKERFILE'
-        FROM ghcr.io/cross-rs/mips-unknown-linux-musl:main
-        RUN apt-get update -qq && \
-            apt-get install -y -qq curl ca-certificates && \
-            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain nightly --component rust-src && \
-            rm -rf /var/lib/apt/lists/*
-        ENV PATH="/root/.cargo/bin:${PATH}"
-        DOCKERFILE
-        fi
+        # Install Zig for cross-compilation (easier/cleaner than GCC + Cargo wrappers without Docker)
+        ZIG_VER="0.13.0"
+        ARCH=$(uname -m)
+        if [ "$ARCH" = "x86_64" ]; then ZIG_ARCH="x86_64"; fi
+        if [ "$ARCH" = "aarch64" ]; then ZIG_ARCH="aarch64"; fi
+        
+        echo "Downloading Zig $ZIG_VER for $ZIG_ARCH..."
+        curl -fsSL "https://ziglang.org/download/$ZIG_VER/zig-linux-$ZIG_ARCH-$ZIG_VER.tar.xz" -o zig.tar.xz
+        tar -xf zig.tar.xz
+        mv "zig-linux-$ZIG_ARCH-$ZIG_VER" "$HOME/zig"
+        
+        # Add Zig to PATH
+        echo "$HOME/zig" >> $GITHUB_PATH
+        export PATH="$HOME/zig:$PATH"
+        
+        zig version
+        
+        # Install cargo-zigbuild
+        . "$HOME/.cargo/env"
+        cargo install cargo-zigbuild
 
     - name: Build Backend (MIPS)
       run: |
-        docker run --rm \
-          -v "$PWD":/project \
-          -v cargo-mips-registry:/root/.cargo/registry \
-          -w /project/backend \
-          vibetorrent-mips-builder \
-          bash -c '
-            cargo build --target mips-unknown-linux-musl --release -Z build-std=std,panic_abort &&
-            file /project/target/mips-unknown-linux-musl/release/backend
-          '
+        . "$HOME/.cargo/env"
+        export PATH="$HOME/zig:$PATH"
+        cd backend
+        
+        # Use cargo-zigbuild to cross-compile
+        # mips-unknown-linux-musl matches zig target mips-linux-musl
+        
+        cargo zigbuild --target mips-unknown-linux-musl --release -Z build-std=std,panic_abort
+        
+        file target/mips-unknown-linux-musl/release/backend
 
     - name: Rename Binary
       run: mv target/mips-unknown-linux-musl/release/backend target/mips-unknown-linux-musl/release/vibetorrent-mips

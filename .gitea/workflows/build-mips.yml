@@ -41,12 +41,20 @@ jobs:
 
     - name: Build Backend (MIPS)
       run: |
-        docker run --rm \
+        docker run --rm --platform linux/amd64 \
           -v "$PWD":/project \
-          -v "$HOME/.cargo/registry":/root/.cargo/registry \
+          -v cargo-cache:/usr/local/cargo/registry \
           -w /project \
-          ghcr.io/cross-rs/mips-unknown-linux-musl:main \
-          sh -c 'rustup default nightly && rustup component add rust-src && cd backend && cargo build --target mips-unknown-linux-musl --release -Z build-std=std,panic_abort'
+          rust:nightly \
+          bash -c '
+            rustup component add rust-src &&
+            apt-get update -qq && apt-get install -y -qq musl-tools wget >/dev/null 2>&1 &&
+            wget -qO- https://musl.cc/mips-linux-musl-cross.tgz | tar xz -C /opt/ &&
+            export PATH="/opt/mips-linux-musl-cross/bin:$PATH" &&
+            export CARGO_TARGET_MIPS_UNKNOWN_LINUX_MUSL_LINKER=mips-linux-musl-gcc &&
+            cd backend &&
+            cargo build --target mips-unknown-linux-musl --release -Z build-std=std,panic_abort
+          '
 
     - name: Rename Binary
       run: mv target/mips-unknown-linux-musl/release/backend target/mips-unknown-linux-musl/release/vibetorrent-mips

@@ -305,7 +305,45 @@ pub fn StatusBar() -> impl IntoView {
                         // Request push notification permission when settings button is clicked
                         spawn_local(async {
                             log::info!("Settings button clicked - requesting push notification permission");
+                            
+                            // Check current permission state before requesting
+                            let window = web_sys::window().expect("window should exist");
+                            let _current_perm = js_sys::Reflect::get(&window, &"Notification".into())
+                                .ok()
+                                .and_then(|n| js_sys::Reflect::get(&n, &"permission".into()).ok())
+                                .and_then(|p| p.as_string())
+                                .unwrap_or_default();
+                                
                             crate::store::subscribe_to_push_notifications().await;
+                            
+                            // Check permission after request
+                            let new_perm = js_sys::Reflect::get(&window, &"Notification".into())
+                                .ok()
+                                .and_then(|n| js_sys::Reflect::get(&n, &"permission".into()).ok())
+                                .and_then(|p| p.as_string())
+                                .unwrap_or_default();
+                            
+                            if let Some(store) = use_context::<crate::store::TorrentStore>() {
+                                if new_perm == "granted" {
+                                    crate::store::show_toast_with_signal(
+                                        store.notifications,
+                                        shared::NotificationLevel::Success,
+                                        "Bildirimler etkinleştirildi! Torrent tamamlandığında bildirim alacaksınız.".to_string(),
+                                    );
+                                } else if new_perm == "denied" {
+                                    crate::store::show_toast_with_signal(
+                                        store.notifications,
+                                        shared::NotificationLevel::Error,
+                                        "Bildirim izni reddedildi. Tarayıcı ayarlarından izin verebilirsiniz.".to_string(),
+                                    );
+                                } else {
+                                    crate::store::show_toast_with_signal(
+                                        store.notifications,
+                                        shared::NotificationLevel::Warning,
+                                        "Bildirim izni verilemedi. Açılan izin penceresinde 'İzin Ver' seçeneğini seçin.".to_string(),
+                                    );
+                                }
+                            }
                         });
                     }
                 >

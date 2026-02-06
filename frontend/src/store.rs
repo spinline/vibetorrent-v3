@@ -309,33 +309,70 @@ pub async fn subscribe_to_push_notifications() {
     
     // First, request notification permission if not already granted
     let window = web_sys::window().expect("window should exist");
-    if let Ok(notification_class) = js_sys::Reflect::get(&window, &"Notification".into()) {
-        if !notification_class.is_undefined() {
+    let permission_granted = if let Ok(notification_class) = js_sys::Reflect::get(&window, &"Notification".into()) {
+        if notification_class.is_undefined() {
+            log::error!("Notification API not available");
+            return;
+        }
+        
+        // Check current permission
+        let current_permission = js_sys::Reflect::get(&notification_class, &"permission".into())
+            .ok()
+            .and_then(|p| p.as_string())
+            .unwrap_or_default();
+        
+        if current_permission == "granted" {
+            log::info!("Notification permission already granted");
+            true
+        } else if current_permission == "denied" {
+            log::warn!("Notification permission was denied");
+            return;
+        } else {
+            // Permission is "default" - need to request
+            log::info!("Requesting notification permission...");
             if let Ok(request_fn) = js_sys::Reflect::get(&notification_class, &"requestPermission".into()) {
                 if request_fn.is_function() {
                     let request_fn_typed = js_sys::Function::from(request_fn);
                     match request_fn_typed.call0(&notification_class) {
                         Ok(promise_val) => {
                             let request_future = wasm_bindgen_futures::JsFuture::from(
-                                web_sys::js_sys::Promise::from(promise_val)
+                                js_sys::Promise::from(promise_val)
                             );
                             match request_future.await {
-                                Ok(_) => {
-                                    log::info!("Notification permission requested");
+                                Ok(result) => {
+                                    let result_str = result.as_string().unwrap_or_default();
+                                    log::info!("Permission request result: {}", result_str);
+                                    result_str == "granted"
                                 }
                                 Err(e) => {
-                                    log::warn!("Failed to request notification permission: {:?}", e);
+                                    log::error!("Failed to request notification permission: {:?}", e);
+                                    false
                                 }
                             }
                         }
                         Err(e) => {
-                            log::warn!("Failed to call requestPermission: {:?}", e);
+                            log::error!("Failed to call requestPermission: {:?}", e);
+                            false
                         }
                     }
+                } else {
+                    false
                 }
+            } else {
+                false
             }
         }
+    } else {
+        log::error!("Cannot access Notification class");
+        return;
+    };
+    
+    if !permission_granted {
+        log::warn!("Notification permission not granted, cannot subscribe to push");
+        return;
     }
+    
+    log::info!("Notification permission granted! Proceeding with push subscription...");
     
     // Get VAPID public key from backend
     let public_key_response = match Request::get("/api/push/public-key").send().await {

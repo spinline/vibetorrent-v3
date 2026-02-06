@@ -69,13 +69,26 @@ jobs:
       run: |
         . "$HOME/.cargo/env"
         # Download pre-built trunk binary to save huge compilation time
-        # This replaces 'cargo install trunk'
         TRUNK_VER="v0.21.5"
+        ARCH=$(uname -m)
+        TRUNK_ARCH=""
+        
+        if [ "$ARCH" = "x86_64" ]; then
+             TRUNK_ARCH="x86_64-unknown-linux-gnu"
+        elif [ "$ARCH" = "aarch64" ]; then
+             TRUNK_ARCH="aarch64-unknown-linux-gnu"
+        fi
+        
         if ! command -v trunk &> /dev/null; then
-          echo "Downloading trunk $TRUNK_VER..."
-          wget -qO- https://github.com/trunk-rs/trunk/releases/download/$TRUNK_VER/trunk-x86_64-unknown-linux-gnu.tar.gz | tar -xzf -
-          mv trunk "$HOME/.cargo/bin/"
-          chmod +x "$HOME/.cargo/bin/trunk"
+          if [ -n "$TRUNK_ARCH" ]; then
+              echo "Downloading trunk $TRUNK_VER for $TRUNK_ARCH..."
+              wget -qO- "https://github.com/trunk-rs/trunk/releases/download/$TRUNK_VER/trunk-$TRUNK_ARCH.tar.gz" | tar -xzf -
+              mv trunk "$HOME/.cargo/bin/"
+              chmod +x "$HOME/.cargo/bin/trunk"
+          else
+              echo "No pre-built binary for $ARCH, compiling from source (slow)..."
+              cargo install trunk
+          fi
         fi
         trunk --version
         

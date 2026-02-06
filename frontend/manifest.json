@@ -38,5 +38,9 @@
             "form_factor": "narrow",
             "label": "Mobile Home Screen"
         }
-    ]
+    ],
+    "developer": {
+        "name": "VibeTorrent",
+        "url": "https://github.com/spinline/vibetorrent-v3"
+    }
 }

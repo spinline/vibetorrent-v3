@@ -18,6 +18,9 @@ use shared::{
 };
 use utoipa::ToSchema;
 
+pub mod auth;
+pub mod setup;
+
 #[derive(RustEmbed)]
 #[folder = "../frontend/dist"]
 pub struct Asset;
@@ -709,8 +712,8 @@ pub async fn subscribe_push_handler(
     Json(subscription): Json<push::PushSubscription>,
 ) -> impl IntoResponse {
     tracing::info!("Received push subscription: {:?}", subscription);
-    
+
     state.push_store.add_subscription(subscription).await;
-    
+
     (StatusCode::OK, "Subscription saved").into_response()
 }

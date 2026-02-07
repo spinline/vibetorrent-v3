@@ -1,3 +1,4 @@
+mod db;
 mod diff;
 mod handlers;
 #[cfg(feature = "push-notifications")]
@@ -10,7 +11,12 @@ use axum::error_handling::HandleErrorLayer;
 use axum::{
     routing::{get, post},
     Router,
+    middleware::{self, Next},
+    extract::Request,
+    response::Response,
+    http::StatusCode,
 };
+use axum_extra::extract::cookie::CookieJar;
 use clap::Parser;
 use dotenvy::dotenv;
 use shared::{AppEvent, Torrent};
@@ -32,8 +38,38 @@ pub struct AppState {
     pub tx: Arc<watch::Sender<Vec<Torrent>>>,
     pub event_bus: broadcast::Sender<AppEvent>,
     pub scgi_socket_path: String,
+    pub db: db::Db,
     #[cfg(feature = "push-notifications")]
     pub push_store: push::PushSubscriptionStore,
+}
+
+async fn auth_middleware(
+    state: axum::extract::State<AppState>,
+    jar: CookieJar,
+    request: Request,
+    next: Next,
+) -> Result<Response, StatusCode> {
+    // Skip auth for public paths
+    let path = request.uri().path();
+    if path.starts_with("/api/auth/login")
+       || path.starts_with("/api/auth/check") // Used by frontend to decide where to go
+       || path.starts_with("/api/setup")
+       || path.starts_with("/swagger-ui")
+       || path.starts_with("/api-docs")
+       || !path.starts_with("/api/") // Allow static files (frontend)
+    {
+        return Ok(next.run(request).await);
+    }
+
+    // Check token
+    if let Some(token) = jar.get("auth_token") {
+        match state.db.get_session_user(token.value()).await {
+            Ok(Some(_)) => return Ok(next.run(request).await),
+            _ => {} // Invalid
+        }
+    }
+
+    Err(StatusCode::UNAUTHORIZED)
 }
 
 #[derive(Parser, Debug)]
@@ -51,6 +87,10 @@ struct Args {
     /// Port to listen on
     #[arg(short, long, env = "PORT", default_value_t = 3000)]
     port: u16,
+
+    /// Database URL
+    #[arg(long, env = "DATABASE_URL", default_value = "sqlite:vibetorrent.db")]
+    db_url: String,
 }
 
 #[cfg(feature = "push-notifications")]
@@ -68,7 +108,10 @@ struct Args {
         handlers::get_global_limit_handler,
         handlers::set_global_limit_handler,
         handlers::get_push_public_key_handler,
-        handlers::subscribe_push_handler
+        handlers::subscribe_push_handler,
+        handlers::auth::login_handler,
+        handlers::setup::setup_handler,
+        handlers::setup::get_setup_status_handler
     ),
     components(
         schemas(
@@ -83,7 +126,9 @@ struct Args {
             shared::SetLabelRequest,
             shared::GlobalLimitRequest,
             push::PushSubscription,
-            push::PushKeys
+            push::PushKeys,
+            handlers::auth::LoginRequest,
+            handlers::setup::SetupRequest
         )
     ),
     tags(
@@ -105,7 +150,10 @@ struct ApiDoc;
         handlers::set_file_priority_handler,
         handlers::set_label_handler,
         handlers::get_global_limit_handler,
-        handlers::set_global_limit_handler
+        handlers::set_global_limit_handler,
+        handlers::auth::login_handler,
+        handlers::setup::setup_handler,
+        handlers::setup::get_setup_status_handler
     ),
     components(
         schemas(
@@ -118,7 +166,9 @@ struct ApiDoc;
             shared::TorrentTracker,
             shared::SetFilePriorityRequest,
             shared::SetLabelRequest,
-            shared::GlobalLimitRequest
+            shared::GlobalLimitRequest,
+            handlers::auth::LoginRequest,
+            handlers::setup::SetupRequest
         )
     ),
     tags(
@@ -145,6 +195,29 @@ async fn main() {
     tracing::info!("Starting VibeTorrent Backend...");
     tracing::info!("Socket: {}", args.socket);
     tracing::info!("Port: {}", args.port);
+
+    // Initialize Database
+    tracing::info!("Connecting to database: {}", args.db_url);
+    // Ensure the db file exists if it's sqlite
+    if args.db_url.starts_with("sqlite:") {
+        let path = args.db_url.trim_start_matches("sqlite:");
+        if !std::path::Path::new(path).exists() {
+            tracing::info!("Database file not found, creating: {}", path);
+            match std::fs::File::create(path) {
+                Ok(_) => tracing::info!("Created empty database file"),
+                Err(e) => tracing::error!("Failed to create database file: {}", e),
+            }
+        }
+    }
+
+    let db = match db::Db::new(&args.db_url).await {
+        Ok(db) => db,
+        Err(e) => {
+            tracing::error!("Failed to connect to database: {}", e);
+            std::process::exit(1);
+        }
+    };
+    tracing::info!("Database connected successfully.");
 
     // Startup Health Check
     let socket_path = std::path::Path::new(&args.socket);
@@ -181,6 +254,7 @@ async fn main() {
         tx: tx.clone(),
         event_bus: event_bus.clone(),
         scgi_socket_path: args.socket.clone(),
+        db: db.clone(),
         #[cfg(feature = "push-notifications")]
         push_store: push::PushSubscriptionStore::new(),
     };
@@ -308,6 +382,13 @@ async fn main() {
 
     let app = Router::new()
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
+        // Setup & Auth Routes
+        .route("/api/setup/status", get(handlers::setup::get_setup_status_handler))
+        .route("/api/setup", post(handlers::setup::setup_handler))
+        .route("/api/auth/login", post(handlers::auth::login_handler))
+        .route("/api/auth/logout", post(handlers::auth::logout_handler))
+        .route("/api/auth/check", get(handlers::auth::check_auth_handler))
+        // App Routes
         .route("/api/events", get(sse::sse_handler))
         .route("/api/torrents/add", post(handlers::add_torrent_handler))
         .route(
@@ -337,13 +418,14 @@ async fn main() {
             get(handlers::get_global_limit_handler).post(handlers::set_global_limit_handler),
         )
         .fallback(handlers::static_handler); // Serve static files for everything else
-    
+
     #[cfg(feature = "push-notifications")]
     let app = app
         .route("/api/push/public-key", get(handlers::get_push_public_key_handler))
         .route("/api/push/subscribe", post(handlers::subscribe_push_handler));
-    
+
     let app = app
+        .layer(middleware::from_fn_with_state(app_state.clone(), auth_middleware))
         .layer(TraceLayer::new_for_http())
         .layer(
             CompressionLayer::new()

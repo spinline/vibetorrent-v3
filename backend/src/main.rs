@@ -30,7 +30,6 @@ use tower_http::{
     cors::CorsLayer,
     trace::TraceLayer,
 };
-use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
 #[derive(Clone)]

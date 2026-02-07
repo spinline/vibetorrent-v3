@@ -1,5 +1,4 @@
 use leptos::*;
-use leptos_router::*;
 use serde::Serialize;
 
 #[derive(Serialize)]

@@ -15,6 +15,7 @@ use axum::{
     extract::Request,
     response::Response,
     http::StatusCode,
+    body::Body,
 };
 use axum_extra::extract::cookie::CookieJar;
 use clap::Parser;
@@ -46,7 +47,7 @@ pub struct AppState {
 async fn auth_middleware(
     state: axum::extract::State<AppState>,
     jar: CookieJar,
-    request: Request,
+    request: Request<Body>,
     next: Next,
 ) -> Result<Response, StatusCode> {
     // Skip auth for public paths
@@ -110,6 +111,8 @@ struct Args {
         handlers::get_push_public_key_handler,
         handlers::subscribe_push_handler,
         handlers::auth::login_handler,
+        handlers::auth::logout_handler,
+        handlers::auth::check_auth_handler,
         handlers::setup::setup_handler,
         handlers::setup::get_setup_status_handler
     ),
@@ -128,7 +131,8 @@ struct Args {
             push::PushSubscription,
             push::PushKeys,
             handlers::auth::LoginRequest,
-            handlers::setup::SetupRequest
+            handlers::setup::SetupRequest,
+            handlers::setup::SetupStatusResponse
         )
     ),
     tags(
@@ -152,6 +156,8 @@ struct ApiDoc;
         handlers::get_global_limit_handler,
         handlers::set_global_limit_handler,
         handlers::auth::login_handler,
+        handlers::auth::logout_handler,
+        handlers::auth::check_auth_handler,
         handlers::setup::setup_handler,
         handlers::setup::get_setup_status_handler
     ),
@@ -168,7 +174,8 @@ struct ApiDoc;
             shared::SetLabelRequest,
             shared::GlobalLimitRequest,
             handlers::auth::LoginRequest,
-            handlers::setup::SetupRequest
+            handlers::setup::SetupRequest,
+            handlers::setup::SetupStatusResponse
         )
     ),
     tags(
@@ -210,7 +217,7 @@ async fn main() {
         }
     }
 
-    let db = match db::Db::new(&args.db_url).await {
+    let db: db::Db = match db::Db::new(&args.db_url).await {
         Ok(db) => db,
         Err(e) => {
             tracing::error!("Failed to connect to database: {}", e);

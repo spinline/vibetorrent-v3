@@ -1,4 +1,4 @@
-use crate::{db::Db, AppState};
+use crate::AppState;
 use axum::{
     extract::{State, Json},
     http::StatusCode,
@@ -18,6 +18,13 @@ pub struct SetupStatusResponse {
     completed: bool,
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/setup/status",
+    responses(
+        (status = 200, description = "Setup status", body = SetupStatusResponse)
+    )
+)]
 pub async fn get_setup_status_handler(State(state): State<AppState>) -> impl IntoResponse {
     let completed = match state.db.has_users().await {
         Ok(has) => has,
@@ -29,6 +36,17 @@ pub async fn get_setup_status_handler(State(state): State<AppState>) -> impl Int
     Json(SetupStatusResponse { completed }).into_response()
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/setup",
+    request_body = SetupRequest,
+    responses(
+        (status = 200, description = "Setup completed"),
+        (status = 400, description = "Invalid request"),
+        (status = 403, description = "Setup already completed"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 pub async fn setup_handler(
     State(state): State<AppState>,
     Json(payload): Json<SetupRequest>,

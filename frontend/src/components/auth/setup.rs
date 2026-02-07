@@ -48,8 +48,9 @@ pub fn Setup() -> impl IntoView {
             match client.send().await {
                 Ok(resp) => {
                     if resp.ok() {
-                        // Redirect to login after setup (full reload to be safe)
-                        let _ = window().location().set_href("/login");
+                        // Redirect to home after setup (auto-login handled by backend)
+                        // Full reload to ensure auth state is refreshed
+                        let _ = window().location().set_href("/");
                     } else {
                         let text = resp.text().await.unwrap_or_default();
                         set_error.set(Some(format!("Hata: {}", text)));

@@ -74,9 +74,21 @@ pub fn Sidebar() -> impl IntoView {
         }
     };
 
+    let handle_logout = move |_| {
+        spawn_local(async move {
+            let client = gloo_net::http::Request::post("/api/auth/logout");
+            if let Ok(resp) = client.send().await {
+                if resp.ok() {
+                    // Force full reload to clear state
+                    let _ = window().location().set_href("/login");
+                }
+            }
+        });
+    };
+
     view! {
         <div class="w-64 h-full flex flex-col bg-base-200 border-r border-base-300" style="padding-top: env(safe-area-inset-top);">
-            <div class="p-2">
+            <div class="p-2 flex-1 overflow-y-auto">
                 <ul class="menu w-full rounded-box gap-1">
                     <li class="menu-title text-primary uppercase font-bold px-4">"Filters"</li>
                     <li>
@@ -136,7 +148,28 @@ pub fn Sidebar() -> impl IntoView {
                 </ul>
             </div>
 
-
+            <div class="p-4 border-t border-base-300 bg-base-200/50">
+                <div class="flex items-center gap-3">
+                    <div class="avatar">
+                        <div class="w-10 rounded-full bg-neutral text-neutral-content ring ring-primary ring-offset-base-100 ring-offset-2">
+                            <span class="text-xl font-bold flex items-center justify-center h-full">"A"</span>
+                        </div>
+                    </div>
+                    <div class="flex-1 overflow-hidden">
+                        <div class="font-bold truncate">"Admin User"</div>
+                        <div class="text-xs text-base-content/60 truncate">"Online"</div>
+                    </div>
+                    <button
+                        class="btn btn-ghost btn-sm btn-square text-error hover:bg-error/10"
+                        title="Logout"
+                        on:click=handle_logout
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
         </div>
     }
 }

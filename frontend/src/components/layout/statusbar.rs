@@ -111,9 +111,7 @@ pub fn StatusBar() -> impl IntoView {
 
     // Signal-based dropdown state: 0=none, 1=download, 2=upload, 3=theme
     let (active_dropdown, set_active_dropdown) = create_signal(0u8);
-    // Guard to prevent global close from firing right after toggle opens
-    let skip_next_close = store_value(false);
-    
+
     // Toggle a specific dropdown
     let toggle = move |id: u8| {
         let current = active_dropdown.get_untracked();
@@ -121,26 +119,23 @@ pub fn StatusBar() -> impl IntoView {
             set_active_dropdown.set(0);
         } else {
             set_active_dropdown.set(id);
-            // Mark that the next global close should be skipped
-            skip_next_close.set_value(true);
         }
     };
-    
+
     // Close all dropdowns
     let close_all = move || {
         set_active_dropdown.set(0);
     };
 
-    // Close dropdowns when tapping outside — uses click (fires after pointerdown)
-    let _ = window_event_listener(ev::click, move |_| {
-        if skip_next_close.get_value() {
-            skip_next_close.set_value(false);
-            return;
-        }
-        set_active_dropdown.set(0);
-    });
-
     view! {
+        // Transparent overlay to close dropdowns when clicking outside
+        <Show when=move || active_dropdown.get() != 0>
+            <div
+                class="fixed inset-0 z-[98] cursor-default"
+                on:click=move |_| close_all()
+            ></div>
+        </Show>
+
         <div class="fixed bottom-0 left-0 right-0 h-8 min-h-8 bg-base-200 border-t border-base-300 flex items-center px-4 text-xs gap-4 text-base-content/70 z-[99]">
 
             // --- DOWNLOAD SPEED DROPDOWN ---
@@ -148,10 +143,7 @@ pub fn StatusBar() -> impl IntoView {
                 <div
                     class="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors select-none"
                     title="Global Download Speed - Click to Set Limit"
-                    on:pointerdown=move |e| {
-                        e.stop_propagation();
-                        toggle(1);
-                    }
+                    on:click=move |_| toggle(1)
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3" />
@@ -167,7 +159,6 @@ pub fn StatusBar() -> impl IntoView {
                 <ul
                     class="absolute bottom-full left-0 z-[100] menu p-2 shadow bg-base-200 rounded-box w-40 mb-2 border border-base-300"
                     style=move || if active_dropdown.get() == 1 { "display: block" } else { "display: none" }
-                    on:pointerdown=move |e| e.stop_propagation()
                 >
                     {
                         limits.clone().into_iter().map(|(val, label)| {
@@ -179,8 +170,7 @@ pub fn StatusBar() -> impl IntoView {
                                 <li>
                                     <button
                                         class=move || if is_active() { "bg-primary/10 text-primary font-bold text-xs flex justify-between" } else { "text-xs flex justify-between" }
-                                        on:pointerdown=move |e| {
-                                            e.stop_propagation();
+                                        on:click=move |_| {
                                             set_limit("down", val);
                                             close_all();
                                         }
@@ -202,10 +192,7 @@ pub fn StatusBar() -> impl IntoView {
                 <div
                     class="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors select-none"
                     title="Global Upload Speed - Click to Set Limit"
-                    on:pointerdown=move |e| {
-                        e.stop_propagation();
-                        toggle(2);
-                    }
+                    on:click=move |_| toggle(2)
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" />
@@ -221,7 +208,6 @@ pub fn StatusBar() -> impl IntoView {
                 <ul
                     class="absolute bottom-full left-0 z-[100] menu p-2 shadow bg-base-200 rounded-box w-40 mb-2 border border-base-300"
                     style=move || if active_dropdown.get() == 2 { "display: block" } else { "display: none" }
-                    on:pointerdown=move |e| e.stop_propagation()
                 >
                     {
                         limits.clone().into_iter().map(|(val, label)| {
@@ -233,8 +219,7 @@ pub fn StatusBar() -> impl IntoView {
                                 <li>
                                     <button
                                         class=move || if is_active() { "bg-primary/10 text-primary font-bold text-xs flex justify-between" } else { "text-xs flex justify-between" }
-                                        on:pointerdown=move |e| {
-                                            e.stop_propagation();
+                                        on:click=move |_| {
                                             set_limit("up", val);
                                             close_all();
                                         }
@@ -256,10 +241,7 @@ pub fn StatusBar() -> impl IntoView {
                     <div
                         class="btn btn-ghost btn-xs btn-square"
                         title="Change Theme"
-                        on:pointerdown=move |e| {
-                            e.stop_propagation();
-                            toggle(3);
-                        }
+                        on:click=move |_| toggle(3)
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M9.53 16.122a3 3 0 0 0-5.78 1.128 2.25 2.25 0 0 1-2.4 2.245 4.5 4.5 0 0 0 8.4-2.245c0-.399-.078-.78-.22-1.128Zm0 0a15.998 15.998 0 0 0 3.388-1.62m-5.043-.025a15.994 15.994 0 0 1 1.622-3.395m3.42 3.42a15.995 15.995 0 0 0 4.764-4.648l3.876-5.814a1.151 1.151 0 0 0-1.597-1.597L14.146 6.32a15.996 15.996 0 0 0-4.649 4.763m3.42 3.42a6.776 6.776 0 0 0-3.42-3.42" />
@@ -269,7 +251,6 @@ pub fn StatusBar() -> impl IntoView {
                     <ul
                         class="absolute bottom-full right-0 z-[100] menu p-2 shadow bg-base-200 rounded-box w-52 mb-2 border border-base-300 max-h-96 overflow-y-auto"
                         style=move || if active_dropdown.get() == 3 { "display: block" } else { "display: none" }
-                        on:pointerdown=move |e| e.stop_propagation()
                     >
                         {
                             let themes = vec![
@@ -280,8 +261,7 @@ pub fn StatusBar() -> impl IntoView {
                                     <li>
                                         <button
                                             class=move || if current_theme.get() == theme { "bg-primary/10 text-primary font-bold text-xs capitalize" } else { "text-xs capitalize" }
-                                            on:pointerdown=move |e| {
-                                                e.stop_propagation();
+                                            on:click=move |_| {
                                                 set_current_theme.set(theme.to_string());
                                                 if let Some(win) = web_sys::window() {
                                                     if let Some(doc) = win.document() {
@@ -303,14 +283,14 @@ pub fn StatusBar() -> impl IntoView {
                     </ul>
                 </div>
 
-                <button 
-                    class="btn btn-ghost btn-xs btn-square" 
+                <button
+                    class="btn btn-ghost btn-xs btn-square"
                     title="Settings & Notification Permissions"
                     on:click=move |_| {
                         // Request push notification permission when settings button is clicked
                         spawn_local(async {
                             log::info!("Settings button clicked - requesting push notification permission");
-                            
+
                             // Check current permission state before requesting
                             let window = web_sys::window().expect("window should exist");
                             let _current_perm = js_sys::Reflect::get(&window, &"Notification".into())
@@ -318,16 +298,16 @@ pub fn StatusBar() -> impl IntoView {
                                 .and_then(|n| js_sys::Reflect::get(&n, &"permission".into()).ok())
                                 .and_then(|p| p.as_string())
                                 .unwrap_or_default();
-                                
+
                             crate::store::subscribe_to_push_notifications().await;
-                            
+
                             // Check permission after request
                             let new_perm = js_sys::Reflect::get(&window, &"Notification".into())
                                 .ok()
                                 .and_then(|n| js_sys::Reflect::get(&n, &"permission".into()).ok())
                                 .and_then(|p| p.as_string())
                                 .unwrap_or_default();
-                            
+
                             if let Some(store) = use_context::<crate::store::TorrentStore>() {
                                 if new_perm == "granted" {
                                     crate::store::show_toast_with_signal(

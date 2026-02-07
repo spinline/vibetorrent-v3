@@ -154,14 +154,6 @@ pub fn TorrentTable() -> impl IntoView {
 
     // Signal-based sort dropdown for mobile
     let (sort_open, set_sort_open) = create_signal(false);
-    let sort_skip_close = store_value(false);
-    let _ = window_event_listener(ev::click, move |_| {
-        if sort_skip_close.get_value() {
-            sort_skip_close.set_value(false);
-            return;
-        }
-        set_sort_open.set(false);
-    });
 
     let sort_arrow = move |col: SortColumn| {
         if sort_col.get() == col {
@@ -199,7 +191,7 @@ pub fn TorrentTable() -> impl IntoView {
         let (success_msg, error_msg) = get_action_messages(&action);
         let success_msg = success_msg.to_string();
         let error_msg = error_msg.to_string();
-        
+
         // Capture notifications signal before async (use_context unavailable in spawn_local)
         let notifications = store.notifications;
 
@@ -332,7 +324,15 @@ pub fn TorrentTable() -> impl IntoView {
                 </table>
             </div>
 
-            <div class="md:hidden flex flex-col h-full bg-base-200">
+            <div class="md:hidden flex flex-col h-full bg-base-200 relative">
+                // Transparent overlay to close sort dropdown
+                <Show when=move || sort_open.get()>
+                    <div
+                        class="fixed inset-0 z-[98] cursor-default"
+                        on:click=move |_| set_sort_open.set(false)
+                    ></div>
+                </Show>
+
                 <div class="px-3 py-2 border-b border-base-200 flex justify-between items-center bg-base-100/95 backdrop-blur z-10 shrink-0">
                     <span class="text-xs font-bold opacity-50 uppercase tracking-wider">"Torrents"</span>
 
@@ -340,15 +340,9 @@ pub fn TorrentTable() -> impl IntoView {
                         <div
                             role="button"
                             class="btn btn-ghost btn-xs gap-1 opacity-70 font-normal"
-                            on:pointerdown=move |e| {
-                                e.stop_propagation();
+                            on:click=move |_| {
                                 let cur = sort_open.get_untracked();
-                                if cur {
-                                    set_sort_open.set(false);
-                                } else {
-                                    set_sort_open.set(true);
-                                    sort_skip_close.set_value(true);
-                                }
+                                set_sort_open.set(!cur);
                             }
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
@@ -359,7 +353,6 @@ pub fn TorrentTable() -> impl IntoView {
                         <ul
                             class="absolute top-full right-0 z-[100] menu p-2 shadow bg-base-100 rounded-box w-48 mt-1 border border-base-200 text-xs"
                             style=move || if sort_open.get() { "display: block" } else { "display: none" }
-                            on:pointerdown=move |e| e.stop_propagation()
                         >
                              <li class="menu-title px-2 py-1 opacity-50 text-[10px] uppercase font-bold">"Sort By"</li>
                              {
@@ -381,8 +374,7 @@ pub fn TorrentTable() -> impl IntoView {
                                          <li>
                                              <button
                                                  class=move || if is_active() { "bg-primary/10 text-primary font-bold flex justify-between" } else { "flex justify-between" }
-                                                 on:pointerdown=move |e| {
-                                                     e.stop_propagation();
+                                                 on:click=move |_| {
                                                      handle_sort(col);
                                                      set_sort_open.set(false);
                                                  }
@@ -442,7 +434,7 @@ pub fn TorrentTable() -> impl IntoView {
                                     set_menu_position.set((x, y));
                                     set_selected_hash.set(Some(hash.clone()));
                                     set_menu_visible.set(true);
-                                    
+
                                     // Haptic feedback (iOS Safari doesn't support vibrate)
                                     let navigator = window().navigator();
                                     if js_sys::Reflect::has(&navigator, &wasm_bindgen::JsValue::from_str("vibrate")).unwrap_or(false) {

@@ -49,9 +49,8 @@ pub fn Setup() -> impl IntoView {
             match client.send().await {
                 Ok(resp) => {
                     if resp.ok() {
-                        // Redirect to login after setup
-                        let navigate = use_navigate();
-                        navigate("/login", Default::default());
+                        // Redirect to login after setup (full reload to be safe)
+                        let _ = window().location().set_href("/login");
                     } else {
                         let text = resp.text().await.unwrap_or_default();
                         set_error.set(Some(format!("Hata: {}", text)));

@@ -36,11 +36,16 @@ pub async fn login_handler(
     jar: CookieJar,
     Json(payload): Json<LoginRequest>,
 ) -> impl IntoResponse {
+    tracing::info!("Login attempt for user: {}", payload.username);
+
     let user = match state.db.get_user_by_username(&payload.username).await {
         Ok(Some(u)) => u,
-        Ok(None) => return (StatusCode::UNAUTHORIZED, "Invalid credentials").into_response(),
+        Ok(None) => {
+            tracing::warn!("Login failed: User not found for {}", payload.username);
+            return (StatusCode::UNAUTHORIZED, "Invalid credentials").into_response();
+        }
         Err(e) => {
-            tracing::error!("DB error during login: {}", e);
+            tracing::error!("DB error during login for {}: {}", payload.username, e);
             return (StatusCode::INTERNAL_SERVER_ERROR, "Database error").into_response();
         }
     };
@@ -49,6 +54,8 @@ pub async fn login_handler(
 
     match bcrypt::verify(&payload.password, &password_hash) {
         Ok(true) => {
+            tracing::info!("Password verified for user: {}", payload.username);
+
             // Create session
             let token: String = (0..32).map(|_| {
                 use rand::{distributions::Alphanumeric, Rng};
@@ -60,7 +67,7 @@ pub async fn login_handler(
             let expires_at = time::OffsetDateTime::now_utc().unix_timestamp() + expires_in;
 
             if let Err(e) = state.db.create_session(user_id, &token, expires_at).await {
-                tracing::error!("Failed to create session: {}", e);
+                tracing::error!("Failed to create session for {}: {}", payload.username, e);
                 return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to create session").into_response();
             }
 
@@ -71,9 +78,17 @@ pub async fn login_handler(
                 .max_age(Duration::seconds(expires_in))
                 .build();
 
+            tracing::info!("Session created and cookie set for user: {}", payload.username);
             (StatusCode::OK, jar.add(cookie), "Login successful").into_response()
         }
-        _ => (StatusCode::UNAUTHORIZED, "Invalid credentials").into_response(),
+        Ok(false) => {
+            tracing::warn!("Login failed: Invalid password for {}", payload.username);
+            (StatusCode::UNAUTHORIZED, "Invalid credentials").into_response()
+        }
+        Err(e) => {
+            tracing::error!("Bcrypt error for {}: {}", payload.username, e);
+            (StatusCode::INTERNAL_SERVER_ERROR, "Auth error").into_response()
+        }
     }
 }
 

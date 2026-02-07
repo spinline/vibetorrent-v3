@@ -20,6 +20,8 @@ pub fn Login() -> impl IntoView {
         set_loading.set(true);
         set_error.set(None);
 
+        logging::log!("Attempting login for user: {}", username.get());
+
         spawn_local(async move {
             let req = LoginRequest {
                 username: username.get(),
@@ -32,15 +34,19 @@ pub fn Login() -> impl IntoView {
 
             match client.send().await {
                 Ok(resp) => {
+                    logging::log!("Login response status: {}", resp.status());
                     if resp.ok() {
-                        // Redirect to home on success
-                        let navigate = use_navigate();
-                        navigate("/", Default::default());
+                        logging::log!("Login successful, redirecting...");
+                        // Force a full reload to re-run auth checks in App.rs
+                        let _ = window().location().set_href("/");
                     } else {
+                        let text = resp.text().await.unwrap_or_default();
+                        logging::error!("Login failed: {}", text);
                         set_error.set(Some("Kullanıcı adı veya şifre hatalı".to_string()));
                     }
                 }
-                Err(_) => {
+                Err(e) => {
+                    logging::error!("Network error: {}", e);
                     set_error.set(Some("Bağlantı hatası".to_string()));
                 }
             }

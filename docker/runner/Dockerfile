@@ -16,6 +16,8 @@ RUN apt-get update && apt-get install -y \
     xz-utils \
     libssl-dev \
     pkg-config \
+    file \
+    jq \
     # Needed for some crate compilations
     protobuf-compiler \
     && rm -rf /var/lib/apt/lists/*

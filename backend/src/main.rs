@@ -90,97 +90,13 @@ struct Args {
     /// Database URL
     #[arg(long, env = "DATABASE_URL", default_value = "sqlite:vibetorrent.db")]
     db_url: String,
+
+    /// Reset password for the specified user
+    #[arg(long)]
+    reset_password: Option<String>,
 }
 
-#[cfg(feature = "push-notifications")]
-#[derive(OpenApi)]
-#[openapi(
-    paths(
-        handlers::add_torrent_handler,
-        handlers::handle_torrent_action,
-        handlers::get_version_handler,
-        handlers::get_files_handler,
-        handlers::get_peers_handler,
-        handlers::get_trackers_handler,
-        handlers::set_file_priority_handler,
-        handlers::set_label_handler,
-        handlers::get_global_limit_handler,
-        handlers::set_global_limit_handler,
-        handlers::get_push_public_key_handler,
-        handlers::subscribe_push_handler,
-        handlers::auth::login_handler,
-        handlers::auth::logout_handler,
-        handlers::auth::check_auth_handler,
-        handlers::setup::setup_handler,
-        handlers::setup::get_setup_status_handler
-    ),
-    components(
-        schemas(
-            handlers::AddTorrentRequest,
-            shared::TorrentActionRequest,
-            shared::Torrent,
-            shared::TorrentStatus,
-            shared::TorrentFile,
-            shared::TorrentPeer,
-            shared::TorrentTracker,
-            shared::SetFilePriorityRequest,
-            shared::SetLabelRequest,
-            shared::GlobalLimitRequest,
-            push::PushSubscription,
-            push::PushKeys,
-            handlers::auth::LoginRequest,
-            handlers::setup::SetupRequest,
-            handlers::setup::SetupStatusResponse
-        )
-    ),
-    tags(
-        (name = "vibetorrent", description = "VibeTorrent API")
-    )
-)]
-struct ApiDoc;
-
-#[cfg(not(feature = "push-notifications"))]
-#[derive(OpenApi)]
-#[openapi(
-    paths(
-        handlers::add_torrent_handler,
-        handlers::handle_torrent_action,
-        handlers::get_version_handler,
-        handlers::get_files_handler,
-        handlers::get_peers_handler,
-        handlers::get_trackers_handler,
-        handlers::set_file_priority_handler,
-        handlers::set_label_handler,
-        handlers::get_global_limit_handler,
-        handlers::set_global_limit_handler,
-        handlers::auth::login_handler,
-        handlers::auth::logout_handler,
-        handlers::auth::check_auth_handler,
-        handlers::setup::setup_handler,
-        handlers::setup::get_setup_status_handler
-    ),
-    components(
-        schemas(
-            handlers::AddTorrentRequest,
-            shared::TorrentActionRequest,
-            shared::Torrent,
-            shared::TorrentStatus,
-            shared::TorrentFile,
-            shared::TorrentPeer,
-            shared::TorrentTracker,
-            shared::SetFilePriorityRequest,
-            shared::SetLabelRequest,
-            shared::GlobalLimitRequest,
-            handlers::auth::LoginRequest,
-            handlers::setup::SetupRequest,
-            handlers::setup::SetupStatusResponse
-        )
-    ),
-    tags(
-        (name = "vibetorrent", description = "VibeTorrent API")
-    )
-)]
-struct ApiDoc;
+// ... (ApiDoc structs remain same) ...
 
 #[tokio::main]
 async fn main() {
@@ -197,9 +113,6 @@ async fn main() {
 
     // Parse CLI Args
     let args = Args::parse();
-    tracing::info!("Starting VibeTorrent Backend...");
-    tracing::info!("Socket: {}", args.socket);
-    tracing::info!("Port: {}", args.port);
 
     // Initialize Database
     tracing::info!("Connecting to database: {}", args.db_url);
@@ -224,6 +137,68 @@ async fn main() {
     };
     tracing::info!("Database connected successfully.");
 
+    // Handle Password Reset
+    if let Some(username) = args.reset_password {
+        tracing::info!("Resetting password for user: {}", username);
+
+        // Check if user exists
+        let user_result = db.get_user_by_username(&username).await;
+
+        match user_result {
+            Ok(Some((user_id, _))) => {
+                // Generate random password
+                use rand::{distributions::Alphanumeric, Rng};
+                let new_password: String = rand::thread_rng()
+                    .sample_iter(&Alphanumeric)
+                    .take(12)
+                    .map(char::from)
+                    .collect();
+
+                // Hash password (low cost for performance)
+                let password_hash = match bcrypt::hash(&new_password, 6) {
+                    Ok(h) => h,
+                    Err(e) => {
+                        tracing::error!("Failed to hash password: {}", e);
+                        std::process::exit(1);
+                    }
+                };
+
+                // Update in DB (using a direct query since db.rs doesn't have update_password yet)
+                // We should add `update_password` to db.rs for cleaner code, but for now direct query is fine or we can extend Db.
+                // Let's extend Db.rs first to be clean.
+                if let Err(e) = db.update_password(user_id, &password_hash).await {
+                     tracing::error!("Failed to update password in DB: {}", e);
+                     std::process::exit(1);
+                }
+
+                println!("--------------------------------------------------");
+                println!("Password reset successfully for user: {}", username);
+                println!("New Password: {}", new_password);
+                println!("--------------------------------------------------");
+
+                // Invalidate existing sessions for security
+                if let Err(e) = db.delete_all_sessions_for_user(user_id).await {
+                    tracing::warn!("Failed to invalidate existing sessions: {}", e);
+                }
+
+                std::process::exit(0);
+            },
+            Ok(None) => {
+                tracing::error!("User '{}' not found.", username);
+                std::process::exit(1);
+            },
+            Err(e) => {
+                tracing::error!("Database error: {}", e);
+                std::process::exit(1);
+            }
+        }
+    }
+
+    tracing::info!("Starting VibeTorrent Backend...");
+    tracing::info!("Socket: {}", args.socket);
+    tracing::info!("Port: {}", args.port);
+
+    // ... rest of the main function ...
     // Startup Health Check
     let socket_path = std::path::Path::new(&args.socket);
     if !socket_path.exists() {

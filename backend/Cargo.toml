@@ -35,7 +35,7 @@ base64 = "0.22"
 openssl = { version = "0.10", features = ["vendored"], optional = true }
 sqlx = { version = "0.8", features = ["runtime-tokio", "sqlite"] }
 bcrypt = "0.17.0"
-axum-extra = { version = "0.9", features = ["cookie"] }
+axum-extra = { version = "0.10", features = ["cookie"] }
 rand = "0.8"
 anyhow = "1.0.101"
 time = { version = "0.3.47", features = ["serde", "formatting", "parsing"] }

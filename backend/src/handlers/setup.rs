@@ -13,7 +13,7 @@ pub struct SetupRequest {
     password: String,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct SetupStatusResponse {
     completed: bool,
 }

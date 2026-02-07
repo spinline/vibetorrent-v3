@@ -15,7 +15,7 @@ pub struct LoginRequest {
     password: String,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct UserResponse {
     username: String,
 }
@@ -76,6 +76,13 @@ pub async fn login_handler(
     }
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/auth/logout",
+    responses(
+        (status = 200, description = "Logged out")
+    )
+)]
 pub async fn logout_handler(
     State(state): State<AppState>,
     jar: CookieJar,
@@ -93,6 +100,14 @@ pub async fn logout_handler(
     (StatusCode::OK, jar.add(cookie), "Logged out").into_response()
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/auth/check",
+    responses(
+        (status = 200, description = "Authenticated"),
+        (status = 401, description = "Not authenticated")
+    )
+)]
 pub async fn check_auth_handler(
     State(state): State<AppState>,
     jar: CookieJar,

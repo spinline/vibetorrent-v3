@@ -12,9 +12,8 @@ use axum::{
     routing::{get, post},
     Router,
     middleware::{self, Next},
-    extract::Request,
     response::Response,
-    http::StatusCode,
+    http::{StatusCode, Request},
     body::Body,
 };
 use axum_extra::extract::cookie::CookieJar;
@@ -47,7 +46,7 @@ pub struct AppState {
 async fn auth_middleware(
     state: axum::extract::State<AppState>,
     jar: CookieJar,
-    request: Request<Body>,
+    request: Request,
     next: Next,
 ) -> Result<Response, StatusCode> {
     // Skip auth for public paths
@@ -72,7 +71,6 @@ async fn auth_middleware(
 
     Err(StatusCode::UNAUTHORIZED)
 }
-
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {

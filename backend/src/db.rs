@@ -104,6 +104,14 @@ impl Db {
         Ok(row.map(|r| r.get(0)))
     }
 
+    pub async fn delete_session(&self, token: &str) -> Result<()> {
+        sqlx::query("DELETE FROM sessions WHERE token = ?")
+            .bind(token)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
     pub async fn update_password(&self, user_id: i64, password_hash: &str) -> Result<()> {
         sqlx::query("UPDATE users SET password_hash = ? WHERE id = ?")
             .bind(password_hash)

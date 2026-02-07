@@ -96,7 +96,97 @@ struct Args {
     reset_password: Option<String>,
 }
 
-// ... (ApiDoc structs remain same) ...
+#[cfg(feature = "push-notifications")]
+#[derive(OpenApi)]
+#[openapi(
+    paths(
+        handlers::add_torrent_handler,
+        handlers::handle_torrent_action,
+        handlers::get_version_handler,
+        handlers::get_files_handler,
+        handlers::get_peers_handler,
+        handlers::get_trackers_handler,
+        handlers::set_file_priority_handler,
+        handlers::set_label_handler,
+        handlers::get_global_limit_handler,
+        handlers::set_global_limit_handler,
+        handlers::get_push_public_key_handler,
+        handlers::subscribe_push_handler,
+        handlers::auth::login_handler,
+        handlers::auth::logout_handler,
+        handlers::auth::check_auth_handler,
+        handlers::setup::setup_handler,
+        handlers::setup::get_setup_status_handler
+    ),
+    components(
+        schemas(
+            handlers::AddTorrentRequest,
+            shared::TorrentActionRequest,
+            shared::Torrent,
+            shared::TorrentStatus,
+            shared::TorrentFile,
+            shared::TorrentPeer,
+            shared::TorrentTracker,
+            shared::SetFilePriorityRequest,
+            shared::SetLabelRequest,
+            shared::GlobalLimitRequest,
+            push::PushSubscription,
+            push::PushKeys,
+            handlers::auth::LoginRequest,
+            handlers::setup::SetupRequest,
+            handlers::setup::SetupStatusResponse,
+            handlers::auth::UserResponse
+        )
+    ),
+    tags(
+        (name = "vibetorrent", description = "VibeTorrent API")
+    )
+)]
+struct ApiDoc;
+
+#[cfg(not(feature = "push-notifications"))]
+#[derive(OpenApi)]
+#[openapi(
+    paths(
+        handlers::add_torrent_handler,
+        handlers::handle_torrent_action,
+        handlers::get_version_handler,
+        handlers::get_files_handler,
+        handlers::get_peers_handler,
+        handlers::get_trackers_handler,
+        handlers::set_file_priority_handler,
+        handlers::set_label_handler,
+        handlers::get_global_limit_handler,
+        handlers::set_global_limit_handler,
+        handlers::auth::login_handler,
+        handlers::auth::logout_handler,
+        handlers::auth::check_auth_handler,
+        handlers::setup::setup_handler,
+        handlers::setup::get_setup_status_handler
+    ),
+    components(
+        schemas(
+            handlers::AddTorrentRequest,
+            shared::TorrentActionRequest,
+            shared::Torrent,
+            shared::TorrentStatus,
+            shared::TorrentFile,
+            shared::TorrentPeer,
+            shared::TorrentTracker,
+            shared::SetFilePriorityRequest,
+            shared::SetLabelRequest,
+            shared::GlobalLimitRequest,
+            handlers::auth::LoginRequest,
+            handlers::setup::SetupRequest,
+            handlers::setup::SetupStatusResponse,
+            handlers::auth::UserResponse
+        )
+    ),
+    tags(
+        (name = "vibetorrent", description = "VibeTorrent API")
+    )
+)]
+struct ApiDoc;
 
 #[tokio::main]
 async fn main() {

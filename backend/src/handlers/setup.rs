@@ -67,7 +67,9 @@ pub async fn setup_handler(
     }
 
     // 3. Create User
-    let password_hash = match bcrypt::hash(&payload.password, bcrypt::DEFAULT_COST) {
+    // Lower cost for faster login on low-power devices (MIPS routers etc.)
+    // Default is usually 12, which takes ~3s on slow CPUs. 6 should be much faster.
+    let password_hash = match bcrypt::hash(&payload.password, 6) {
         Ok(h) => h,
         Err(e) => {
             tracing::error!("Failed to hash password: {}", e);

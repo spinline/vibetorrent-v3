@@ -6,12 +6,14 @@ use serde::Serialize;
 struct LoginRequest {
     username: String,
     password: String,
+    remember_me: bool,
 }
 
 #[component]
 pub fn Login() -> impl IntoView {
     let (username, set_username) = create_signal(String::new());
     let (password, set_password) = create_signal(String::new());
+    let (remember_me, set_remember_me) = create_signal(false);
     let (error, set_error) = create_signal(Option::<String>::None);
     let (loading, set_loading) = create_signal(false);
 
@@ -26,6 +28,7 @@ pub fn Login() -> impl IntoView {
             let req = LoginRequest {
                 username: username.get(),
                 password: password.get(),
+                remember_me: remember_me.get(),
             };
 
             let client = gloo_net::http::Request::post("/api/auth/login")
@@ -87,6 +90,19 @@ pub fn Login() -> impl IntoView {
                                 on:input=move |ev| set_password.set(event_target_value(&ev))
                                 disabled=move || loading.get()
                             />
+                        </div>
+
+                        <div class="form-control mt-4">
+                            <label class="label cursor-pointer justify-start gap-3">
+                                <input
+                                    type="checkbox"
+                                    class="checkbox checkbox-primary checkbox-sm"
+                                    prop:checked=remember_me
+                                    on:change=move |ev| set_remember_me.set(event_target_checked(&ev))
+                                    disabled=move || loading.get()
+                                />
+                                <span class="label-text">"Beni Hatırla"</span>
+                            </label>
                         </div>
 
                         <Show when=move || error.get().is_some()>

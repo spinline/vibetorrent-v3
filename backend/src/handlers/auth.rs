@@ -13,6 +13,8 @@ use time::Duration;
 pub struct LoginRequest {
     username: String,
     password: String,
+    #[serde(default)]
+    remember_me: bool,
 }
 
 #[derive(Serialize, ToSchema)]
@@ -61,8 +63,13 @@ pub async fn login_handler(
                 rand::thread_rng().sample(Alphanumeric) as char
             }).collect();
 
-            // Expires in 30 days
-            let expires_in = 60 * 60 * 24 * 30;
+            // Expiration: 30 days if remember_me is true, else 1 day
+            let expires_in = if payload.remember_me {
+                60 * 60 * 24 * 30
+            } else {
+                60 * 60 * 24
+            };
+
             let expires_at = time::OffsetDateTime::now_utc().unix_timestamp() + expires_in;
 
             if let Err(e) = state.db.create_session(user_id, &token, expires_at).await {
@@ -70,12 +77,13 @@ pub async fn login_handler(
                 return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to create session").into_response();
             }
 
-            let cookie = Cookie::build(("auth_token", token))
+            let mut cookie = Cookie::build(("auth_token", token))
                 .path("/")
                 .http_only(true)
                 .same_site(SameSite::Lax)
-                .max_age(Duration::seconds(expires_in))
                 .build();
+
+            cookie.set_max_age(Duration::seconds(expires_in));
 
             tracing::info!("Session created and cookie set for user: {}", payload.username);
             (StatusCode::OK, jar.add(cookie), Json(UserResponse { username: payload.username })).into_response()

@@ -56,31 +56,38 @@ pub fn App() -> impl IntoView {
             // 2. Check Auth Status
             let auth_res = gloo_net::http::Request::get("/api/auth/check").send().await;
 
-            match auth_res {
-                Ok(resp) => {
-                    if resp.status() == 200 {
-                        logging::log!("Authenticated!");
+                        match auth_res {
+                            Ok(resp) => {
+                                if resp.status() == 200 {
+                                    logging::log!("Authenticated!");
 
-                        // Parse user info
-                        if let Ok(user_info) = resp.json::<UserResponse>().await {
-                            if let Some(store) = use_context::<crate::store::TorrentStore>() {
-                                store.user.set(Some(user_info.username));
+                                    // Parse user info
+                                    if let Ok(user_info) = resp.json::<UserResponse>().await {
+                                        if let Some(store) = use_context::<crate::store::TorrentStore>() {
+                                            store.user.set(Some(user_info.username));
+                                        }
+                                    }
+
+                                    set_is_authenticated.set(true);
+
+                                    // If user is already authenticated but on login/setup page, redirect to home
+                                    let pathname = window().location().pathname().unwrap_or_default();
+                                    if pathname == "/login" || pathname == "/setup" {
+                                        logging::log!("Already authenticated, redirecting to home");
+                                        let navigate = use_navigate();
+                                        navigate("/", Default::default());
+                                    }
+                                } else {
+                                    logging::log!("Not authenticated, redirecting to /login");
+                                    let navigate = use_navigate();
+                                    let pathname = window().location().pathname().unwrap_or_default();
+                                    if pathname != "/login" && pathname != "/setup" {
+                                         navigate("/login", Default::default());
+                                    }
+                                }
                             }
+                            Err(e) => logging::error!("Network error checking auth status: {}", e),
                         }
-
-                        set_is_authenticated.set(true);
-                    } else {
-                        logging::log!("Not authenticated, redirecting to /login");
-                        let navigate = use_navigate();
-                        let pathname = window().location().pathname().unwrap_or_default();
-                        if pathname != "/login" && pathname != "/setup" {
-                             navigate("/login", Default::default());
-                        }
-                    }
-                }
-                Err(e) => logging::error!("Network error checking auth status: {}", e),
-            }
-
             set_is_loading.set(false);
         });
     });

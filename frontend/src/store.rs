@@ -27,9 +27,9 @@ pub fn show_toast_with_signal(
         message: message.into(),
     };
     let item = NotificationItem { id, notification };
-    
+
     notifications.update(|list| list.push(item));
-    
+
     // Auto-remove after 5 seconds
     let _ = set_timeout(
         move || {
@@ -120,6 +120,7 @@ pub struct TorrentStore {
     pub search_query: RwSignal<String>,
     pub global_stats: RwSignal<GlobalStats>,
     pub notifications: RwSignal<Vec<NotificationItem>>,
+    pub user: RwSignal<Option<String>>,
 }
 
 pub fn provide_torrent_store() {
@@ -128,6 +129,7 @@ pub fn provide_torrent_store() {
     let search_query = create_rw_signal(String::new());
     let global_stats = create_rw_signal(GlobalStats::default());
     let notifications = create_rw_signal(Vec::<NotificationItem>::new());
+    let user = create_rw_signal(Option::<String>::None);
 
     let store = TorrentStore {
         torrents,
@@ -135,6 +137,7 @@ pub fn provide_torrent_store() {
         search_query,
         global_stats,
         notifications,
+        user,
     };
     provide_context(store);
 
@@ -149,7 +152,7 @@ pub fn provide_torrent_store() {
 
             loop {
                 let es_result = EventSource::new("/api/events");
-                
+
                 match es_result {
                     Ok(mut es) => {
                         match es.subscribe("message") {
@@ -163,7 +166,7 @@ pub fn provide_torrent_store() {
                                     if !got_first_message {
                                         got_first_message = true;
                                         backoff_ms = 1000; // Reset backoff on real data
-                                        
+
                                         if was_connected && disconnect_notified {
                                             // We were previously connected, lost connection, and now truly reconnected
                                             show_toast_with_signal(
@@ -225,11 +228,11 @@ pub fn provide_torrent_store() {
                                                 AppEvent::Notification(n) => {
                                                     // Show toast notification
                                                     show_toast_with_signal(notifications, n.level.clone(), n.message.clone());
-                                                    
+
                                                     // Show browser notification for critical events
-                                                    let is_critical = n.message.contains("tamamlandı") 
+                                                    let is_critical = n.message.contains("tamamlandı")
                                                         || n.level == shared::NotificationLevel::Error;
-                                                    
+
                                                     if is_critical {
                                                         let title = match n.level {
                                                             shared::NotificationLevel::Success => "✅ VibeTorrent",
@@ -237,7 +240,7 @@ pub fn provide_torrent_store() {
                                                             shared::NotificationLevel::Warning => "⚠️ VibeTorrent",
                                                             shared::NotificationLevel::Info => "ℹ️ VibeTorrent",
                                                         };
-                                                        
+
                                                         crate::utils::notification::show_notification_if_enabled(
                                                             title,
                                                             &n.message
@@ -316,7 +319,7 @@ struct PushKeys {
 /// Requests notification permission if needed, then subscribes to push
 pub async fn subscribe_to_push_notifications() {
     use gloo_net::http::Request;
-    
+
     // First, request notification permission if not already granted
     let window = web_sys::window().expect("window should exist");
     let permission_granted = if let Ok(notification_class) = js_sys::Reflect::get(&window, &"Notification".into()) {
@@ -324,13 +327,13 @@ pub async fn subscribe_to_push_notifications() {
             log::error!("Notification API not available");
             return;
         }
-        
+
         // Check current permission
         let current_permission = js_sys::Reflect::get(&notification_class, &"permission".into())
             .ok()
             .and_then(|p| p.as_string())
             .unwrap_or_default();
-        
+
         if current_permission == "granted" {
             log::info!("Notification permission already granted");
             true
@@ -376,14 +379,14 @@ pub async fn subscribe_to_push_notifications() {
         log::error!("Cannot access Notification class");
         return;
     };
-    
+
     if !permission_granted {
         log::warn!("Notification permission not granted, cannot subscribe to push");
         return;
     }
-    
+
     log::info!("Notification permission granted! Proceeding with push subscription...");
-    
+
     // Get VAPID public key from backend
     let public_key_response = match Request::get("/api/push/public-key").send().await {
         Ok(resp) => resp,
@@ -392,7 +395,7 @@ pub async fn subscribe_to_push_notifications() {
             return;
         }
     };
-    
+
     let public_key_data: serde_json::Value = match public_key_response.json().await {
         Ok(data) => data,
         Err(e) => {
@@ -400,7 +403,7 @@ pub async fn subscribe_to_push_notifications() {
             return;
         }
     };
-    
+
     let public_key = match public_key_data.get("publicKey").and_then(|v| v.as_str()) {
         Some(key) => key,
         None => {
@@ -408,9 +411,9 @@ pub async fn subscribe_to_push_notifications() {
             return;
         }
     };
-    
+
     log::info!("VAPID public key from backend: {} (len: {})", public_key, public_key.len());
-    
+
     // Convert VAPID public key to Uint8Array
     let public_key_array = match url_base64_to_uint8array(public_key) {
         Ok(arr) => {
@@ -422,12 +425,12 @@ pub async fn subscribe_to_push_notifications() {
             return;
         }
     };
-    
+
     // Get service worker registration
     let window = web_sys::window().expect("window should exist");
     let navigator = window.navigator();
     let service_worker = navigator.service_worker();
-    
+
     let registration_promise = match service_worker.ready() {
         Ok(promise) => promise,
         Err(e) => {
@@ -435,9 +438,9 @@ pub async fn subscribe_to_push_notifications() {
             return;
         }
     };
-    
+
     let registration_future = wasm_bindgen_futures::JsFuture::from(registration_promise);
-    
+
     let registration = match registration_future.await {
         Ok(reg) => reg,
         Err(e) => {
@@ -445,11 +448,11 @@ pub async fn subscribe_to_push_notifications() {
             return;
         }
     };
-    
+
     let service_worker_registration = registration
         .dyn_into::<web_sys::ServiceWorkerRegistration>()
         .expect("should be ServiceWorkerRegistration");
-    
+
     // Subscribe to push
     let push_manager = match service_worker_registration.push_manager() {
         Ok(pm) => pm,
@@ -458,11 +461,11 @@ pub async fn subscribe_to_push_notifications() {
             return;
         }
     };
-    
+
     let subscribe_options = web_sys::PushSubscriptionOptionsInit::new();
     subscribe_options.set_user_visible_only(true);
     subscribe_options.set_application_server_key(&public_key_array);
-    
+
     let subscribe_promise = match push_manager.subscribe_with_options(&subscribe_options) {
         Ok(promise) => promise,
         Err(e) => {
@@ -470,9 +473,9 @@ pub async fn subscribe_to_push_notifications() {
             return;
         }
     };
-    
+
     let subscription_future = wasm_bindgen_futures::JsFuture::from(subscribe_promise);
-    
+
     let subscription = match subscription_future.await {
         Ok(sub) => sub,
         Err(e) => {
@@ -480,11 +483,11 @@ pub async fn subscribe_to_push_notifications() {
             return;
         }
     };
-    
+
     let push_subscription = subscription
         .dyn_into::<web_sys::PushSubscription>()
         .expect("should be PushSubscription");
-    
+
     // Get subscription JSON using toJSON() method
     let json_result = match js_sys::Reflect::get(&push_subscription, &"toJSON".into()) {
         Ok(func) if func.is_function() => {
@@ -502,7 +505,7 @@ pub async fn subscribe_to_push_notifications() {
             return;
         }
     };
-    
+
     let json_value = match js_sys::JSON::stringify(&json_result) {
         Ok(val) => val,
         Err(e) => {
@@ -510,11 +513,11 @@ pub async fn subscribe_to_push_notifications() {
             return;
         }
     };
-    
+
     let subscription_json_str = json_value.as_string().expect("should be string");
-    
+
     log::info!("Push subscription: {}", subscription_json_str);
-    
+
     // Parse and send to backend
     let subscription_data: serde_json::Value = match serde_json::from_str(&subscription_json_str) {
         Ok(data) => data,
@@ -523,35 +526,35 @@ pub async fn subscribe_to_push_notifications() {
             return;
         }
     };
-    
+
     // Extract endpoint and keys
     let endpoint = subscription_data
         .get("endpoint")
         .and_then(|v| v.as_str())
         .expect("endpoint should exist")
         .to_string();
-    
+
     let keys_obj = subscription_data
         .get("keys")
         .expect("keys should exist");
-    
+
     let p256dh = keys_obj
         .get("p256dh")
         .and_then(|v| v.as_str())
         .expect("p256dh should exist")
         .to_string();
-    
+
     let auth = keys_obj
         .get("auth")
         .and_then(|v| v.as_str())
         .expect("auth should exist")
         .to_string();
-    
+
     let push_data = PushSubscriptionData {
         endpoint,
         keys: PushKeys { p256dh, auth },
     };
-    
+
     // Send to backend
     let response = match Request::post("/api/push/subscribe")
         .json(&push_data)
@@ -565,7 +568,7 @@ pub async fn subscribe_to_push_notifications() {
             return;
         }
     };
-    
+
     if response.ok() {
         log::info!("Successfully subscribed to push notifications");
     } else {
@@ -580,10 +583,10 @@ fn url_base64_to_uint8array(base64_string: &str) -> Result<js_sys::Uint8Array, J
     let padding = (4 - (base64_string.len() % 4)) % 4;
     let mut padded = base64_string.to_string();
     padded.push_str(&"=".repeat(padding));
-    
+
     // Replace URL-safe characters
     let standard_base64 = padded.replace('-', "+").replace('_', "/");
-    
+
     // Decode using JavaScript to avoid UTF-8 encoding issues
     // Create a JavaScript function to decode the base64 and convert to Uint8Array
     let js_code = format!(
@@ -599,9 +602,9 @@ fn url_base64_to_uint8array(base64_string: &str) -> Result<js_sys::Uint8Array, J
         "#,
         standard_base64
     );
-    
+
     let result = js_sys::eval(&js_code)?;
     let array = result.dyn_into::<js_sys::Uint8Array>()?;
-    
+
     Ok(array)
 }

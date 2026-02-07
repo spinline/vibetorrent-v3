@@ -59,15 +59,23 @@ impl Db {
         Ok(())
     }
 
-    pub async fn get_user_by_username(&self, username: &str) -> Result<Option<(i64, String)>> {
-        let row = sqlx::query("SELECT id, password_hash FROM users WHERE username = ?")
-            .bind(username)
-            .fetch_optional(&self.pool)
-            .await?;
+        pub async fn get_user_by_username(&self, username: &str) -> Result<Option<(i64, String)>> {
+            let row = sqlx::query("SELECT id, password_hash FROM users WHERE username = ?")
+                .bind(username)
+                .fetch_optional(&self.pool)
+                .await?;
 
-        Ok(row.map(|r| (r.get(0), r.get(1))))
-    }
+            Ok(row.map(|r| (r.get(0), r.get(1))))
+        }
 
+        pub async fn get_username_by_id(&self, id: i64) -> Result<Option<String>> {
+            let row = sqlx::query("SELECT username FROM users WHERE id = ?")
+                .bind(id)
+                .fetch_optional(&self.pool)
+                .await?;
+
+            Ok(row.map(|r| r.get(0)))
+        }
     pub async fn has_users(&self) -> Result<bool> {
         let row: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM users")
             .fetch_one(&self.pool)

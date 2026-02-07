@@ -12,6 +12,11 @@ struct SetupStatus {
     completed: bool,
 }
 
+#[derive(Deserialize)]
+struct UserResponse {
+    username: String,
+}
+
 #[component]
 pub fn App() -> impl IntoView {
     crate::store::provide_torrent_store();
@@ -55,6 +60,14 @@ pub fn App() -> impl IntoView {
                 Ok(resp) => {
                     if resp.status() == 200 {
                         logging::log!("Authenticated!");
+
+                        // Parse user info
+                        if let Ok(user_info) = resp.json::<UserResponse>().await {
+                            if let Some(store) = use_context::<crate::store::TorrentStore>() {
+                                store.user.set(Some(user_info.username));
+                            }
+                        }
+
                         set_is_authenticated.set(true);
                     } else {
                         logging::log!("Not authenticated, redirecting to /login");
@@ -71,7 +84,6 @@ pub fn App() -> impl IntoView {
             set_is_loading.set(false);
         });
     });
-
     // Initialize push notifications (Only if authenticated)
     create_effect(move |_| {
         if is_authenticated.get() {

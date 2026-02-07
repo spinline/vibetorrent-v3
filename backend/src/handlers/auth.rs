@@ -15,7 +15,6 @@ pub struct LoginRequest {
     password: String,
 }
 
-#[allow(dead_code)]
 #[derive(Serialize, ToSchema)]
 pub struct UserResponse {
     username: String,
@@ -79,7 +78,7 @@ pub async fn login_handler(
                 .build();
 
             tracing::info!("Session created and cookie set for user: {}", payload.username);
-            (StatusCode::OK, jar.add(cookie), "Login successful").into_response()
+            (StatusCode::OK, jar.add(cookie), Json(UserResponse { username: payload.username })).into_response()
         }
         Ok(false) => {
             tracing::warn!("Login failed: Invalid password for {}", payload.username);
@@ -120,7 +119,7 @@ pub async fn logout_handler(
     get,
     path = "/api/auth/check",
     responses(
-        (status = 200, description = "Authenticated"),
+        (status = 200, description = "Authenticated", body = UserResponse),
         (status = 401, description = "Not authenticated")
     )
 )]
@@ -130,7 +129,15 @@ pub async fn check_auth_handler(
 ) -> impl IntoResponse {
     if let Some(token) = jar.get("auth_token") {
         match state.db.get_session_user(token.value()).await {
-            Ok(Some(_)) => return StatusCode::OK.into_response(),
+            Ok(Some(user_id)) => {
+                // Fetch username
+                // We need a helper in db.rs to get username by id, or we can use a direct query here if we don't want to change db.rs interface yet.
+                // But better to add `get_username_by_id` to db.rs
+                // For now let's query directly or via a new db method.
+                if let Ok(Some(username)) = state.db.get_username_by_id(user_id).await {
+                     return (StatusCode::OK, Json(UserResponse { username })).into_response();
+                }
+            },
             _ => {} // Invalid session
         }
     }

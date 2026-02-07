@@ -1,3 +1,4 @@
 pub mod sidebar;
-pub mod toolbar;
 pub mod statusbar;
+pub mod toolbar;
+pub mod protected;

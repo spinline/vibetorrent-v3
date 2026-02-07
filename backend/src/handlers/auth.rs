@@ -1,4 +1,4 @@
-use crate::{db::Db, AppState};
+use crate::AppState;
 use axum::{
     extract::{State, Json},
     http::StatusCode,
@@ -15,6 +15,7 @@ pub struct LoginRequest {
     password: String,
 }
 
+#[allow(dead_code)]
 #[derive(Serialize, ToSchema)]
 pub struct UserResponse {
     username: String,

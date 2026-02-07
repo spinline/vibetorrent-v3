@@ -1,6 +1,6 @@
 use leptos::*;
 use leptos_router::*;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 #[derive(Serialize)]
 struct LoginRequest {

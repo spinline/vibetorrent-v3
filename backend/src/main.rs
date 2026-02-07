@@ -46,7 +46,7 @@ pub struct AppState {
 async fn auth_middleware(
     state: axum::extract::State<AppState>,
     jar: CookieJar,
-    request: Request,
+    request: Request<Body>,
     next: Next,
 ) -> Result<Response, StatusCode> {
     // Skip auth for public paths

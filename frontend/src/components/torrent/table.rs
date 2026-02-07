@@ -324,81 +324,83 @@ pub fn TorrentTable() -> impl IntoView {
                 </table>
             </div>
 
-            <div class="md:hidden flex flex-col h-full bg-base-200 relative">
-                // Transparent overlay to close sort dropdown
-                <Show when=move || sort_open.get()>
-                    <div
-                        class="fixed inset-0 z-[98] cursor-default"
-                        on:click=move |_| set_sort_open.set(false)
-                    ></div>
-                </Show>
+                        <div class="md:hidden flex flex-col h-full bg-base-200 relative">
+                            // Transparent overlay to close sort dropdown
+                            <Show when=move || sort_open.get()>
+                                <div
+                                    class="fixed inset-0 z-[98] cursor-default"
+                                    on:pointerdown=move |_| set_sort_open.set(false)
+                                ></div>
+                            </Show>
 
-                <div class="px-3 py-2 border-b border-base-200 flex justify-between items-center bg-base-100/95 backdrop-blur z-10 shrink-0">
-                    <span class="text-xs font-bold opacity-50 uppercase tracking-wider">"Torrents"</span>
+                            <div class="px-3 py-2 border-b border-base-200 flex justify-between items-center bg-base-100/95 backdrop-blur z-10 shrink-0">
+                                <span class="text-xs font-bold opacity-50 uppercase tracking-wider">"Torrents"</span>
 
-                    <div class="relative">
-                        <div
-                            role="button"
-                            class="btn btn-ghost btn-xs gap-1 opacity-70 font-normal"
-                            on:click=move |_| {
-                                let cur = sort_open.get_untracked();
-                                set_sort_open.set(!cur);
-                            }
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 7.5L7.5 3m0 0L12 7.5M7.5 3v13.5m13.5 0L16.5 21m0 0L12 16.5m4.5 4.5V7.5" />
-                            </svg>
-                            "Sort"
-                        </div>
-                        <ul
-                            class="absolute top-full right-0 z-[100] menu p-2 shadow bg-base-100 rounded-box w-48 mt-1 border border-base-200 text-xs"
-                            style=move || if sort_open.get() { "display: block" } else { "display: none" }
-                        >
-                             <li class="menu-title px-2 py-1 opacity-50 text-[10px] uppercase font-bold">"Sort By"</li>
-                             {
-                                 let columns = vec![
-                                     (SortColumn::Name, "Name"),
-                                     (SortColumn::Size, "Size"),
-                                     (SortColumn::Progress, "Progress"),
-                                     (SortColumn::Status, "Status"),
-                                     (SortColumn::DownSpeed, "Down Speed"),
-                                     (SortColumn::UpSpeed, "Up Speed"),
-                                     (SortColumn::ETA, "ETA"),
-                                 ];
+                                <div class="relative">
+                                    <div
+                                        role="button"
+                                        class="btn btn-ghost btn-xs gap-1 opacity-70 font-normal"
+                                        on:pointerdown=move |e| {
+                                            e.stop_propagation();
+                                            let cur = sort_open.get_untracked();
+                                            set_sort_open.set(!cur);
+                                        }
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 7.5L7.5 3m0 0L12 7.5M7.5 3v13.5m13.5 0L16.5 21m0 0L12 16.5m4.5 4.5V7.5" />
+                                        </svg>
+                                        "Sort"
+                                    </div>
+                                    <ul
+                                        class="absolute top-full right-0 z-[100] menu p-2 shadow bg-base-100 rounded-box w-48 mt-1 border border-base-200 text-xs"
+                                        style=move || if sort_open.get() { "display: block" } else { "display: none" }
+                                        on:pointerdown=move |e| e.stop_propagation()
+                                    >
+                                         <li class="menu-title px-2 py-1 opacity-50 text-[10px] uppercase font-bold">"Sort By"</li>
+                                         {
+                                             let columns = vec![
+                                                 (SortColumn::Name, "Name"),
+                                                 (SortColumn::Size, "Size"),
+                                                 (SortColumn::Progress, "Progress"),
+                                                 (SortColumn::Status, "Status"),
+                                                 (SortColumn::DownSpeed, "Down Speed"),
+                                                 (SortColumn::UpSpeed, "Up Speed"),
+                                                 (SortColumn::ETA, "ETA"),
+                                             ];
 
-                                 columns.into_iter().map(|(col, label)| {
-                                     let is_active = move || sort_col.get() == col;
-                                     let current_dir = move || sort_dir.get();
+                                             columns.into_iter().map(|(col, label)| {
+                                                 let is_active = move || sort_col.get() == col;
+                                                 let current_dir = move || sort_dir.get();
 
-                                     view! {
-                                         <li>
-                                             <button
-                                                 class=move || if is_active() { "bg-primary/10 text-primary font-bold flex justify-between" } else { "flex justify-between" }
-                                                 on:click=move |_| {
-                                                     handle_sort(col);
-                                                     set_sort_open.set(false);
+                                                 view! {
+                                                     <li>
+                                                         <button
+                                                             class=move || if is_active() { "bg-primary/10 text-primary font-bold flex justify-between" } else { "flex justify-between" }
+                                                             on:pointerdown=move |e| {
+                                                                 e.stop_propagation();
+                                                                 handle_sort(col);
+                                                                 set_sort_open.set(false);
+                                                             }
+                                                         >
+                                                             {label}
+                                                             <Show when=is_active fallback=|| ()>
+                                                                 <span class="opacity-70 text-[10px]">
+                                                                     {move || match current_dir() {
+                                                                         SortDirection::Ascending => "▲",
+                                                                         SortDirection::Descending => "▼",
+                                                                     }}
+                                                                 </span>
+                                                             </Show>
+                                                         </button>
+                                                     </li>
                                                  }
-                                             >
-                                                 {label}
-                                                 <Show when=is_active fallback=|| ()>
-                                                     <span class="opacity-70 text-[10px]">
-                                                         {move || match current_dir() {
-                                                             SortDirection::Ascending => "▲",
-                                                             SortDirection::Descending => "▼",
-                                                         }}
-                                                     </span>
-                                                 </Show>
-                                             </button>
-                                         </li>
-                                     }
-                                 }).collect::<Vec<_>>()
-                             }
-                        </ul>
-                    </div>
-                </div>
+                                             }).collect::<Vec<_>>()
+                                         }
+                                    </ul>
+                                </div>
+                            </div>
 
-                <div class="overflow-y-auto p-3 pb-20 flex-1 grid grid-cols-1 content-start gap-3">
-                {move || filtered_torrents().into_iter().map(|t| {
+                            <div class="overflow-y-auto p-3 pb-20 flex-1 grid grid-cols-1 content-start gap-3">                {move || filtered_torrents().into_iter().map(|t| {
                     let progress_class = if t.percent_complete >= 100.0 { "progress-success" } else { "progress-primary" };
                     let status_str = format!("{:?}", t.status);
                     let status_badge_class = match t.status {

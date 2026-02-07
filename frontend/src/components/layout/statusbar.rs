@@ -109,172 +109,80 @@ pub fn StatusBar() -> impl IntoView {
         });
     };
 
-    // Signal-based dropdown state: 0=none, 1=download, 2=upload, 3=theme
-    let (active_dropdown, set_active_dropdown) = create_signal(0u8);
+        // Signal-based dropdown state: 0=none, 1=download, 2=upload, 3=theme
+        let (active_dropdown, set_active_dropdown) = create_signal(0u8);
 
-    // Toggle a specific dropdown
-    let toggle = move |id: u8| {
-        let current = active_dropdown.get_untracked();
-        if current == id {
+        // Toggle a specific dropdown
+        let toggle = move |id: u8| {
+            let current = active_dropdown.get_untracked();
+            if current == id {
+                set_active_dropdown.set(0);
+            } else {
+                set_active_dropdown.set(id);
+            }
+        };
+
+        // Close all dropdowns
+        let close_all = move || {
             set_active_dropdown.set(0);
-        } else {
-            set_active_dropdown.set(id);
-        }
-    };
+        };
 
-    // Close all dropdowns
-    let close_all = move || {
-        set_active_dropdown.set(0);
-    };
-
-    view! {
-        // Transparent overlay to close dropdowns when clicking outside
-        <Show when=move || active_dropdown.get() != 0>
-            <div
-                class="fixed inset-0 z-[98] cursor-default"
-                on:click=move |_| close_all()
-            ></div>
-        </Show>
-
-        <div class="fixed bottom-0 left-0 right-0 h-8 min-h-8 bg-base-200 border-t border-base-300 flex items-center px-4 text-xs gap-4 text-base-content/70 z-[99]">
-
-            // --- DOWNLOAD SPEED DROPDOWN ---
-            <div class="relative">
+        view! {
+            // Transparent overlay to close dropdowns when clicking outside
+            <Show when=move || active_dropdown.get() != 0>
                 <div
-                    class="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors select-none"
-                    title="Global Download Speed - Click to Set Limit"
-                    on:click=move |_| toggle(1)
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3" />
-                    </svg>
-                    <span class="font-mono">{move || format_speed(stats.get().down_rate)}</span>
-                    <Show when=move || { stats.get().down_limit.unwrap_or(0) > 0 } fallback=|| ()>
-                        <span class="text-[10px] opacity-60">
-                            {move || format!("(Limit: {})", format_speed(stats.get().down_limit.unwrap_or(0)))}
-                        </span>
-                    </Show>
-                </div>
+                    class="fixed inset-0 z-[98] cursor-default"
+                    on:pointerdown=move |_| close_all()
+                ></div>
+            </Show>
 
-                <ul
-                    class="absolute bottom-full left-0 z-[100] menu p-2 shadow bg-base-200 rounded-box w-40 mb-2 border border-base-300"
-                    style=move || if active_dropdown.get() == 1 { "display: block" } else { "display: none" }
-                >
-                    {
-                        limits.clone().into_iter().map(|(val, label)| {
-                            let is_active = move || {
-                                let current = stats.get().down_limit.unwrap_or(0);
-                                (current - val).abs() < 1024
-                            };
-                            view! {
-                                <li>
-                                    <button
-                                        class=move || if is_active() { "bg-primary/10 text-primary font-bold text-xs flex justify-between" } else { "text-xs flex justify-between" }
-                                        on:click=move |_| {
-                                            set_limit("down", val);
-                                            close_all();
-                                        }
-                                    >
-                                        {label}
-                                        <Show when=is_active fallback=|| ()>
-                                            <span>"✓"</span>
-                                        </Show>
-                                    </button>
-                                </li>
-                            }
-                        }).collect::<Vec<_>>()
-                    }
-                </ul>
-            </div>
+            <div class="fixed bottom-0 left-0 right-0 h-8 min-h-8 bg-base-200 border-t border-base-300 flex items-center px-4 text-xs gap-4 text-base-content/70 z-[99]">
 
-            // --- UPLOAD SPEED DROPDOWN ---
-            <div class="relative">
-                <div
-                    class="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors select-none"
-                    title="Global Upload Speed - Click to Set Limit"
-                    on:click=move |_| toggle(2)
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" />
-                    </svg>
-                    <span class="font-mono">{move || format_speed(stats.get().up_rate)}</span>
-                    <Show when=move || { stats.get().up_limit.unwrap_or(0) > 0 } fallback=|| ()>
-                        <span class="text-[10px] opacity-60">
-                            {move || format!("(Limit: {})", format_speed(stats.get().up_limit.unwrap_or(0)))}
-                        </span>
-                    </Show>
-                </div>
-
-                <ul
-                    class="absolute bottom-full left-0 z-[100] menu p-2 shadow bg-base-200 rounded-box w-40 mb-2 border border-base-300"
-                    style=move || if active_dropdown.get() == 2 { "display: block" } else { "display: none" }
-                >
-                    {
-                        limits.clone().into_iter().map(|(val, label)| {
-                            let is_active = move || {
-                                let current = stats.get().up_limit.unwrap_or(0);
-                                (current - val).abs() < 1024
-                            };
-                            view! {
-                                <li>
-                                    <button
-                                        class=move || if is_active() { "bg-primary/10 text-primary font-bold text-xs flex justify-between" } else { "text-xs flex justify-between" }
-                                        on:click=move |_| {
-                                            set_limit("up", val);
-                                            close_all();
-                                        }
-                                    >
-                                        {label}
-                                        <Show when=is_active fallback=|| ()>
-                                            <span>"✓"</span>
-                                        </Show>
-                                    </button>
-                                </li>
-                            }
-                        }).collect::<Vec<_>>()
-                    }
-                </ul>
-            </div>
-
-            <div class="ml-auto flex items-center gap-4">
+                // --- DOWNLOAD SPEED DROPDOWN ---
                 <div class="relative">
                     <div
-                        class="btn btn-ghost btn-xs btn-square"
-                        title="Change Theme"
-                        on:click=move |_| toggle(3)
+                        class="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors select-none"
+                        title="Global Download Speed - Click to Set Limit"
+                        on:pointerdown=move |e| {
+                            e.stop_propagation();
+                            toggle(1);
+                        }
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M9.53 16.122a3 3 0 0 0-5.78 1.128 2.25 2.25 0 0 1-2.4 2.245 4.5 4.5 0 0 0 8.4-2.245c0-.399-.078-.78-.22-1.128Zm0 0a15.998 15.998 0 0 0 3.388-1.62m-5.043-.025a15.994 15.994 0 0 1 1.622-3.395m3.42 3.42a15.995 15.995 0 0 0 4.764-4.648l3.876-5.814a1.151 1.151 0 0 0-1.597-1.597L14.146 6.32a15.996 15.996 0 0 0-4.649 4.763m3.42 3.42a6.776 6.776 0 0 0-3.42-3.42" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3" />
                         </svg>
+                        <span class="font-mono">{move || format_speed(stats.get().down_rate)}</span>
+                        <Show when=move || { stats.get().down_limit.unwrap_or(0) > 0 } fallback=|| ()>
+                            <span class="text-[10px] opacity-60">
+                                {move || format!("(Limit: {})", format_speed(stats.get().down_limit.unwrap_or(0)))}
+                            </span>
+                        </Show>
                     </div>
 
                     <ul
-                        class="absolute bottom-full right-0 z-[100] menu p-2 shadow bg-base-200 rounded-box w-52 mb-2 border border-base-300 max-h-96 overflow-y-auto"
-                        style=move || if active_dropdown.get() == 3 { "display: block" } else { "display: none" }
+                        class="absolute bottom-full left-0 z-[100] menu p-2 shadow bg-base-200 rounded-box w-40 mb-2 border border-base-300"
+                        style=move || if active_dropdown.get() == 1 { "display: block" } else { "display: none" }
                     >
                         {
-                            let themes = vec![
-                                "light", "dark", "dim", "nord", "cupcake", "dracula", "cyberpunk", "emerald", "sunset", "abyss"
-                            ];
-                            themes.into_iter().map(|theme| {
+                            limits.clone().into_iter().map(|(val, label)| {
+                                let is_active = move || {
+                                    let current = stats.get().down_limit.unwrap_or(0);
+                                    (current - val).abs() < 1024
+                                };
                                 view! {
                                     <li>
                                         <button
-                                            class=move || if current_theme.get() == theme { "bg-primary/10 text-primary font-bold text-xs capitalize" } else { "text-xs capitalize" }
-                                            on:click=move |_| {
-                                                set_current_theme.set(theme.to_string());
-                                                if let Some(win) = web_sys::window() {
-                                                    if let Some(doc) = win.document() {
-                                                        let _ = doc.document_element().unwrap().set_attribute("data-theme", theme);
-                                                    }
-                                                    if let Some(storage) = win.local_storage().ok().flatten() {
-                                                        let _ = storage.set_item("vibetorrent_theme", theme);
-                                                    }
-                                                }
+                                            class=move || if is_active() { "bg-primary/10 text-primary font-bold text-xs flex justify-between" } else { "text-xs flex justify-between" }
+                                            on:pointerdown=move |e| {
+                                                e.stop_propagation();
+                                                set_limit("down", val);
                                                 close_all();
                                             }
                                         >
-                                            {theme}
+                                            {label}
+                                            <Show when=is_active fallback=|| ()>
+                                                <span>"✓"</span>
+                                            </Show>
                                         </button>
                                     </li>
                                 }
@@ -283,6 +191,109 @@ pub fn StatusBar() -> impl IntoView {
                     </ul>
                 </div>
 
+                // --- UPLOAD SPEED DROPDOWN ---
+                <div class="relative">
+                    <div
+                        class="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors select-none"
+                        title="Global Upload Speed - Click to Set Limit"
+                        on:pointerdown=move |e| {
+                            e.stop_propagation();
+                            toggle(2);
+                        }
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" />
+                        </svg>
+                        <span class="font-mono">{move || format_speed(stats.get().up_rate)}</span>
+                        <Show when=move || { stats.get().up_limit.unwrap_or(0) > 0 } fallback=|| ()>
+                            <span class="text-[10px] opacity-60">
+                                {move || format!("(Limit: {})", format_speed(stats.get().up_limit.unwrap_or(0)))}
+                            </span>
+                        </Show>
+                    </div>
+
+                    <ul
+                        class="absolute bottom-full left-0 z-[100] menu p-2 shadow bg-base-200 rounded-box w-40 mb-2 border border-base-300"
+                        style=move || if active_dropdown.get() == 2 { "display: block" } else { "display: none" }
+                    >
+                        {
+                            limits.clone().into_iter().map(|(val, label)| {
+                                let is_active = move || {
+                                    let current = stats.get().up_limit.unwrap_or(0);
+                                    (current - val).abs() < 1024
+                                };
+                                view! {
+                                    <li>
+                                        <button
+                                            class=move || if is_active() { "bg-primary/10 text-primary font-bold text-xs flex justify-between" } else { "text-xs flex justify-between" }
+                                            on:pointerdown=move |e| {
+                                                e.stop_propagation();
+                                                set_limit("up", val);
+                                                close_all();
+                                            }
+                                        >
+                                            {label}
+                                            <Show when=is_active fallback=|| ()>
+                                                <span>"✓"</span>
+                                            </Show>
+                                        </button>
+                                    </li>
+                                }
+                            }).collect::<Vec<_>>()
+                        }
+                    </ul>
+                </div>
+
+                <div class="ml-auto flex items-center gap-4">
+                    <div class="relative">
+                        <div
+                            class="btn btn-ghost btn-xs btn-square"
+                            title="Change Theme"
+                            on:pointerdown=move |e| {
+                                e.stop_propagation();
+                                toggle(3);
+                            }
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9.53 16.122a3 3 0 0 0-5.78 1.128 2.25 2.25 0 0 1-2.4 2.245 4.5 4.5 0 0 0 8.4-2.245c0-.399-.078-.78-.22-1.128Zm0 0a15.998 15.998 0 0 0 3.388-1.62m-5.043-.025a15.994 15.994 0 0 1 1.622-3.395m3.42 3.42a15.995 15.995 0 0 0 4.764-4.648l3.876-5.814a1.151 1.151 0 0 0-1.597-1.597L14.146 6.32a15.996 15.996 0 0 0-4.649 4.763m3.42 3.42a6.776 6.776 0 0 0-3.42-3.42" />
+                            </svg>
+                        </div>
+
+                        <ul
+                            class="absolute bottom-full right-0 z-[100] menu p-2 shadow bg-base-200 rounded-box w-52 mb-2 border border-base-300 max-h-96 overflow-y-auto"
+                            style=move || if active_dropdown.get() == 3 { "display: block" } else { "display: none" }
+                        >
+                            {
+                                let themes = vec![
+                                    "light", "dark", "dim", "nord", "cupcake", "dracula", "cyberpunk", "emerald", "sunset", "abyss"
+                                ];
+                                themes.into_iter().map(|theme| {
+                                    view! {
+                                        <li>
+                                            <button
+                                                class=move || if current_theme.get() == theme { "bg-primary/10 text-primary font-bold text-xs capitalize" } else { "text-xs capitalize" }
+                                                on:pointerdown=move |e| {
+                                                    e.stop_propagation();
+                                                    set_current_theme.set(theme.to_string());
+                                                    if let Some(win) = web_sys::window() {
+                                                        if let Some(doc) = win.document() {
+                                                            let _ = doc.document_element().unwrap().set_attribute("data-theme", theme);
+                                                        }
+                                                        if let Some(storage) = win.local_storage().ok().flatten() {
+                                                            let _ = storage.set_item("vibetorrent_theme", theme);
+                                                        }
+                                                    }
+                                                    close_all();
+                                                }
+                                            >
+                                                {theme}
+                                            </button>
+                                        </li>
+                                    }
+                                }).collect::<Vec<_>>()
+                            }
+                        </ul>
+                    </div>
                 <button
                     class="btn btn-ghost btn-xs btn-square"
                     title="Settings & Notification Permissions"

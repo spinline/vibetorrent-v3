@@ -22,44 +22,64 @@ pub fn App() -> impl IntoView {
     let (is_loading, set_is_loading) = create_signal(true);
     let (is_authenticated, set_is_authenticated) = create_signal(false);
 
-    // Check Auth & Setup Status on load
-    create_effect(move |_| {
-        spawn_local(async move {
-            // 1. Check Setup Status
-            let setup_res = gloo_net::http::Request::get("/api/setup/status").send().await;
-            if let Ok(resp) = setup_res {
-                if let Ok(status) = resp.json::<SetupStatus>().await {
-                    if !status.completed {
-                        // Redirect to setup if not completed
-                        let navigate = use_navigate();
-                        navigate("/setup", Default::default());
-                        set_is_loading.set(false);
-                        return;
-                    }
-                }
-            }
+        // Check Auth & Setup Status on load
+        create_effect(move |_| {
+            spawn_local(async move {
+                logging::log!("App initialization started...");
 
-            // 2. Check Auth Status
-            let auth_res = gloo_net::http::Request::get("/api/auth/check").send().await;
-            if let Ok(resp) = auth_res {
-                if resp.status() == 200 {
-                    set_is_authenticated.set(true);
+                // 1. Check Setup Status
+                logging::log!("Checking setup status...");
+                let setup_res = gloo_net::http::Request::get("/api/setup/status").send().await;
 
-                    // Initialize push notifications logic only if authenticated
-                    // ... (Push notification logic moved here or kept global but guarded)
-                } else {
-                    let navigate = use_navigate();
-                    // If we are already on login or setup, don't redirect loop
-                    let pathname = window().location().pathname().unwrap_or_default();
-                    if pathname != "/login" && pathname != "/setup" {
-                         navigate("/login", Default::default());
+                match setup_res {
+                    Ok(resp) => {
+                        if resp.ok() {
+                            match resp.json::<SetupStatus>().await {
+                                Ok(status) => {
+                                    logging::log!("Setup status: completed={}", status.completed);
+                                    if !status.completed {
+                                        logging::log!("Setup not completed, redirecting to /setup");
+                                        let navigate = use_navigate();
+                                        navigate("/setup", Default::default());
+                                        set_is_loading.set(false);
+                                        return;
+                                    }
+                                }
+                                Err(e) => logging::error!("Failed to parse setup status: {}", e),
+                            }
+                        } else {
+                            logging::error!("Setup status request failed: {}", resp.status());
+                        }
                     }
+                    Err(e) => logging::error!("Network error checking setup status: {}", e),
                 }
-            }
-            set_is_loading.set(false);
+
+                // 2. Check Auth Status
+                logging::log!("Checking auth status...");
+                let auth_res = gloo_net::http::Request::get("/api/auth/check").send().await;
+
+                match auth_res {
+                    Ok(resp) => {
+                        logging::log!("Auth check status: {}", resp.status());
+                        if resp.status() == 200 {
+                            logging::log!("Authenticated!");
+                            set_is_authenticated.set(true);
+                        } else {
+                            logging::log!("Not authenticated, checking if redirect needed");
+                            let navigate = use_navigate();
+                            let pathname = window().location().pathname().unwrap_or_default();
+                            if pathname != "/login" && pathname != "/setup" {
+                                 navigate("/login", Default::default());
+                            }
+                        }
+                    }
+                    Err(e) => logging::error!("Network error checking auth status: {}", e),
+                }
+
+                logging::log!("App initialization finished, disabling loader.");
+                set_is_loading.set(false);
+            });
         });
-    });
-
     // Initialize push notifications after user grants permission (Only if authenticated)
     create_effect(move |_| {
         if is_authenticated.get() {

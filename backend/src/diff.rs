@@ -85,7 +85,7 @@ pub fn diff_torrents(old: &[Torrent], new: &[Torrent]) -> DiffResult {
             has_changes = true;
 
             // Log status changes for debugging
-            tracing::info!(
+            tracing::debug!(
                 "Torrent status changed: {} ({}) {:?} -> {:?}",
                 new_t.name, new_t.hash, old_t.status, new_t.status
             );

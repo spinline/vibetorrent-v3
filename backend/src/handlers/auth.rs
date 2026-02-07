@@ -74,7 +74,7 @@ pub async fn login_handler(
             let cookie = Cookie::build(("auth_token", token))
                 .path("/")
                 .http_only(true)
-                .same_site(SameSite::Strict)
+                .same_site(SameSite::Lax)
                 .max_age(Duration::seconds(expires_in))
                 .build();
 

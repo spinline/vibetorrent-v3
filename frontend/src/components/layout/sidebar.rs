@@ -86,10 +86,9 @@ pub fn Sidebar() -> impl IntoView {
         });
     };
 
-        view! {
-            <div class="w-64 min-h-[100dvh] flex flex-col bg-base-200 border-r border-base-300" style="padding-top: env(safe-area-inset-top);">
-                <div class="p-2 flex-1 overflow-y-auto">
-                    <ul class="menu w-full rounded-box gap-1">
+            view! {
+                <div class="w-64 min-h-[100dvh] flex flex-col bg-base-200 border-r border-base-300 pb-8" style="padding-top: env(safe-area-inset-top);">
+                    <div class="p-2 flex-1 overflow-y-auto">                    <ul class="menu w-full rounded-box gap-1">
                         <li class="menu-title text-primary uppercase font-bold px-4">"Filters"</li>
                         <li>
                             <button class={move || format!("cursor-pointer {}", filter_class(crate::store::FilterStatus::All))} on:click=move |_| set_filter(crate::store::FilterStatus::All)>

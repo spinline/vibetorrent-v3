@@ -32,6 +32,7 @@ use tower_http::{
     cors::CorsLayer,
     trace::TraceLayer,
 };
+#[cfg(feature = "swagger")]
 use utoipa::OpenApi;
 #[cfg(feature = "swagger")]
 use utoipa_swagger_ui::SwaggerUi;

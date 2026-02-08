@@ -30,16 +30,7 @@ jobs:
         npx @tailwindcss/cli -i input.css -o public/tailwind.css
         trunk build --release
         
-        # Manuel WASM Optimizasyonu
-        WASM_FILE=$(ls dist/*.wasm | head -n 1)
-        BEFORE=$(du -h "$WASM_FILE" | cut -f1)
-        echo "Before optimization: $BEFORE"
-        
-        wasm-opt --all-features -Oz "$WASM_FILE" -o "$WASM_FILE"
-        
-        AFTER=$(du -h "$WASM_FILE" | cut -f1)
-        echo "After optimization: $AFTER"
-        echo "Optimization complete!"
+        echo "Build complete (WASM optimization handled by Rust compiler via opt-level=z)"
 
     - name: Build Backend (MIPS)
       env:

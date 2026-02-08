@@ -30,11 +30,15 @@ jobs:
         npx @tailwindcss/cli -i input.css -o public/tailwind.css
         trunk build --release
         
-        # Manuel WASM Optimizasyonu (Trunk'ın yapamadığını biz yapıyoruz)
-        # --all-features kullanarak tüm modern özellikleri tanımasını ve en küçük boyutu üretmesini sağlıyoruz.
-        WASM_FILE=$(ls dist/*.wasm)
-        echo "Optimizing $WASM_FILE..."
+        # Manuel WASM Optimizasyonu
+        WASM_FILE=$(ls dist/*.wasm | head -n 1)
+        BEFORE=$(du -h "$WASM_FILE" | cut -f1)
+        echo "Before optimization: $BEFORE"
+        
         wasm-opt --all-features -Oz "$WASM_FILE" -o "$WASM_FILE"
+        
+        AFTER=$(du -h "$WASM_FILE" | cut -f1)
+        echo "After optimization: $AFTER"
         echo "Optimization complete!"
 
     - name: Build Backend (MIPS)

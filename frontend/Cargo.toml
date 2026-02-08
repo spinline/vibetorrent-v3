@@ -52,10 +52,3 @@ web-sys = { version = "0.3", features = [
 shared = { path = "../shared" }
 tailwind_fuse = "0.3.2"
 js-sys = "0.3.85"
-
-[profile.release]
-opt-level = "z"
-lto = true
-codegen-units = 1
-panic = "abort"
-strip = true

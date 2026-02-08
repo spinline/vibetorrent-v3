@@ -1,5 +1,5 @@
 use leptos::*;
-use leptos_use::on_click_outside;
+use leptos_use::{on_click_outside_with_options, OnClickOutsideOptions};
 use leptos_use::storage::use_local_storage;
 use codee::string::FromToStringCodec;
 use shared::GlobalLimitRequest;
@@ -118,7 +118,7 @@ pub fn StatusBar() -> impl IntoView {
 
                 // --- DOWNLOAD SPEED DROPDOWN ---
                 <details class="dropdown dropdown-top" node_ref=down_details_ref>
-                    <summary class="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors select-none list-none marker:hidden">
+                    <summary class="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors select-none list-none [&::-webkit-details-marker]:hidden outline-none">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3" />
                         </svg>
@@ -160,7 +160,7 @@ pub fn StatusBar() -> impl IntoView {
 
                 // --- UPLOAD SPEED DROPDOWN ---
                 <details class="dropdown dropdown-top" node_ref=up_details_ref>
-                    <summary class="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors select-none list-none marker:hidden">
+                    <summary class="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors select-none list-none [&::-webkit-details-marker]:hidden outline-none">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" />
                         </svg>
@@ -202,7 +202,7 @@ pub fn StatusBar() -> impl IntoView {
 
                 <div class="ml-auto flex items-center gap-4">
                     <details class="dropdown dropdown-top dropdown-end" node_ref=theme_details_ref>
-                        <summary class="btn btn-ghost btn-xs btn-square">
+                        <summary class="btn btn-ghost btn-xs btn-square cursor-pointer outline-none list-none [&::-webkit-details-marker]:hidden">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M9.53 16.122a3 3 0 0 0-5.78 1.128 2.25 2.25 0 0 1-2.4 2.245 4.5 4.5 0 0 0 8.4-2.245c0-.399-.078-.78-.22-1.128Zm0 0a15.998 15.998 0 0 0 3.388-1.62m-5.043-.025a15.994 15.994 0 0 1 1.622-3.395m3.42 3.42a15.995 15.995 0 0 0 4.764-4.648l3.876-5.814a1.151 1.151 0 0 0-1.597-1.597L14.146 6.32a15.996 15.996 0 0 0-4.649 4.763m3.42 3.42a6.776 6.776 0 0 0-3.42-3.42" />
                             </svg>

@@ -164,10 +164,13 @@ pub fn TorrentTable() -> impl IntoView {
         }
     };
 
-    // Signal-based sort dropdown for mobile
-    let (sort_open, set_sort_open) = create_signal(false);
-    let sort_menu_ref = create_node_ref::<html::Div>();
-    let _ = on_click_outside(sort_menu_ref, move |_| set_sort_open.set(false));
+    // Refs for click outside detection
+    let sort_details_ref = create_node_ref::<html::Details>();
+    let _ = on_click_outside(sort_details_ref, move |_| {
+        if let Some(el) = sort_details_ref.get_untracked() {
+            el.set_open(false);
+        }
+    });
 
     let sort_arrow = move |col: SortColumn| {
         if sort_col.get() == col {
@@ -346,24 +349,16 @@ pub fn TorrentTable() -> impl IntoView {
                             <div class="px-3 py-2 border-b border-base-200 flex justify-between items-center bg-base-100/95 backdrop-blur z-10 shrink-0">
                                 <span class="text-xs font-bold opacity-50 uppercase tracking-wider">"Torrents"</span>
 
-                                <div class="relative" node_ref=sort_menu_ref>
-                                    <div
-                                        role="button"
-                                        class="btn btn-ghost btn-xs gap-1 opacity-70 font-normal"
-                                        on:click=move |_| {
-                                            let cur = sort_open.get_untracked();
-                                            set_sort_open.set(!cur);
-                                        }
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 7.5L7.5 3m0 0L12 7.5M7.5 3v13.5m13.5 0L16.5 21m0 0L12 16.5m4.5 4.5V7.5" />
-                                        </svg>
-                                        "Sort"
-                                    </div>
-                                    <ul
-                                        class="absolute top-full right-0 z-[100] menu p-2 shadow bg-base-100 rounded-box w-48 mt-1 border border-base-200 text-xs"
-                                        style=move || if sort_open.get() { "display: block" } else { "display: none" }
-                                    >
+                                <details class="dropdown dropdown-end" node_ref=sort_details_ref>
+                                    <summary class="flex items-center gap-1 opacity-70 cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+                                        <div class="btn btn-ghost btn-xs gap-1 font-normal pointer-events-none">
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 7.5L7.5 3m0 0L12 7.5M7.5 3v13.5m13.5 0L16.5 21m0 0L12 16.5m4.5 4.5V7.5" />
+                                            </svg>
+                                            "Sort"
+                                        </div>
+                                    </summary>
+                                    <ul class="dropdown-content z-[100] menu p-2 shadow bg-base-100 rounded-box w-48 mt-1 border border-base-200 text-xs">
                                          <li class="menu-title px-2 py-1 opacity-50 text-[10px] uppercase font-bold">"Sort By"</li>
                                          {
                                               let columns = vec![
@@ -388,7 +383,9 @@ pub fn TorrentTable() -> impl IntoView {
                                                               class=move || if is_active() { "bg-primary/10 text-primary font-bold flex justify-between" } else { "flex justify-between" }
                                                               on:click=move |_| {
                                                                   handle_sort(col);
-                                                                  set_sort_open.set(false);
+                                                                  if let Some(el) = sort_details_ref.get_untracked() {
+                                                                      el.set_open(false);
+                                                                  }
                                                               }
                                                           >
                                                              {label}
@@ -406,7 +403,7 @@ pub fn TorrentTable() -> impl IntoView {
                                              }).collect::<Vec<_>>()
                                          }
                                     </ul>
-                                </div>
+                                </details>
                             </div>
 
                             <div class="overflow-y-auto p-3 pb-20 flex-1 grid grid-cols-1 content-start gap-3">                {move || filtered_torrents().into_iter().map(|t| {

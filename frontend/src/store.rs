@@ -328,67 +328,46 @@ pub async fn subscribe_to_push_notifications() {
 
     // First, request notification permission if not already granted
     let window = web_sys::window().expect("window should exist");
-    let permission_granted = if let Ok(notification_class) = js_sys::Reflect::get(&window, &"Notification".into()) {
-        if notification_class.is_undefined() {
-            log::error!("Notification API not available");
-            return;
-        }
-
-        // Check current permission
-        let current_permission = js_sys::Reflect::get(&notification_class, &"permission".into())
-            .ok()
-            .and_then(|p| p.as_string())
-            .unwrap_or_default();
-
-        if current_permission == "granted" {
+    
+    // Notification.permission is a static property, but web_sys exposes it via the Notification class instance or we check it manually.
+    // Actually, Notification::permission() is a static method in web_sys.
+    match web_sys::Notification::permission() {
+        web_sys::NotificationPermission::Granted => {
             log::info!("Notification permission already granted");
-            true
-        } else if current_permission == "denied" {
+        }
+        web_sys::NotificationPermission::Denied => {
             log::warn!("Notification permission was denied");
             return;
-        } else {
-            // Permission is "default" - need to request
+        }
+        web_sys::NotificationPermission::Default => {
             log::info!("Requesting notification permission...");
-            if let Ok(request_fn) = js_sys::Reflect::get(&notification_class, &"requestPermission".into()) {
-                if request_fn.is_function() {
-                    let request_fn_typed = js_sys::Function::from(request_fn);
-                    match request_fn_typed.call0(&notification_class) {
-                        Ok(promise_val) => {
-                            let request_future = wasm_bindgen_futures::JsFuture::from(
-                                js_sys::Promise::from(promise_val)
-                            );
-                            match request_future.await {
-                                Ok(result) => {
-                                    let result_str = result.as_string().unwrap_or_default();
-                                    log::info!("Permission request result: {}", result_str);
-                                    result_str == "granted"
-                                }
-                                Err(e) => {
-                                    log::error!("Failed to request notification permission: {:?}", e);
-                                    false
-                                }
-                            }
-                        }
-                        Err(e) => {
-                            log::error!("Failed to call requestPermission: {:?}", e);
-                            false
-                        }
-                    }
-                } else {
-                    false
+            let permission_promise = match web_sys::Notification::request_permission() {
+                Ok(p) => p,
+                Err(e) => {
+                    log::error!("Failed to request notification permission: {:?}", e);
+                    return;
                 }
-            } else {
-                false
+            };
+            
+            match wasm_bindgen_futures::JsFuture::from(permission_promise).await {
+                Ok(val) => {
+                    let permission = val.as_string().unwrap_or_default();
+                    if permission != "granted" {
+                        log::warn!("Notification permission denied by user");
+                        return;
+                    }
+                    log::info!("Notification permission granted by user");
+                }
+                Err(e) => {
+                    log::error!("Failed to await notification permission: {:?}", e);
+                    return;
+                }
             }
         }
-    } else {
-        log::error!("Cannot access Notification class");
-        return;
-    };
-
-    if !permission_granted {
-        log::warn!("Notification permission not granted, cannot subscribe to push");
-        return;
+        _ => {
+             log::warn!("Unknown notification permission status");
+             return;
+        }
     }
 
     log::info!("Notification permission granted! Proceeding with push subscription...");
@@ -433,7 +412,6 @@ pub async fn subscribe_to_push_notifications() {
     };
 
     // Get service worker registration
-    let window = web_sys::window().expect("window should exist");
     let navigator = window.navigator();
     let service_worker = navigator.service_worker();
 
@@ -494,38 +472,45 @@ pub async fn subscribe_to_push_notifications() {
         .dyn_into::<web_sys::PushSubscription>()
         .expect("should be PushSubscription");
 
-    // Get subscription JSON using toJSON() method
-    let json_result = match js_sys::Reflect::get(&push_subscription, &"toJSON".into()) {
+    // PushSubscription objects can be serialized directly via JSON.stringify which calls their toJSON method internally.
+    // Or we can use Reflect to call toJSON if we want the object directly.
+    // Let's use the robust way: call toJSON via Reflect but handle it gracefully.
+    let json_val = match js_sys::Reflect::get(&push_subscription, &"toJSON".into()) {
         Ok(func) if func.is_function() => {
-            let json_func = js_sys::Function::from(func);
-            match json_func.call0(&push_subscription) {
-                Ok(result) => result,
+             let json_func = js_sys::Function::from(func);
+             match json_func.call0(&push_subscription) {
+                 Ok(res) => res,
+                 Err(e) => {
+                     log::error!("Failed to call toJSON: {:?}", e);
+                     return;
+                 }
+             }
+        }
+        _ => {
+            // Fallback: try to stringify the object directly
+            // log::warn!("toJSON not found, trying JSON.stringify");
+            let json_str = match js_sys::JSON::stringify(&push_subscription) {
+                Ok(s) => s,
                 Err(e) => {
-                    log::error!("Failed to call toJSON: {:?}", e);
+                    log::error!("Failed to stringify subscription: {:?}", e);
+                    return;
+                }
+            };
+            // Parse back to object to match our expected flow (slightly inefficient but safe)
+            match js_sys::JSON::parse(&String::from(json_str)) {
+                Ok(v) => v,
+                Err(e) => {
+                    log::error!("Failed to parse stringified subscription: {:?}", e);
                     return;
                 }
             }
         }
-        _ => {
-            log::error!("toJSON method not found on PushSubscription");
-            return;
-        }
     };
-
-    let json_value = match js_sys::JSON::stringify(&json_result) {
-        Ok(val) => val,
-        Err(e) => {
-            log::error!("Failed to stringify subscription: {:?}", e);
-            return;
-        }
-    };
-
-    let subscription_json_str = json_value.as_string().expect("should be string");
-
-    log::info!("Push subscription: {}", subscription_json_str);
-
-    // Parse and send to backend
-    let subscription_data: serde_json::Value = match serde_json::from_str(&subscription_json_str) {
+    
+    // Convert JsValue (JSON object) to PushSubscriptionJSON struct via serde
+    // Note: web_sys::PushSubscriptionJSON is not a struct we can directly use with serde_json usually,
+    // but we can use serde-wasm-bindgen to convert JsValue -> Rust Struct
+    let subscription_data: PushSubscriptionData = match serde_wasm_bindgen::from_value(json_val) {
         Ok(data) => data,
         Err(e) => {
             log::error!("Failed to parse subscription JSON: {:?}", e);
@@ -533,37 +518,9 @@ pub async fn subscribe_to_push_notifications() {
         }
     };
 
-    // Extract endpoint and keys
-    let endpoint = subscription_data
-        .get("endpoint")
-        .and_then(|v| v.as_str())
-        .expect("endpoint should exist")
-        .to_string();
-
-    let keys_obj = subscription_data
-        .get("keys")
-        .expect("keys should exist");
-
-    let p256dh = keys_obj
-        .get("p256dh")
-        .and_then(|v| v.as_str())
-        .expect("p256dh should exist")
-        .to_string();
-
-    let auth = keys_obj
-        .get("auth")
-        .and_then(|v| v.as_str())
-        .expect("auth should exist")
-        .to_string();
-
-    let push_data = PushSubscriptionData {
-        endpoint,
-        keys: PushKeys { p256dh, auth },
-    };
-
-    // Send to backend
+    // Send to backend (subscription_data is already the struct we need)
     let response = match Request::post("/api/push/subscribe")
-        .json(&push_data)
+        .json(&subscription_data)
         .expect("serialization should succeed")
         .send()
         .await

@@ -131,6 +131,9 @@ pub fn provide_torrent_store() {
     let notifications = create_rw_signal(Vec::<NotificationItem>::new());
     let user = create_rw_signal(Option::<String>::None);
 
+    // Browser notification hook
+    let show_browser_notification = crate::utils::notification::use_app_notification();
+
     let store = TorrentStore {
         torrents,
         filter,
@@ -149,6 +152,7 @@ pub fn provide_torrent_store() {
             return;
         }
 
+        let show_browser_notification = show_browser_notification.clone();
         spawn_local(async move {
             let mut backoff_ms: u32 = 1000; // Start with 1 second
             let max_backoff_ms: u32 = 30000; // Max 30 seconds
@@ -247,7 +251,7 @@ pub fn provide_torrent_store() {
                                                             shared::NotificationLevel::Info => "ℹ️ VibeTorrent",
                                                         };
 
-                                                        crate::utils::notification::show_notification_if_enabled(
+                                                        show_browser_notification(
                                                             title,
                                                             &n.message
                                                         );
@@ -329,48 +333,20 @@ pub async fn subscribe_to_push_notifications() {
     // First, request notification permission if not already granted
     let window = web_sys::window().expect("window should exist");
     
-    // Notification.permission is a static property, but web_sys exposes it via the Notification class instance or we check it manually.
-    // Actually, Notification::permission() is a static method in web_sys.
-    match web_sys::Notification::permission() {
-        web_sys::NotificationPermission::Granted => {
-            log::info!("Notification permission already granted");
-        }
-        web_sys::NotificationPermission::Denied => {
-            log::warn!("Notification permission was denied");
+    let permission = crate::utils::notification::get_notification_permission();
+    if permission == "default" {
+        log::info!("Requesting notification permission...");
+        if !crate::utils::notification::request_notification_permission().await {
+            log::warn!("Notification permission denied by user");
             return;
         }
-        web_sys::NotificationPermission::Default => {
-            log::info!("Requesting notification permission...");
-            let permission_promise = match web_sys::Notification::request_permission() {
-                Ok(p) => p,
-                Err(e) => {
-                    log::error!("Failed to request notification permission: {:?}", e);
-                    return;
-                }
-            };
-            
-            match wasm_bindgen_futures::JsFuture::from(permission_promise).await {
-                Ok(val) => {
-                    let permission = val.as_string().unwrap_or_default();
-                    if permission != "granted" {
-                        log::warn!("Notification permission denied by user");
-                        return;
-                    }
-                    log::info!("Notification permission granted by user");
-                }
-                Err(e) => {
-                    log::error!("Failed to await notification permission: {:?}", e);
-                    return;
-                }
-            }
-        }
-        _ => {
-             log::warn!("Unknown notification permission status");
-             return;
-        }
+    } else if permission == "denied" {
+        log::warn!("Notification permission was denied");
+        return;
     }
 
     log::info!("Notification permission granted! Proceeding with push subscription...");
+
 
     // Get VAPID public key from backend
     let public_key_response = match Request::get("/api/push/public-key").send().await {

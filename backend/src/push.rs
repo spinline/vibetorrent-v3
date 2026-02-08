@@ -207,9 +207,8 @@ pub async fn send_push_notification(
         })
         .await;
 
-    Ok(())
-}
+        Ok(())
 
-pub fn get_vapid_public_key() -> String {
-    std::env::var("VAPID_PUBLIC_KEY").expect("VAPID_PUBLIC_KEY must be set in .env")
-}
+    }
+
+    

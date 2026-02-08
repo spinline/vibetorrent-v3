@@ -143,6 +143,12 @@ pub fn provide_torrent_store() {
 
     // Initialize SSE connection with auto-reconnect
     create_effect(move |_| {
+        // Sadece kullanıcı giriş yapmışsa bağlantıyı başlat
+        if user.get().is_none() {
+            logging::log!("SSE: User not authenticated, skipping connection.");
+            return;
+        }
+
         spawn_local(async move {
             let mut backoff_ms: u32 = 1000; // Start with 1 second
             let max_backoff_ms: u32 = 30000; // Max 30 seconds

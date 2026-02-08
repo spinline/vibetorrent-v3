@@ -195,6 +195,9 @@ pub async fn fetch_global_stats(client: &RtorrentClient) -> Result<GlobalStats, 
 pub async fn sse_handler(
     State(state): State<AppState>,
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
+    // Notify background worker to wake up and poll immediately
+    state.notify_poll.notify_one();
+
     // Get initial value synchronously (from the watch channel's current state)
     let initial_rx = state.tx.subscribe();
     let initial_torrents = initial_rx.borrow().clone();

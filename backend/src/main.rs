@@ -45,6 +45,7 @@ pub struct AppState {
     pub db: db::Db,
     #[cfg(feature = "push-notifications")]
     pub push_store: push::PushSubscriptionStore,
+    pub notify_poll: Arc<tokio::sync::Notify>,
 }
 
 async fn auth_middleware(
@@ -336,6 +337,8 @@ async fn main() {
     #[cfg(not(feature = "push-notifications"))]
     let push_store = ();
 
+    let notify_poll = Arc::new(tokio::sync::Notify::new());
+
     let app_state = AppState {
         tx: tx.clone(),
         event_bus: event_bus.clone(),
@@ -343,6 +346,7 @@ async fn main() {
         db: db.clone(),
         #[cfg(feature = "push-notifications")]
         push_store,
+        notify_poll: notify_poll.clone(),
     };
 
     // Spawn background task to poll rTorrent
@@ -351,6 +355,7 @@ async fn main() {
     let socket_path = args.socket.clone(); // Clone for background task
     #[cfg(feature = "push-notifications")]
     let push_store_clone = app_state.push_store.clone();
+    let notify_poll_clone = notify_poll.clone();
 
     tokio::spawn(async move {
         let client = xmlrpc::RtorrentClient::new(&socket_path);
@@ -438,8 +443,13 @@ async fn main() {
 
                     previous_torrents = new_torrents;
 
-                    // Success case: sleep for the determined interval
-                    tokio::time::sleep(loop_interval).await;
+                    // Success case: wait for the determined interval OR a wakeup notification
+                    tokio::select! {
+                        _ = tokio::time::sleep(loop_interval) => {},
+                        _ = notify_poll_clone.notified() => {
+                            tracing::debug!("Background loop awakened by new client connection");
+                        }
+                    }
                 }
                 Err(e) => {
                     tracing::error!("Error fetching torrents in background: {}", e);

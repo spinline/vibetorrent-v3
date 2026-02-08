@@ -5,10 +5,11 @@ resolver = "2"
 # Optimize for size (aggressive)
 [profile.release]
 opt-level = "z"
-lto = true
+lto = "fat" # Full LTO (En iyisi)
 codegen-units = 1
 panic = "abort"
-strip = true
+strip = "symbols" # Sembolleri temizle
+incremental = false # Incremental build'i kapat (Boyut için daha iyi)
 
 [patch.crates-io]
 coarsetime = { path = "third_party/coarsetime" }

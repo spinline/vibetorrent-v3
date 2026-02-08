@@ -43,13 +43,12 @@ jobs:
 
     - name: Build Backend (MIPS)
       env:
-        # Ensure we are building a fully static binary
-        # -C link-self-contained=no: Let Zig (the linker) handle CRT objects (crt1.o, etc.)
-        RUSTFLAGS: "-C target-feature=+crt-static -C link-self-contained=no -C link-arg=-msoft-float"
+        # -s: Sembolleri siler, -w: DWARF debug bilgilerini siler (Binary boyutunu devasa düşürür)
+        RUSTFLAGS: "-C target-feature=+crt-static -C link-self-contained=no -C link-arg=-msoft-float -C link-arg=-s -C link-arg=-w"
         CFLAGS_mips_unknown_linux_musl: "-msoft-float"
       run: |
-        cd backend
-        cargo zigbuild --target mips-unknown-linux-musl --release -Z build-std=std,panic_abort
+        # Kök dizinden derleyerek workspace profil ayarlarının (LTO, z, strip) uygulanmasını sağlıyoruz
+        cargo zigbuild -p backend --target mips-unknown-linux-musl --release -Z build-std=std,panic_abort
         file target/mips-unknown-linux-musl/release/backend
 
     - name: Rename Binary

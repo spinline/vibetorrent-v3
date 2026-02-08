@@ -1,4 +1,6 @@
 use leptos::*;
+use leptos_use::storage::use_local_storage;
+use codee::string::FromToStringCodec;
 use shared::GlobalLimitRequest;
 
 fn format_bytes(bytes: i64) -> String {
@@ -26,34 +28,19 @@ pub fn StatusBar() -> impl IntoView {
     let store = use_context::<crate::store::TorrentStore>().expect("store not provided");
     let stats = store.global_stats;
 
-    let initial_theme = if let Some(win) = web_sys::window() {
-        if let Some(doc) = win.document() {
-            doc.document_element()
-                .and_then(|el| el.get_attribute("data-theme"))
-                .unwrap_or_else(|| "dark".to_string())
-        } else {
-            "dark".to_string()
-        }
-    } else {
-        "dark".to_string()
-    };
+    // Use leptos-use for reactive localStorage management
+    let (current_theme, set_current_theme, _) = use_local_storage::<String, FromToStringCodec>("vibetorrent_theme");
 
-    let (current_theme, set_current_theme) = create_signal(initial_theme);
+    // Initialize with default if empty
+    if current_theme.get_untracked().is_empty() {
+        set_current_theme.set("dark".to_string());
+    }
 
+    // Automatically sync theme to document attribute
     create_effect(move |_| {
-        if let Some(win) = web_sys::window() {
-            if let Some(storage) = win.local_storage().ok().flatten() {
-                if let Ok(Some(stored_theme)) = storage.get_item("vibetorrent_theme") {
-                    let theme = stored_theme.to_lowercase();
-                    set_current_theme.set(theme.clone());
-                    if let Some(doc) = win.document() {
-                        let _ = doc
-                            .document_element()
-                            .unwrap()
-                            .set_attribute("data-theme", &theme);
-                    }
-                }
-            }
+        let theme = current_theme.get().to_lowercase();
+        if let Some(doc) = document().document_element() {
+            let _ = doc.set_attribute("data-theme", &theme);
         }
     });
 
@@ -275,14 +262,6 @@ pub fn StatusBar() -> impl IntoView {
                                                 on:pointerdown=move |e| {
                                                     e.stop_propagation();
                                                     set_current_theme.set(theme.to_string());
-                                                    if let Some(win) = web_sys::window() {
-                                                        if let Some(doc) = win.document() {
-                                                            let _ = doc.document_element().unwrap().set_attribute("data-theme", theme);
-                                                        }
-                                                        if let Some(storage) = win.local_storage().ok().flatten() {
-                                                            let _ = storage.set_item("vibetorrent_theme", theme);
-                                                        }
-                                                    }
                                                     close_all();
                                                 }
                                             >

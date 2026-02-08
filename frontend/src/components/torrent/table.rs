@@ -1,6 +1,4 @@
 use leptos::*;
-use wasm_bindgen::closure::Closure;
-use wasm_bindgen::JsCast;
 use crate::store::{get_action_messages, show_toast_with_signal};
 use shared::NotificationLevel;
 
@@ -423,57 +421,50 @@ pub fn TorrentTable() -> impl IntoView {
                     let _t_hash = t.hash.clone();
                     let t_hash_click = t.hash.clone();
 
-                    let (timer_id, set_timer_id) = create_signal(Option::<i32>::None);
+                    let (timer_handle, set_timer_handle) = create_signal(Option::<leptos::leptos_dom::helpers::TimeoutHandle>::None);
                     let t_hash_long = t.hash.clone();
 
-                    let clear_timer = move || {
-                        if let Some(id) = timer_id.get_untracked() {
-                            window().clear_timeout_with_handle(id);
-                            set_timer_id.set(None);
+                    let clear_long_press_timer = move || {
+                        if let Some(handle) = timer_handle.get_untracked() {
+                            handle.clear();
+                            set_timer_handle.set(None);
                         }
                     };
 
                     let handle_touchstart = {
                          let t_hash = t_hash_long.clone();
                          move |e: web_sys::TouchEvent| {
-                            clear_timer();
+                            clear_long_press_timer();
                             if let Some(touch) = e.touches().get(0) {
                                 let x = touch.client_x();
                                 let y = touch.client_y();
                                 let hash = t_hash.clone();
 
-                                let closure = Closure::wrap(Box::new(move || {
+                                // Use Leptos set_timeout: cleaner, safer, no manual Closure needed
+                                let handle = set_timeout_with_handle(move || {
                                     set_menu_position.set((x, y));
                                     set_selected_hash.set(Some(hash.clone()));
                                     set_menu_visible.set(true);
 
-                                    // Haptic feedback (iOS Safari doesn't support vibrate)
+                                    // Haptic feedback
                                     let navigator = window().navigator();
-                                    if js_sys::Reflect::has(&navigator, &wasm_bindgen::JsValue::from_str("vibrate")).unwrap_or(false) {
-                                        let _ = navigator.vibrate_with_duration(50);
+                                    if let Ok(vibrate) = js_sys::Reflect::get(&navigator, &"vibrate".into()) {
+                                        if vibrate.is_function() {
+                                            let _ = navigator.vibrate_with_duration(50);
+                                        }
                                     }
-                                }) as Box<dyn Fn()>);
+                                    set_timer_handle.set(None);
+                                }, std::time::Duration::from_millis(600));
 
-                                let id = window()
-                                    .set_timeout_with_callback_and_timeout_and_arguments_0(
-                                        closure.as_ref().unchecked_ref(),
-                                        600
-                                    )
-                                    .unwrap_or(0);
-
-                                closure.forget();
-                                set_timer_id.set(Some(id));
+                                if let Ok(h) = handle {
+                                    set_timer_handle.set(Some(h));
+                                }
                             }
                         }
                     };
 
-                    let handle_touchmove = move |_| {
-                        clear_timer();
-                    };
-
-                    let handle_touchend = move |_| {
-                        clear_timer();
-                    };
+                    let handle_touchmove = move |_| clear_long_press_timer();
+                    let handle_touchend = move |_| clear_long_press_timer();
 
                     view! {
                         <div

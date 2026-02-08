@@ -6,3 +6,5 @@ result.xml
 frontend/dist
 backend.log
 .runner
+.env
+backend/.env

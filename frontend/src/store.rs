@@ -195,11 +195,26 @@ pub fn provide_torrent_store() {
                                         if let Ok(event) = serde_json::from_str::<AppEvent>(&data_str) {
                                             match event {
                                                 AppEvent::FullList { torrents: list, .. } => {
-                                                    let map: HashMap<String, Torrent> = list
-                                                        .into_iter()
-                                                        .map(|t| (t.hash.clone(), t))
-                                                        .collect();
-                                                    torrents.set(map);
+                                                    torrents.update(|map| {
+                                                        // 1. Create a set of new hashes for quick lookup
+                                                        let new_hashes: std::collections::HashSet<String> = list.iter().map(|t| t.hash.clone()).collect();
+                                                        
+                                                        // 2. Remove torrents that are no longer in the list
+                                                        map.retain(|hash, _| new_hashes.contains(hash));
+                                                        
+                                                        // 3. Update or Insert torrents from the new list
+                                                        for new_torrent in list {
+                                                            if let Some(existing) = map.get_mut(&new_torrent.hash) {
+                                                                // Only update if changed (Torrent derives PartialEq)
+                                                                if existing != &new_torrent {
+                                                                    *existing = new_torrent;
+                                                                }
+                                                            } else {
+                                                                // New torrent, insert it
+                                                                map.insert(new_torrent.hash.clone(), new_torrent);
+                                                            }
+                                                        }
+                                                    });
                                                 }
                                                 AppEvent::Update(update) => {
                                                     torrents.update(|map| {

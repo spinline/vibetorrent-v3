@@ -142,6 +142,19 @@
             body.app-loaded #app-loading {
                 display: none !important;
             }
+
+            /* iOS Safari Click Fixes */
+            body {
+                cursor: pointer;
+                -webkit-tap-highlight-color: transparent;
+            }
+
+            summary {
+                list-style: none;
+            }
+            summary::-webkit-details-marker {
+                display: none;
+            }
         </style>
 
         <script>

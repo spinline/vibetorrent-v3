@@ -114,7 +114,7 @@ pub fn StatusBar() -> impl IntoView {
         let _ = on_click_outside(theme_details_ref, move |_| close_details(theme_details_ref));
 
         view! {
-            <div class="fixed bottom-0 left-0 right-0 h-8 min-h-8 bg-base-200 border-t border-base-300 flex items-center px-4 text-xs gap-4 text-base-content/70 z-[99]">
+            <div class="fixed bottom-0 left-0 right-0 h-8 min-h-8 bg-base-200 border-t border-base-300 flex items-center px-4 text-xs gap-4 text-base-content/70 z-[99] cursor-pointer">
 
                 // --- DOWNLOAD SPEED DROPDOWN ---
                 <details class="dropdown dropdown-top" node_ref=down_details_ref>

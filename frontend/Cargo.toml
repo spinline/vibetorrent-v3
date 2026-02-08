@@ -52,3 +52,4 @@ web-sys = { version = "0.3", features = [
 shared = { path = "../shared" }
 tailwind_fuse = "0.3.2"
 js-sys = "0.3.85"
+base64 = "0.22.1"

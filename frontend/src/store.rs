@@ -583,34 +583,15 @@ pub async fn subscribe_to_push_notifications() {
 }
 
 /// Helper to convert URL-safe base64 string to Uint8Array
-/// Uses JavaScript to properly decode binary data (avoids UTF-8 encoding issues)
+/// Uses pure Rust base64 crate for better safety and performance
 fn url_base64_to_uint8array(base64_string: &str) -> Result<js_sys::Uint8Array, JsValue> {
-    // Add padding
-    let padding = (4 - (base64_string.len() % 4)) % 4;
-    let mut padded = base64_string.to_string();
-    padded.push_str(&"=".repeat(padding));
+    use base64::{engine::general_purpose, Engine as _};
 
-    // Replace URL-safe characters
-    let standard_base64 = padded.replace('-', "+").replace('_', "/");
+    // VAPID keys are URL-safe base64. Try both NO_PAD and padded for robustness.
+    let bytes = general_purpose::URL_SAFE_NO_PAD
+        .decode(base64_string)
+        .or_else(|_| general_purpose::URL_SAFE.decode(base64_string))
+        .map_err(|e| JsValue::from_str(&format!("Base64 decode error: {}", e)))?;
 
-    // Decode using JavaScript to avoid UTF-8 encoding issues
-    // Create a JavaScript function to decode the base64 and convert to Uint8Array
-    let js_code = format!(
-        r#"
-        (function() {{
-            const binaryString = atob('{}');
-            const bytes = new Uint8Array(binaryString.length);
-            for (let i = 0; i < binaryString.length; i++) {{
-                bytes[i] = binaryString.charCodeAt(i);
-            }}
-            return bytes;
-        }})()
-        "#,
-        standard_base64
-    );
-
-    let result = js_sys::eval(&js_code)?;
-    let array = result.dyn_into::<js_sys::Uint8Array>()?;
-
-    Ok(array)
+    Ok(js_sys::Uint8Array::from(&bytes[..]))
 }

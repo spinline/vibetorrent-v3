@@ -320,13 +320,25 @@ async fn main() {
     // Channel for Events (Diffs)
     let (event_bus, _) = broadcast::channel::<AppEvent>(1024);
 
+    #[cfg(feature = "push-notifications")]
+    let push_store = match push::PushSubscriptionStore::with_db(&db).await {
+        Ok(store) => store,
+        Err(e) => {
+            tracing::error!("Failed to initialize push store: {}", e);
+            push::PushSubscriptionStore::new()
+        }
+    };
+
+    #[cfg(not(feature = "push-notifications"))]
+    let push_store = ();
+
     let app_state = AppState {
         tx: tx.clone(),
         event_bus: event_bus.clone(),
         scgi_socket_path: args.socket.clone(),
         db: db.clone(),
         #[cfg(feature = "push-notifications")]
-        push_store: push::PushSubscriptionStore::new(),
+        push_store,
     };
 
     // Spawn background task to poll rTorrent

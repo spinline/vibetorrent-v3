@@ -16,35 +16,12 @@ impl Db {
             .await?;
 
         let db = Self { pool };
-        db.init().await?;
+        db.run_migrations().await?;
         Ok(db)
     }
 
-    async fn init(&self) -> Result<()> {
-        // Create users table
-        sqlx::query(
-            "CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY,
-                username TEXT NOT NULL UNIQUE,
-                password_hash TEXT NOT NULL,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )",
-        )
-        .execute(&self.pool)
-        .await?;
-
-        // Create sessions table
-        sqlx::query(
-            "CREATE TABLE IF NOT EXISTS sessions (
-                token TEXT PRIMARY KEY,
-                user_id INTEGER NOT NULL,
-                expires_at DATETIME NOT NULL,
-                FOREIGN KEY(user_id) REFERENCES users(id)
-            )",
-        )
-        .execute(&self.pool)
-        .await?;
-
+    async fn run_migrations(&self) -> Result<()> {
+        sqlx::migrate!("./migrations").run(&self.pool).await?;
         Ok(())
     }
 
@@ -59,23 +36,24 @@ impl Db {
         Ok(())
     }
 
-        pub async fn get_user_by_username(&self, username: &str) -> Result<Option<(i64, String)>> {
-            let row = sqlx::query("SELECT id, password_hash FROM users WHERE username = ?")
-                .bind(username)
-                .fetch_optional(&self.pool)
-                .await?;
+    pub async fn get_user_by_username(&self, username: &str) -> Result<Option<(i64, String)>> {
+        let row = sqlx::query("SELECT id, password_hash FROM users WHERE username = ?")
+            .bind(username)
+            .fetch_optional(&self.pool)
+            .await?;
 
-            Ok(row.map(|r| (r.get(0), r.get(1))))
-        }
+        Ok(row.map(|r| (r.get(0), r.get(1))))
+    }
 
-        pub async fn get_username_by_id(&self, id: i64) -> Result<Option<String>> {
-            let row = sqlx::query("SELECT username FROM users WHERE id = ?")
-                .bind(id)
-                .fetch_optional(&self.pool)
-                .await?;
+    pub async fn get_username_by_id(&self, id: i64) -> Result<Option<String>> {
+        let row = sqlx::query("SELECT username FROM users WHERE id = ?")
+            .bind(id)
+            .fetch_optional(&self.pool)
+            .await?;
 
-            Ok(row.map(|r| r.get(0)))
-        }
+        Ok(row.map(|r| r.get(0)))
+    }
+
     pub async fn has_users(&self) -> Result<bool> {
         let row: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM users")
             .fetch_one(&self.pool)
@@ -127,5 +105,37 @@ impl Db {
             .execute(&self.pool)
             .await?;
         Ok(())
+    }
+
+    // --- Push Subscription Operations ---
+
+    pub async fn save_push_subscription(&self, endpoint: &str, p256dh: &str, auth: &str) -> Result<()> {
+        sqlx::query(
+            "INSERT INTO push_subscriptions (endpoint, p256dh, auth) VALUES (?, ?, ?)
+             ON CONFLICT(endpoint) DO UPDATE SET p256dh = EXCLUDED.p256dh, auth = EXCLUDED.auth"
+        )
+        .bind(endpoint)
+        .bind(p256dh)
+        .bind(auth)
+        .execute(&self.pool)
+        .await?;
+        Ok(())
+    }
+
+    pub async fn remove_push_subscription(&self, endpoint: &str) -> Result<()> {
+        sqlx::query("DELETE FROM push_subscriptions WHERE endpoint = ?")
+            .bind(endpoint)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn get_all_push_subscriptions(&self) -> Result<Vec<(String, String, String)>> {
+        let rows = sqlx::query_as::<_, (String, String, String)>(
+            "SELECT endpoint, p256dh, auth FROM push_subscriptions"
+        )
+        .fetch_all(&self.pool)
+        .await?;
+        Ok(rows)
     }
 }

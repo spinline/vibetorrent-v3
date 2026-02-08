@@ -6,10 +6,7 @@ use web_push::{
     HyperWebPushClient, SubscriptionInfo, VapidSignatureBuilder, WebPushClient, WebPushMessageBuilder,
 };
 
-// VAPID keys - PRODUCTION'DA ENVIRONMENT VARIABLE'DAN ALINMALI!
-const VAPID_PUBLIC_KEY: &str = "BEdPj6XQR7MGzM28Nev9wokF5upHoydNDahouJbQ9ZdBJpEFAN1iNfANSEvY0ItasNY5zcvvqN_tjUt64Rfd0gU";
-const VAPID_PRIVATE_KEY: &str = "aUcCYJ7kUd9UClCaWwad0IVgbYJ6svwl19MjSX7GH10";
-const VAPID_EMAIL: &str = "mailto:admin@vibetorrent.app";
+use crate::db::Db;
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct PushSubscription {
@@ -23,34 +20,72 @@ pub struct PushKeys {
     pub auth: String,
 }
 
-/// In-memory store for push subscriptions
-/// TODO: Replace with database in production
-#[derive(Default, Clone)]
+#[derive(Clone)]
 pub struct PushSubscriptionStore {
+    db: Option<Db>,
     subscriptions: Arc<RwLock<Vec<PushSubscription>>>,
 }
 
 impl PushSubscriptionStore {
     pub fn new() -> Self {
         Self {
+            db: None,
             subscriptions: Arc::new(RwLock::new(Vec::new())),
         }
     }
 
+    pub async fn with_db(db: &Db) -> Result<Self, Box<dyn std::error::Error>> {
+        let mut subscriptions_vec: Vec<PushSubscription> = Vec::new();
+
+        // Load existing subscriptions from DB
+        let subs = db.get_all_push_subscriptions().await?;
+        for (endpoint, p256dh, auth) in subs {
+            subscriptions_vec.push(PushSubscription {
+                endpoint,
+                keys: PushKeys { p256dh, auth },
+            });
+        }
+        tracing::info!("Loaded {} push subscriptions from database", subscriptions_vec.len());
+
+        Ok(Self {
+            db: Some(db.clone()),
+            subscriptions: Arc::new(RwLock::new(subscriptions_vec)),
+        })
+    }
+
     pub async fn add_subscription(&self, subscription: PushSubscription) {
+        // Add to memory
         let mut subs = self.subscriptions.write().await;
-        
+
         // Remove duplicate endpoint if exists
         subs.retain(|s| s.endpoint != subscription.endpoint);
-        
-        subs.push(subscription);
+        subs.push(subscription.clone());
         tracing::info!("Added push subscription. Total: {}", subs.len());
+
+        // Save to DB if available
+        if let Some(db) = &self.db {
+            if let Err(e) = db.save_push_subscription(
+                &subscription.endpoint,
+                &subscription.keys.p256dh,
+                &subscription.keys.auth,
+            ).await {
+                tracing::error!("Failed to save push subscription to DB: {}", e);
+            }
+        }
     }
 
     pub async fn remove_subscription(&self, endpoint: &str) {
+        // Remove from memory
         let mut subs = self.subscriptions.write().await;
         subs.retain(|s| s.endpoint != endpoint);
         tracing::info!("Removed push subscription. Total: {}", subs.len());
+
+        // Remove from DB if available
+        if let Some(db) = &self.db {
+            if let Err(e) = db.remove_push_subscription(endpoint).await {
+                tracing::error!("Failed to remove push subscription from DB: {}", e);
+            }
+        }
     }
 
     pub async fn get_all_subscriptions(&self) -> Vec<PushSubscription> {
@@ -65,7 +100,7 @@ pub async fn send_push_notification(
     body: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let subscriptions = store.get_all_subscriptions().await;
-    
+
     if subscriptions.is_empty() {
         tracing::debug!("No push subscriptions to send to");
         return Ok(());
@@ -83,6 +118,14 @@ pub async fn send_push_notification(
 
     let client = HyperWebPushClient::new();
 
+    // Get VAPID keys from environment or use defaults
+    let _vapid_public_key = std::env::var("VAPID_PUBLIC_KEY")
+        .unwrap_or_else(|_| "BEdPj6XQR7MGzM28Nev9wokF5upHoydNDahouJbQ9ZdBJpEFAN1iNfANSEvY0ItasNY5zcvvqN_tjUt64Rfd0gU".to_string());
+    let vapid_private_key = std::env::var("VAPID_PRIVATE_KEY")
+        .unwrap_or_else(|_| "aUcCYJ7kUd9UClCaWwad0IVgbYJ6svwl19MjSX7GH10".to_string());
+    let vapid_email = std::env::var("VAPID_EMAIL")
+        .unwrap_or_else(|_| "mailto:admin@vibetorrent.app".to_string());
+
     for subscription in subscriptions {
         let subscription_info = SubscriptionInfo {
             endpoint: subscription.endpoint.clone(),
@@ -93,18 +136,18 @@ pub async fn send_push_notification(
         };
 
         let mut sig_builder = VapidSignatureBuilder::from_base64(
-            VAPID_PRIVATE_KEY,
+            &vapid_private_key,
             web_push::URL_SAFE_NO_PAD,
             &subscription_info,
         )?;
-        
-        sig_builder.add_claim("sub", VAPID_EMAIL);
-        sig_builder.add_claim("aud", subscription.endpoint.clone());
+
+        sig_builder.add_claim("sub", vapid_email.as_str());
+        sig_builder.add_claim("aud", subscription.endpoint.as_str());
         let signature = sig_builder.build()?;
 
         let mut builder = WebPushMessageBuilder::new(&subscription_info);
         builder.set_vapid_signature(signature);
-        
+
         let payload_str = payload.to_string();
         builder.set_payload(web_push::ContentEncoding::Aes128Gcm, payload_str.as_bytes());
 
@@ -122,6 +165,7 @@ pub async fn send_push_notification(
     Ok(())
 }
 
-pub fn get_vapid_public_key() -> &'static str {
-    VAPID_PUBLIC_KEY
+pub fn get_vapid_public_key() -> String {
+    std::env::var("VAPID_PUBLIC_KEY")
+        .unwrap_or_else(|_| "BEdPj6XQR7MGzM28Nev9wokF5upHoydNDahouJbQ9ZdBJpEFAN1iNfANSEvY0ItasNY5zcvvqN_tjUt64Rfd0gU".to_string())
 }

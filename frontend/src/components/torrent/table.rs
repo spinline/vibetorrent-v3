@@ -339,14 +339,6 @@ pub fn TorrentTable() -> impl IntoView {
             </div>
 
                         <div class="md:hidden flex flex-col h-full bg-base-200 relative">
-                            // Transparent overlay to close sort dropdown
-                            <Show when=move || sort_open.get()>
-                                <div
-                                    class="fixed inset-0 z-[98] cursor-default"
-                                    on:pointerdown=move |_| set_sort_open.set(false)
-                                ></div>
-                            </Show>
-
                             <div class="px-3 py-2 border-b border-base-200 flex justify-between items-center bg-base-100/95 backdrop-blur z-10 shrink-0">
                                 <span class="text-xs font-bold opacity-50 uppercase tracking-wider">"Torrents"</span>
 
@@ -389,6 +381,7 @@ pub fn TorrentTable() -> impl IntoView {
                                                   view! {
                                                       <li>
                                                           <button
+                                                              type="button"
                                                               class=move || if is_active() { "bg-primary/10 text-primary font-bold flex justify-between" } else { "flex justify-between" }
                                                               on:pointerdown=move |e| {
                                                                   e.stop_propagation();

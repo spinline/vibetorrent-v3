@@ -1,5 +1,1 @@
-[build]
-rustflags = ["-C", "target-feature=-bulk-memory"]
-
-[target.wasm32-unknown-unknown]
-rustflags = ["-C", "target-feature=-bulk-memory"]
+[target.wasm32-unknown-unknown]\nrustflags = ["-C", "target-feature=+bulk-memory"]

@@ -255,9 +255,7 @@ async fn main() {
                     }
                 };
 
-                // Update in DB (using a direct query since db.rs doesn't have update_password yet)
-                // We should add `update_password` to db.rs for cleaner code, but for now direct query is fine or we can extend Db.
-                // Let's extend Db.rs first to be clean.
+                // Update in DB
                 if let Err(e) = db.update_password(user_id, &password_hash).await {
                      tracing::error!("Failed to update password in DB: {}", e);
                      std::process::exit(1);

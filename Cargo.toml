@@ -2,14 +2,19 @@
 members = ["backend", "frontend", "shared"]
 resolver = "2"
 
-# Optimize for size (aggressive)
 [profile.release]
+# En küçük binary boyutu
 opt-level = "z"
-lto = "fat" # Full LTO (En iyisi)
+# En derin kod temizliği (dead code elimination)
+lto = "fat"
+# En iyi optimizasyon için tek birim derleme
 codegen-units = 1
+# Hata izleme kodlarını atarak yer kazan
 panic = "abort"
-strip = "symbols" # Sembolleri temizle
-incremental = false # Incremental build'i kapat (Boyut için daha iyi)
+# Sembolleri ve hata ayıklama bilgilerini kesin sil
+strip = true
+# Artık (incremental) build'i kapat ki optimizasyon tam olsun
+incremental = false
 
 [patch.crates-io]
 coarsetime = { path = "third_party/coarsetime" }

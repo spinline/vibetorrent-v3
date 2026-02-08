@@ -26,25 +26,22 @@ jobs:
       run: |
         cd frontend
         npm install
-        # Run Tailwind manually first
         npx @tailwindcss/cli -i input.css -o public/tailwind.css
+        # Trunk'ın optimizasyonunu kapalı (0) tutuyoruz çünkü Cargo.toml'daki opt-level='z' zaten o işi yapıyor.
         trunk build --release
-        
-        echo "Build complete (WASM optimization handled by Rust compiler via opt-level=z)"
 
     - name: Build Backend (MIPS)
       env:
-        # -s: Sembolleri siler, -w: DWARF debug bilgilerini siler (Binary boyutunu devasa düşürür)
+        # -s ve -w ile binary içindeki gereksiz tüm yükleri siliyoruz.
         RUSTFLAGS: "-C target-feature=+crt-static -C link-self-contained=no -C link-arg=-msoft-float -C link-arg=-s -C link-arg=-w"
         CFLAGS_mips_unknown_linux_musl: "-msoft-float"
       run: |
-        # Kök dizinden derleyerek workspace profil ayarlarının (LTO, z, strip) uygulanmasını sağlıyoruz
-        # Sadece push-notifications özelliğini aktif ediyoruz (swagger UI kapanır, boyut düşer)
+        # Sadece gerekli özellikleri derliyoruz (Boyut tasarrufu için swagger kapalı)
         cargo zigbuild -p backend --target mips-unknown-linux-musl --release -Z build-std=std,panic_abort --no-default-features --features push-notifications
-        file target/mips-unknown-linux-musl/release/backend
 
-    - name: Rename Binary
-      run: mv target/mips-unknown-linux-musl/release/backend target/mips-unknown-linux-musl/release/vibetorrent-mips
+    - name: Create Release Assets
+      run: |
+        mv target/mips-unknown-linux-musl/release/backend target/mips-unknown-linux-musl/release/vibetorrent-mips
 
     - name: Generate Release Tag
       id: tag
@@ -58,8 +55,10 @@ jobs:
         REPO="admin/vibetorrent"
         API_URL="${{ gitea.server_url }}/api/v1"
 
-        # Create release
-        RELEASE_RESPONSE=$(curl -s -X POST "${API_URL}/repos/${REPO}/releases"           -H "Authorization: token ${RELEASE_TOKEN}"           -H "Content-Type: application/json"           -d "{
+        RELEASE_RESPONSE=$(curl -s -X POST "${API_URL}/repos/${REPO}/releases" \
+          -H "Authorization: token ${RELEASE_TOKEN}" \
+          -H "Content-Type: application/json" \
+          -d "{
             \"tag_name\": \"${TAG}\",
             \"name\": \"Release ${TAG}\",
             \"body\": \"Automated build from commit ${{ gitea.sha }}\",
@@ -68,15 +67,9 @@ jobs:
           }")
 
         RELEASE_ID=$(echo "$RELEASE_RESPONSE" | jq -r '.id')
-        echo "Release ID: $RELEASE_ID"
+        if [ "$RELEASE_ID" = "null" ] || [ -z "$RELEASE_ID" ]; then exit 1; fi
 
-        if [ "$RELEASE_ID" = "null" ] || [ -z "$RELEASE_ID" ]; then
-          echo "Failed to create release:"
-          echo "$RELEASE_RESPONSE"
-          exit 1
-        fi
-
-        # Upload binary as release asset
-        curl -s -X POST "${API_URL}/repos/${REPO}/releases/${RELEASE_ID}/assets?name=vibetorrent-mips"           -H "Authorization: token ${RELEASE_TOKEN}"           -H "Content-Type: application/octet-stream"           --data-binary @target/mips-unknown-linux-musl/release/vibetorrent-mips
-
-        echo "Release ${TAG} created with binary attached."
+        curl -s -X POST "${API_URL}/repos/${REPO}/releases/${RELEASE_ID}/assets?name=vibetorrent-mips" \
+          -H "Authorization: token ${RELEASE_TOKEN}" \
+          -H "Content-Type: application/octet-stream" \
+          --data-binary @target/mips-unknown-linux-musl/release/vibetorrent-mips

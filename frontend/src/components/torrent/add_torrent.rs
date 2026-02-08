@@ -1,7 +1,7 @@
 use leptos::*;
 use leptos::html::Dialog;
 use crate::store::{show_toast_with_signal, TorrentStore};
-use shared::NotificationLevel;
+use shared::{AddTorrentRequest, NotificationLevel};
 
 
 #[component]
@@ -36,9 +36,7 @@ pub fn AddTorrentModal(
         set_error_msg.set(None);
 
         spawn_local(async move {
-            let req_body = serde_json::json!({
-                "uri": uri_val
-            });
+            let req_body = AddTorrentRequest { uri: uri_val };
 
             match gloo_net::http::Request::post("/api/torrents/add")
                 .json(&req_body)

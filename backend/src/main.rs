@@ -125,7 +125,7 @@ struct Args {
     ),
     components(
         schemas(
-            handlers::AddTorrentRequest,
+            shared::AddTorrentRequest,
             shared::TorrentActionRequest,
             shared::Torrent,
             shared::TorrentStatus,
@@ -172,7 +172,7 @@ struct ApiDoc;
     ),
     components(
         schemas(
-            handlers::AddTorrentRequest,
+            shared::AddTorrentRequest,
             shared::TorrentActionRequest,
             shared::Torrent,
             shared::TorrentStatus,

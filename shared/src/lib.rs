@@ -130,3 +130,9 @@ pub struct SetLabelRequest {
     pub hash: String,
     pub label: String,
 }
+
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
+pub struct AddTorrentRequest {
+    #[schema(example = "magnet:?xt=urn:btih:...")]
+    pub uri: String,
+}

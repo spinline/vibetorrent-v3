@@ -11,12 +11,10 @@ use axum::{
     BoxError,
 };
 use rust_embed::RustEmbed;
-use serde::Deserialize;
 use shared::{
-    GlobalLimitRequest, SetFilePriorityRequest, SetLabelRequest, TorrentActionRequest, TorrentFile,
-    TorrentPeer, TorrentTracker,
+    AddTorrentRequest, GlobalLimitRequest, SetFilePriorityRequest, SetLabelRequest, TorrentActionRequest,
+    TorrentFile,     TorrentPeer, TorrentTracker,
 };
-use utoipa::ToSchema;
 
 pub mod auth;
 pub mod setup;
@@ -24,13 +22,6 @@ pub mod setup;
 #[derive(RustEmbed)]
 #[folder = "../frontend/dist"]
 pub struct Asset;
-
-#[derive(Deserialize, ToSchema)]
-pub struct AddTorrentRequest {
-    /// Magnet link or Torrent file URL
-    #[schema(example = "magnet:?xt=urn:btih:...")]
-    uri: String,
-}
 
 pub async fn static_handler(uri: Uri) -> impl IntoResponse {
     let mut path = uri.path().trim_start_matches('/').to_string();

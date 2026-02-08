@@ -10,3 +10,6 @@ command_arguments = ["-c", "npx @tailwindcss/cli -i input.css -o public/tailwind
 [build]
 target = "index.html"
 dist = "dist"
+
+[tools]
+wasm_opt = "version_117"

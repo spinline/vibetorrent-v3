@@ -1,5 +1,5 @@
 use leptos::*;
-use leptos_use::use_timeout_fn;
+use leptos_use::{on_click_outside, use_timeout_fn};
 use crate::store::{get_action_messages, show_toast_with_signal};
 use shared::NotificationLevel;
 
@@ -166,6 +166,8 @@ pub fn TorrentTable() -> impl IntoView {
 
     // Signal-based sort dropdown for mobile
     let (sort_open, set_sort_open) = create_signal(false);
+    let sort_menu_ref = create_node_ref::<html::Div>();
+    let _ = on_click_outside(sort_menu_ref, move |_| set_sort_open.set(false));
 
     let sort_arrow = move |col: SortColumn| {
         if sort_col.get() == col {
@@ -344,12 +346,11 @@ pub fn TorrentTable() -> impl IntoView {
                             <div class="px-3 py-2 border-b border-base-200 flex justify-between items-center bg-base-100/95 backdrop-blur z-10 shrink-0">
                                 <span class="text-xs font-bold opacity-50 uppercase tracking-wider">"Torrents"</span>
 
-                                <div class="relative">
+                                <div class="relative" node_ref=sort_menu_ref>
                                     <div
                                         role="button"
                                         class="btn btn-ghost btn-xs gap-1 opacity-70 font-normal"
-                                        on:pointerdown=move |e| {
-                                            e.stop_propagation();
+                                        on:click=move |_| {
                                             let cur = sort_open.get_untracked();
                                             set_sort_open.set(!cur);
                                         }
@@ -385,8 +386,7 @@ pub fn TorrentTable() -> impl IntoView {
                                                           <button
                                                               type="button"
                                                               class=move || if is_active() { "bg-primary/10 text-primary font-bold flex justify-between" } else { "flex justify-between" }
-                                                              on:pointerdown=move |e| {
-                                                                  e.stop_propagation();
+                                                              on:click=move |_| {
                                                                   handle_sort(col);
                                                                   set_sort_open.set(false);
                                                               }

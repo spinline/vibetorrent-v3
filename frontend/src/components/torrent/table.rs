@@ -45,6 +45,14 @@ fn format_duration(seconds: i64) -> String {
     }
 }
 
+fn format_date(timestamp: i64) -> String {
+    let dt = chrono::DateTime::from_timestamp(timestamp, 0);
+    match dt {
+        Some(dt) => dt.format("%d/%m/%Y %H:%M").to_string(),
+        None => "N/A".to_string(),
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum SortColumn {
     Name,
@@ -54,6 +62,7 @@ enum SortColumn {
     DownSpeed,
     UpSpeed,
     ETA,
+    AddedDate,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -66,8 +75,8 @@ enum SortDirection {
 pub fn TorrentTable() -> impl IntoView {
     let store = use_context::<crate::store::TorrentStore>().expect("store not provided");
 
-    let sort_col = create_rw_signal(SortColumn::Name);
-    let sort_dir = create_rw_signal(SortDirection::Ascending);
+    let sort_col = create_rw_signal(SortColumn::AddedDate);
+    let sort_dir = create_rw_signal(SortDirection::Descending);
 
     let filtered_torrents = move || {
         let mut torrents = store
@@ -127,6 +136,7 @@ pub fn TorrentTable() -> impl IntoView {
                     let b_eta = if b.eta <= 0 { i64::MAX } else { b.eta };
                     a_eta.cmp(&b_eta)
                 }
+                SortColumn::AddedDate => a.added_date.cmp(&b.added_date),
             };
             if dir == SortDirection::Descending {
                 cmp.reverse()
@@ -264,6 +274,9 @@ pub fn TorrentTable() -> impl IntoView {
                             <th class="w-24 cursor-pointer hover:bg-base-300 group select-none" on:click=move |_| handle_sort(SortColumn::ETA)>
                                  <div class="flex items-center">"ETA" {move || sort_arrow(SortColumn::ETA)}</div>
                             </th>
+                            <th class="w-32 cursor-pointer hover:bg-base-300 group select-none" on:click=move |_| handle_sort(SortColumn::AddedDate)>
+                                 <div class="flex items-center">"Date" {move || sort_arrow(SortColumn::AddedDate)}</div>
+                            </th>
                         </tr>
                     </thead>
                     <tbody>
@@ -317,6 +330,7 @@ pub fn TorrentTable() -> impl IntoView {
                                     <td class="text-right font-mono text-[11px] opacity-80 text-success">{format_speed(t.down_rate)}</td>
                                     <td class="text-right font-mono text-[11px] opacity-80 text-primary">{format_speed(t.up_rate)}</td>
                                     <td class="text-right font-mono text-[11px] opacity-80">{format_duration(t.eta)}</td>
+                                    <td class="text-right font-mono text-[11px] opacity-80 whitespace-nowrap">{format_date(t.added_date)}</td>
                                 </tr>
                             }
                         }).collect::<Vec<_>>()}
@@ -358,15 +372,16 @@ pub fn TorrentTable() -> impl IntoView {
                                     >
                                          <li class="menu-title px-2 py-1 opacity-50 text-[10px] uppercase font-bold">"Sort By"</li>
                                          {
-                                             let columns = vec![
-                                                 (SortColumn::Name, "Name"),
-                                                 (SortColumn::Size, "Size"),
-                                                 (SortColumn::Progress, "Progress"),
-                                                 (SortColumn::Status, "Status"),
-                                                 (SortColumn::DownSpeed, "Down Speed"),
-                                                 (SortColumn::UpSpeed, "Up Speed"),
-                                                 (SortColumn::ETA, "ETA"),
-                                             ];
+                                              let columns = vec![
+                                                  (SortColumn::Name, "Name"),
+                                                  (SortColumn::Size, "Size"),
+                                                  (SortColumn::Progress, "Progress"),
+                                                  (SortColumn::Status, "Status"),
+                                                  (SortColumn::DownSpeed, "Down Speed"),
+                                                  (SortColumn::UpSpeed, "Up Speed"),
+                                                  (SortColumn::ETA, "ETA"),
+                                                  (SortColumn::AddedDate, "Date"),
+                                              ];
 
                                              columns.into_iter().map(|(col, label)| {
                                                  let is_active = move || sort_col.get() == col;
@@ -500,7 +515,7 @@ pub fn TorrentTable() -> impl IntoView {
                                     <progress class={format!("progress w-full h-1.5 {}", progress_class)} value={t.percent_complete} max="100"></progress>
                                 </div>
 
-                                <div class="grid grid-cols-3 gap-2 text-[10px] font-mono opacity-80 pt-1 border-t border-base-200/50">
+                                <div class="grid grid-cols-4 gap-2 text-[10px] font-mono opacity-80 pt-1 border-t border-base-200/50">
                                     <div class="flex flex-col">
                                         <span class="text-[9px] opacity-60 uppercase">"Down"</span>
                                         <span class="text-success">{format_speed(t.down_rate)}</span>
@@ -509,9 +524,13 @@ pub fn TorrentTable() -> impl IntoView {
                                         <span class="text-[9px] opacity-60 uppercase">"Up"</span>
                                         <span class="text-primary">{format_speed(t.up_rate)}</span>
                                     </div>
-                                    <div class="flex flex-col text-right">
+                                    <div class="flex flex-col text-center border-r border-base-200/50">
                                         <span class="text-[9px] opacity-60 uppercase">"ETA"</span>
                                         <span>{format_duration(t.eta)}</span>
+                                    </div>
+                                    <div class="flex flex-col text-right">
+                                        <span class="text-[9px] opacity-60 uppercase">"Date"</span>
+                                        <span>{format_date(t.added_date)}</span>
                                     </div>
                                 </div>
                             </div>

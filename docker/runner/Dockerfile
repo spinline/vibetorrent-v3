@@ -20,6 +20,8 @@ RUN apt-get update && apt-get install -y \
     jq \
     # Needed for some crate compilations
     protobuf-compiler \
+    # Install binaryen to have wasm-opt available system-wide
+    binaryen \
     && rm -rf /var/lib/apt/lists/*
 
 # 2. Install Node.js v20 (Manual install to support multi-arch cleanly)
@@ -70,7 +72,7 @@ RUN . "$HOME/.cargo/env" && \
     ARCH=$(dpkg --print-architecture) && \
     if [ "$ARCH" = "amd64" ]; then TRUNK_ARCH="x86_64-unknown-linux-gnu"; \
     elif [ "$ARCH" = "arm64" ]; then TRUNK_ARCH="aarch64-unknown-linux-gnu"; fi && \
-    wget -qO- "https://github.com/trunk-rs/trunk/releases/download/v0.21.5/trunk-$TRUNK_ARCH.tar.gz" | tar -xzf - -C /root/.cargo/bin/ && \
+    wget -qO- "https://github.com/trunk-rs/trunk/releases/download/v0.21.14/trunk-$TRUNK_ARCH.tar.gz" | tar -xzf - -C /root/.cargo/bin/ && \
     chmod +x /root/.cargo/bin/trunk && \
     # Install wasm-bindgen-cli (Compiling from source to avoid glibc issues, doing it ONCE here)
     cargo install wasm-bindgen-cli --version 0.2.108

@@ -690,8 +690,10 @@ pub async fn handle_timeout_error(err: BoxError) -> (StatusCode, &'static str) {
         (status = 200, description = "VAPID public key", body = String)
     )
 )]
-pub async fn get_push_public_key_handler() -> impl IntoResponse {
-    let public_key = push::get_vapid_public_key();
+pub async fn get_push_public_key_handler(
+    State(state): State<AppState>,
+) -> impl IntoResponse {
+    let public_key = state.push_store.get_public_key();
     (StatusCode::OK, Json(serde_json::json!({ "publicKey": public_key }))).into_response()
 }
 

@@ -21,6 +21,21 @@ impl Db {
     }
 
     async fn run_migrations(&self) -> Result<()> {
+        // WAL mode - enables concurrent reads while writing
+        sqlx::query("PRAGMA journal_mode=WAL")
+            .execute(&self.pool)
+            .await?;
+
+        // NORMAL synchronous - faster than FULL, still safe enough
+        sqlx::query("PRAGMA synchronous=NORMAL")
+            .execute(&self.pool)
+            .await?;
+
+        // 5 second busy timeout - reduces "database locked" errors
+        sqlx::query("PRAGMA busy_timeout=5000")
+            .execute(&self.pool)
+            .await?;
+
         sqlx::migrate!("./migrations").run(&self.pool).await?;
         Ok(())
     }

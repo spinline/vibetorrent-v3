@@ -11,6 +11,8 @@ pub enum ScgiError {
     #[allow(dead_code)]
     #[error("Protocol Error: {0}")]
     Protocol(String),
+    #[error("Timeout: SCGI request took too long")]
+    Timeout,
 }
 
 pub struct ScgiRequest {
@@ -78,20 +80,30 @@ impl ScgiRequest {
 }
 
 pub async fn send_request(socket_path: &str, request: ScgiRequest) -> Result<Bytes, ScgiError> {
-    let mut stream = UnixStream::connect(socket_path).await?;
-    let data = request.encode();
-    stream.write_all(&data).await?;
+    let perform_request = async {
+        let mut stream = UnixStream::connect(socket_path).await?;
+        let data = request.encode();
+        stream.write_all(&data).await?;
 
-    let mut response = Vec::new();
-    stream.read_to_end(&mut response).await?;
+        let mut response = Vec::new();
+        stream.read_to_end(&mut response).await?;
+        Ok::<Vec<u8>, std::io::Error>(response)
+    };
+
+    let response = tokio::time::timeout(std::time::Duration::from_secs(10), perform_request)
+        .await
+        .map_err(|_| ScgiError::Timeout)??;
 
     let double_newline = b"\r\n\r\n";
-    if let Some(pos) = response
+    let mut response_vec = response;
+    if let Some(pos) = response_vec
         .windows(double_newline.len())
         .position(|window| window == double_newline)
     {
-        Ok(Bytes::from(response.split_off(pos + double_newline.len())))
+        Ok(Bytes::from(
+            response_vec.split_off(pos + double_newline.len()),
+        ))
     } else {
-        Ok(Bytes::from(response))
+        Ok(Bytes::from(response_vec))
     }
 }

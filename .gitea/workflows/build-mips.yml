@@ -29,6 +29,13 @@ jobs:
         # Run Tailwind manually first
         npx @tailwindcss/cli -i input.css -o public/tailwind.css
         trunk build --release
+        
+        # Manuel WASM Optimizasyonu (Trunk'ın yapamadığını biz yapıyoruz)
+        # bulk-memory ve diğer modern özellikleri destekleyerek en küçük boyutu elde ediyoruz.
+        WASM_FILE=$(ls dist/*.wasm)
+        echo "Optimizing $WASM_FILE..."
+        wasm-opt --enable-bulk-memory --enable-mutable-globals --enable-sign-ext -Oz "$WASM_FILE" -o "$WASM_FILE"
+        echo "Optimization complete!"
 
     - name: Build Backend (MIPS)
       env:

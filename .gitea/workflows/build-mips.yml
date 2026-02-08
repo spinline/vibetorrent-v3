@@ -31,10 +31,10 @@ jobs:
         trunk build --release
         
         # Manuel WASM Optimizasyonu (Trunk'ın yapamadığını biz yapıyoruz)
-        # bulk-memory ve diğer modern özellikleri destekleyerek en küçük boyutu elde ediyoruz.
+        # Tüm modern özellikleri (bulk-memory, nontrapping-float, vb.) aktif ederek en küçük boyutu elde ediyoruz.
         WASM_FILE=$(ls dist/*.wasm)
         echo "Optimizing $WASM_FILE..."
-        wasm-opt --enable-bulk-memory --enable-mutable-globals --enable-sign-ext -Oz "$WASM_FILE" -o "$WASM_FILE"
+        wasm-opt --enable-bulk-memory --enable-mutable-globals --enable-sign-ext --enable-nontrapping-float-to-int-conversions -Oz "$WASM_FILE" -o "$WASM_FILE"
         echo "Optimization complete!"
 
     - name: Build Backend (MIPS)

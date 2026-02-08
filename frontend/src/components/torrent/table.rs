@@ -82,9 +82,10 @@ pub fn TorrentTable() -> impl IntoView {
     let sort_dir = create_rw_signal(SortDirection::Descending);
 
     let filtered_torrents = move || {
-        let mut torrents = store
-            .torrents
-            .get()
+        // Convert HashMap values to Vec for filtering and sorting
+        let torrents: Vec<shared::Torrent> = store.torrents.with(|map| map.values().cloned().collect());
+
+        let mut torrents = torrents
             .into_iter()
             .filter(|t| {
                 let filter = store.filter.get();

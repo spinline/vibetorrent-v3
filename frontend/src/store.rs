@@ -113,9 +113,11 @@ impl FilterStatus {
     }
 }
 
+use std::collections::HashMap;
+
 #[derive(Clone, Copy, Debug)]
 pub struct TorrentStore {
-    pub torrents: RwSignal<Vec<Torrent>>,
+    pub torrents: RwSignal<HashMap<String, Torrent>>,
     pub filter: RwSignal<FilterStatus>,
     pub search_query: RwSignal<String>,
     pub global_stats: RwSignal<GlobalStats>,
@@ -124,7 +126,7 @@ pub struct TorrentStore {
 }
 
 pub fn provide_torrent_store() {
-    let torrents = create_rw_signal(Vec::<Torrent>::new());
+    let torrents = create_rw_signal(HashMap::new());
     let filter = create_rw_signal(FilterStatus::All);
     let search_query = create_rw_signal(String::new());
     let global_stats = create_rw_signal(GlobalStats::default());
@@ -193,12 +195,15 @@ pub fn provide_torrent_store() {
                                         if let Ok(event) = serde_json::from_str::<AppEvent>(&data_str) {
                                             match event {
                                                 AppEvent::FullList { torrents: list, .. } => {
-                                                    torrents.set(list);
+                                                    let map: HashMap<String, Torrent> = list
+                                                        .into_iter()
+                                                        .map(|t| (t.hash.clone(), t))
+                                                        .collect();
+                                                    torrents.set(map);
                                                 }
                                                 AppEvent::Update(update) => {
-                                                    torrents.update(|list| {
-                                                        if let Some(t) = list.iter_mut().find(|t| t.hash == update.hash)
-                                                        {
+                                                    torrents.update(|map| {
+                                                        if let Some(t) = map.get_mut(&update.hash) {
                                                             if let Some(name) = update.name {
                                                                 t.name = name;
                                                             }

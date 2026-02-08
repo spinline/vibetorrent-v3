@@ -48,7 +48,8 @@ jobs:
         CFLAGS_mips_unknown_linux_musl: "-msoft-float"
       run: |
         # Kök dizinden derleyerek workspace profil ayarlarının (LTO, z, strip) uygulanmasını sağlıyoruz
-        cargo zigbuild -p backend --target mips-unknown-linux-musl --release -Z build-std=std,panic_abort
+        # Sadece push-notifications özelliğini aktif ediyoruz (swagger UI kapanır, boyut düşer)
+        cargo zigbuild -p backend --target mips-unknown-linux-musl --release -Z build-std=std,panic_abort --no-default-features --features push-notifications
         file target/mips-unknown-linux-musl/release/backend
 
     - name: Rename Binary

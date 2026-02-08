@@ -33,6 +33,7 @@ use tower_http::{
     trace::TraceLayer,
 };
 use utoipa::OpenApi;
+#[cfg(feature = "swagger")]
 use utoipa_swagger_ui::SwaggerUi;
 
 #[derive(Clone)]
@@ -98,6 +99,7 @@ struct Args {
     reset_password: Option<String>,
 }
 
+#[cfg(feature = "swagger")]
 #[cfg(feature = "push-notifications")]
 #[derive(OpenApi)]
 #[openapi(
@@ -146,6 +148,7 @@ struct Args {
 )]
 struct ApiDoc;
 
+#[cfg(feature = "swagger")]
 #[cfg(not(feature = "push-notifications"))]
 #[derive(OpenApi)]
 #[openapi(
@@ -462,9 +465,13 @@ async fn main() {
         }
     });
 
-    let app = Router::new()
-        .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
-        // Setup & Auth Routes
+    let app = Router::new();
+
+    #[cfg(feature = "swagger")]
+    let app = app.merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()));
+
+    // Setup & Auth Routes
+    let app = app
         .route("/api/setup/status", get(handlers::setup::get_setup_status_handler))
         .route("/api/setup", post(handlers::setup::setup_handler))
         .route(

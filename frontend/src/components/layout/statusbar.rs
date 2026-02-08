@@ -1,5 +1,5 @@
 use leptos::*;
-use leptos_use::{on_click_outside_with_options, OnClickOutsideOptions};
+use leptos_use::on_click_outside;
 use leptos_use::storage::use_local_storage;
 use codee::string::FromToStringCodec;
 use shared::GlobalLimitRequest;

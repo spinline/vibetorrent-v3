@@ -118,13 +118,8 @@ pub async fn send_push_notification(
 
     let client = HyperWebPushClient::new();
 
-    // Get VAPID keys from environment or use defaults
-    let _vapid_public_key = std::env::var("VAPID_PUBLIC_KEY")
-        .unwrap_or_else(|_| "BEdPj6XQR7MGzM28Nev9wokF5upHoydNDahouJbQ9ZdBJpEFAN1iNfANSEvY0ItasNY5zcvvqN_tjUt64Rfd0gU".to_string());
-    let vapid_private_key = std::env::var("VAPID_PRIVATE_KEY")
-        .unwrap_or_else(|_| "aUcCYJ7kUd9UClCaWwad0IVgbYJ6svwl19MjSX7GH10".to_string());
-    let vapid_email = std::env::var("VAPID_EMAIL")
-        .unwrap_or_else(|_| "mailto:admin@vibetorrent.app".to_string());
+    let vapid_private_key = std::env::var("VAPID_PRIVATE_KEY").expect("VAPID_PRIVATE_KEY must be set in .env");
+    let vapid_email = std::env::var("VAPID_EMAIL").expect("VAPID_EMAIL must be set in .env");
 
     for subscription in subscriptions {
         let subscription_info = SubscriptionInfo {
@@ -166,6 +161,5 @@ pub async fn send_push_notification(
 }
 
 pub fn get_vapid_public_key() -> String {
-    std::env::var("VAPID_PUBLIC_KEY")
-        .unwrap_or_else(|_| "BEdPj6XQR7MGzM28Nev9wokF5upHoydNDahouJbQ9ZdBJpEFAN1iNfANSEvY0ItasNY5zcvvqN_tjUt64Rfd0gU".to_string())
+    std::env::var("VAPID_PUBLIC_KEY").expect("VAPID_PUBLIC_KEY must be set in .env")
 }

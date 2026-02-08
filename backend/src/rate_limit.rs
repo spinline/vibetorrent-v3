@@ -5,13 +5,12 @@ use tower_governor::governor::GovernorConfigBuilder;
 use tower_governor::key_extractor::SmartIpKeyExtractor;
 
 pub fn get_login_rate_limit_config() -> GovernorConfig<SmartIpKeyExtractor, NoOpMiddleware<QuantaInstant>> {
-    // Katı limitler:
-    // Başlangıçta 3 hak. 4. denemede bloklanır.
-    // Her yeni hak için 20 saniye bekleme süresi.
+    // 5 yanlış denemeden sonra bloklanır.
+    // Her yeni hak için 60 saniye (1 dakika) bekleme süresi.
     GovernorConfigBuilder::default()
         .key_extractor(SmartIpKeyExtractor)
-        .per_second(20) 
-        .burst_size(3)
+        .per_second(60) 
+        .burst_size(5)
         .finish()
         .unwrap()
 }

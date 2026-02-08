@@ -97,43 +97,28 @@ pub fn StatusBar() -> impl IntoView {
         });
     };
 
-        // Signal-based dropdown state: 0=none, 1=download, 2=upload, 3=theme
-        let (active_dropdown, set_active_dropdown) = create_signal(0u8);
+        // Refs for click outside detection
+        let down_details_ref = create_node_ref::<html::Details>();
+        let up_details_ref = create_node_ref::<html::Details>();
+        let theme_details_ref = create_node_ref::<html::Details>();
 
-        // Toggle a specific dropdown
-        let toggle = move |id: u8| {
-            let current = active_dropdown.get_untracked();
-            if current == id {
-                set_active_dropdown.set(0);
-            } else {
-                set_active_dropdown.set(id);
+        // Helper to close a details element
+        let close_details = |node_ref: NodeRef<html::Details>| {
+            if let Some(el) = node_ref.get_untracked() {
+                el.set_open(false);
             }
         };
 
-        // Close all dropdowns
-        let close_all = move || {
-            set_active_dropdown.set(0);
-        };
-
-        // Refs for click outside detection
-        let down_ref = create_node_ref::<html::Div>();
-        let up_ref = create_node_ref::<html::Div>();
-        let theme_ref = create_node_ref::<html::Div>();
-
-        let _ = on_click_outside(down_ref, move |_| if active_dropdown.get_untracked() == 1 { close_all() });
-        let _ = on_click_outside(up_ref, move |_| if active_dropdown.get_untracked() == 2 { close_all() });
-        let _ = on_click_outside(theme_ref, move |_| if active_dropdown.get_untracked() == 3 { close_all() });
+        let _ = on_click_outside(down_details_ref, move |_| close_details(down_details_ref));
+        let _ = on_click_outside(up_details_ref, move |_| close_details(up_details_ref));
+        let _ = on_click_outside(theme_details_ref, move |_| close_details(theme_details_ref));
 
         view! {
             <div class="fixed bottom-0 left-0 right-0 h-8 min-h-8 bg-base-200 border-t border-base-300 flex items-center px-4 text-xs gap-4 text-base-content/70 z-[99]">
 
                 // --- DOWNLOAD SPEED DROPDOWN ---
-                <div class="relative" node_ref=down_ref>
-                    <div
-                        class="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors select-none"
-                        title="Global Download Speed - Click to Set Limit"
-                        on:click=move |_| toggle(1)
-                    >
+                <details class="dropdown dropdown-top" node_ref=down_details_ref>
+                    <summary class="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors select-none list-none marker:hidden">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3" />
                         </svg>
@@ -143,12 +128,9 @@ pub fn StatusBar() -> impl IntoView {
                                 {move || format!("(Limit: {})", format_speed(stats.get().down_limit.unwrap_or(0)))}
                             </span>
                         </Show>
-                    </div>
+                    </summary>
 
-                    <ul
-                        class="absolute bottom-full left-0 z-[100] menu p-2 shadow bg-base-200 rounded-box w-40 mb-2 border border-base-300"
-                        style=move || if active_dropdown.get() == 1 { "display: block" } else { "display: none" }
-                    >
+                    <ul class="dropdown-content z-[100] menu p-2 shadow bg-base-200 rounded-box w-40 mb-2 border border-base-300">
                         {
                             limits.clone().into_iter().map(|(val, label)| {
                                 let is_active = move || {
@@ -161,7 +143,7 @@ pub fn StatusBar() -> impl IntoView {
                                             class=move || if is_active() { "bg-primary/10 text-primary font-bold text-xs flex justify-between" } else { "text-xs flex justify-between" }
                                             on:click=move |_| {
                                                 set_limit("down", val);
-                                                close_all();
+                                                close_details(down_details_ref);
                                             }
                                         >
                                             {label}
@@ -174,15 +156,11 @@ pub fn StatusBar() -> impl IntoView {
                             }).collect::<Vec<_>>()
                         }
                     </ul>
-                </div>
+                </details>
 
                 // --- UPLOAD SPEED DROPDOWN ---
-                <div class="relative" node_ref=up_ref>
-                    <div
-                        class="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors select-none"
-                        title="Global Upload Speed - Click to Set Limit"
-                        on:click=move |_| toggle(2)
-                    >
+                <details class="dropdown dropdown-top" node_ref=up_details_ref>
+                    <summary class="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors select-none list-none marker:hidden">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" />
                         </svg>
@@ -192,12 +170,9 @@ pub fn StatusBar() -> impl IntoView {
                                 {move || format!("(Limit: {})", format_speed(stats.get().up_limit.unwrap_or(0)))}
                             </span>
                         </Show>
-                    </div>
+                    </summary>
 
-                    <ul
-                        class="absolute bottom-full left-0 z-[100] menu p-2 shadow bg-base-200 rounded-box w-40 mb-2 border border-base-300"
-                        style=move || if active_dropdown.get() == 2 { "display: block" } else { "display: none" }
-                    >
+                    <ul class="dropdown-content z-[100] menu p-2 shadow bg-base-200 rounded-box w-40 mb-2 border border-base-300">
                         {
                             limits.clone().into_iter().map(|(val, label)| {
                                 let is_active = move || {
@@ -210,7 +185,7 @@ pub fn StatusBar() -> impl IntoView {
                                             class=move || if is_active() { "bg-primary/10 text-primary font-bold text-xs flex justify-between" } else { "text-xs flex justify-between" }
                                             on:click=move |_| {
                                                 set_limit("up", val);
-                                                close_all();
+                                                close_details(up_details_ref);
                                             }
                                         >
                                             {label}
@@ -223,24 +198,17 @@ pub fn StatusBar() -> impl IntoView {
                             }).collect::<Vec<_>>()
                         }
                     </ul>
-                </div>
+                </details>
 
                 <div class="ml-auto flex items-center gap-4">
-                    <div class="relative" node_ref=theme_ref>
-                        <div
-                            class="btn btn-ghost btn-xs btn-square"
-                            title="Change Theme"
-                            on:click=move |_| toggle(3)
-                        >
+                    <details class="dropdown dropdown-top dropdown-end" node_ref=theme_details_ref>
+                        <summary class="btn btn-ghost btn-xs btn-square">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M9.53 16.122a3 3 0 0 0-5.78 1.128 2.25 2.25 0 0 1-2.4 2.245 4.5 4.5 0 0 0 8.4-2.245c0-.399-.078-.78-.22-1.128Zm0 0a15.998 15.998 0 0 0 3.388-1.62m-5.043-.025a15.994 15.994 0 0 1 1.622-3.395m3.42 3.42a15.995 15.995 0 0 0 4.764-4.648l3.876-5.814a1.151 1.151 0 0 0-1.597-1.597L14.146 6.32a15.996 15.996 0 0 0-4.649 4.763m3.42 3.42a6.776 6.776 0 0 0-3.42-3.42" />
                             </svg>
-                        </div>
+                        </summary>
 
-                        <ul
-                            class="absolute bottom-full right-0 z-[100] menu p-2 shadow bg-base-200 rounded-box w-52 mb-2 border border-base-300 max-h-96 overflow-y-auto"
-                            style=move || if active_dropdown.get() == 3 { "display: block" } else { "display: none" }
-                        >
+                        <ul class="dropdown-content z-[100] menu p-2 shadow bg-base-200 rounded-box w-52 mb-2 border border-base-300 max-h-96 overflow-y-auto">
                             {
                                 let themes = vec![
                                     "light", "dark", "dim", "nord", "cupcake", "dracula", "cyberpunk", "emerald", "sunset", "abyss"
@@ -252,7 +220,7 @@ pub fn StatusBar() -> impl IntoView {
                                                 class=move || if current_theme.get() == theme { "bg-primary/10 text-primary font-bold text-xs capitalize" } else { "text-xs capitalize" }
                                                 on:click=move |_| {
                                                     set_current_theme.set(theme.to_string());
-                                                    close_all();
+                                                    close_details(theme_details_ref);
                                                 }
                                             >
                                                 {theme}
@@ -262,7 +230,7 @@ pub fn StatusBar() -> impl IntoView {
                                 }).collect::<Vec<_>>()
                             }
                         </ul>
-                    </div>
+                    </details>
                 <button
                     class="btn btn-ghost btn-xs btn-square"
                     title="Settings & Notification Permissions"

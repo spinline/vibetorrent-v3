@@ -1,4 +1,5 @@
 use leptos::*;
+use leptos_use::on_click_outside;
 use leptos_use::storage::use_local_storage;
 use codee::string::FromToStringCodec;
 use shared::GlobalLimitRequest;
@@ -114,19 +115,20 @@ pub fn StatusBar() -> impl IntoView {
             set_active_dropdown.set(0);
         };
 
-        view! {
-            // Transparent overlay to close dropdowns when clicking outside
-            <Show when=move || active_dropdown.get() != 0>
-                <div
-                    class="fixed inset-0 z-[98] cursor-default"
-                    on:pointerdown=move |_| close_all()
-                ></div>
-            </Show>
+        // Refs for click outside detection
+        let down_ref = create_node_ref::<html::Div>();
+        let up_ref = create_node_ref::<html::Div>();
+        let theme_ref = create_node_ref::<html::Div>();
 
+        let _ = on_click_outside(down_ref, move |_| if active_dropdown.get_untracked() == 1 { close_all() });
+        let _ = on_click_outside(up_ref, move |_| if active_dropdown.get_untracked() == 2 { close_all() });
+        let _ = on_click_outside(theme_ref, move |_| if active_dropdown.get_untracked() == 3 { close_all() });
+
+        view! {
             <div class="fixed bottom-0 left-0 right-0 h-8 min-h-8 bg-base-200 border-t border-base-300 flex items-center px-4 text-xs gap-4 text-base-content/70 z-[99]">
 
                 // --- DOWNLOAD SPEED DROPDOWN ---
-                <div class="relative">
+                <div class="relative" node_ref=down_ref>
                     <div
                         class="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors select-none"
                         title="Global Download Speed - Click to Set Limit"
@@ -179,7 +181,7 @@ pub fn StatusBar() -> impl IntoView {
                 </div>
 
                 // --- UPLOAD SPEED DROPDOWN ---
-                <div class="relative">
+                <div class="relative" node_ref=up_ref>
                     <div
                         class="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors select-none"
                         title="Global Upload Speed - Click to Set Limit"
@@ -232,7 +234,7 @@ pub fn StatusBar() -> impl IntoView {
                 </div>
 
                 <div class="ml-auto flex items-center gap-4">
-                    <div class="relative">
+                    <div class="relative" node_ref=theme_ref>
                         <div
                             class="btn btn-ghost btn-xs btn-square"
                             title="Change Theme"

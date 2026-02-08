@@ -1,4 +1,5 @@
 use leptos::*;
+use leptos_use::on_click_outside;
 
 #[component]
 pub fn ContextMenu(
@@ -8,6 +9,10 @@ pub fn ContextMenu(
     on_close: Callback<()>,
     on_action: Callback<(String, String)>, // (Action, Hash)
 ) -> impl IntoView {
+    let container_ref = create_node_ref::<html::Div>();
+    
+    let _ = on_click_outside(container_ref, move |_| on_close.call(()));
+
     let handle_action = move |action: &str| {
         let hash = torrent_hash.clone();
         let action_str = action.to_string();
@@ -22,16 +27,8 @@ pub fn ContextMenu(
     }
 
     view! {
-        // Backdrop to catch clicks outside
         <div 
-            class="fixed inset-0 z-[99] cursor-default" 
-            role="button"
-            tabindex="-1"
-            on:click=move |_| on_close.call(())
-            on:contextmenu=move |e| e.prevent_default()
-        ></div>
-
-        <div 
+            node_ref=container_ref
             class="fixed z-[100] min-w-[200px] animate-in fade-in zoom-in-95 duration-100"
             style=format!("left: {}px; top: {}px", position.0, position.1)
             on:contextmenu=move |e| e.prevent_default()

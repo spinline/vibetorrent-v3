@@ -41,6 +41,8 @@ pub fn Login() -> impl IntoView {
                         logging::log!("Login successful, redirecting...");
                         // Force a full reload to re-run auth checks in App.rs
                         let _ = window().location().set_href("/");
+                    } else if resp.status() == 429 {
+                        set_error.set(Some("Çok fazla başarısız deneme yaptınız. Lütfen bir süre bekleyip tekrar deneyin.".to_string()));
                     } else {
                         let text = resp.text().await.unwrap_or_default();
                         logging::error!("Login failed: {}", text);

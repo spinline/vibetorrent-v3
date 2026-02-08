@@ -359,6 +359,14 @@ async fn main() {
         let mut backoff_duration = Duration::from_secs(1);
 
         loop {
+            // Determine polling interval based on active clients
+            let active_clients = event_bus_tx.receiver_count();
+            let loop_interval = if active_clients > 0 {
+                Duration::from_secs(1)
+            } else {
+                Duration::from_secs(30)
+            };
+
             // 1. Fetch Torrents
             let torrents_result = sse::fetch_torrents(&client).await;
 
@@ -429,6 +437,9 @@ async fn main() {
                     }
 
                     previous_torrents = new_torrents;
+
+                    // Success case: sleep for the determined interval
+                    tokio::time::sleep(loop_interval).await;
                 }
                 Err(e) => {
                     tracing::error!("Error fetching torrents in background: {}", e);
@@ -449,20 +460,15 @@ async fn main() {
                         "Backoff: Sleeping for {:?} due to rTorrent error.",
                         backoff_duration
                     );
+                    
+                    tokio::time::sleep(backoff_duration).await;
                 }
             }
 
             // Handle Stats
-            match stats_result {
-                Ok(stats) => {
-                    let _ = event_bus_tx.send(AppEvent::Stats(stats));
-                }
-                Err(e) => {
-                    tracing::warn!("Error fetching global stats: {}", e);
-                }
+            if let Ok(stats) = stats_result {
+                let _ = event_bus_tx.send(AppEvent::Stats(stats));
             }
-
-            tokio::time::sleep(backoff_duration).await;
         }
     });
 

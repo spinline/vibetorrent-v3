@@ -81,75 +81,77 @@ pub fn TorrentTable() -> impl IntoView {
     let sort_col = create_rw_signal(SortColumn::AddedDate);
     let sort_dir = create_rw_signal(SortDirection::Descending);
 
-    let filtered_torrents = move || {
-        // Convert HashMap values to Vec for filtering and sorting
-        let torrents: Vec<shared::Torrent> = store.torrents.with(|map| map.values().cloned().collect());
+    // Get sorted and filtered hashes only
+    let filtered_hashes = move || {
+        store.torrents.with(|map| {
+            let mut torrents: Vec<&shared::Torrent> = map
+                .values()
+                .filter(|t| {
+                    let filter = store.filter.get();
+                    let search = store.search_query.get().to_lowercase();
 
-        let mut torrents = torrents
-            .into_iter()
-            .filter(|t| {
-                let filter = store.filter.get();
-                let search = store.search_query.get().to_lowercase();
+                    let matches_filter = match filter {
+                        crate::store::FilterStatus::All => true,
+                        crate::store::FilterStatus::Downloading => {
+                            t.status == shared::TorrentStatus::Downloading
+                        }
+                        crate::store::FilterStatus::Seeding => {
+                            t.status == shared::TorrentStatus::Seeding
+                        }
+                        crate::store::FilterStatus::Completed => {
+                            t.status == shared::TorrentStatus::Seeding
+                                || (t.status == shared::TorrentStatus::Paused
+                                    && t.percent_complete >= 100.0)
+                        }
+                        crate::store::FilterStatus::Paused => {
+                            t.status == shared::TorrentStatus::Paused
+                        }
+                        crate::store::FilterStatus::Inactive => {
+                            t.status == shared::TorrentStatus::Paused
+                                || t.status == shared::TorrentStatus::Error
+                        }
+                        _ => true,
+                    };
 
-                let matches_filter = match filter {
-                    crate::store::FilterStatus::All => true,
-                    crate::store::FilterStatus::Downloading => {
-                        t.status == shared::TorrentStatus::Downloading
+                    let matches_search = if search.is_empty() {
+                        true
+                    } else {
+                        t.name.to_lowercase().contains(&search)
+                    };
+
+                    matches_filter && matches_search
+                })
+                .collect();
+
+            torrents.sort_by(|a, b| {
+                let col = sort_col.get();
+                let dir = sort_dir.get();
+                let cmp = match col {
+                    SortColumn::Name => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
+                    SortColumn::Size => a.size.cmp(&b.size),
+                    SortColumn::Progress => a
+                        .percent_complete
+                        .partial_cmp(&b.percent_complete)
+                        .unwrap_or(std::cmp::Ordering::Equal),
+                    SortColumn::Status => format!("{:?}", a.status).cmp(&format!("{:?}", b.status)),
+                    SortColumn::DownSpeed => a.down_rate.cmp(&b.down_rate),
+                    SortColumn::UpSpeed => a.up_rate.cmp(&b.up_rate),
+                    SortColumn::ETA => {
+                        let a_eta = if a.eta <= 0 { i64::MAX } else { a.eta };
+                        let b_eta = if b.eta <= 0 { i64::MAX } else { b.eta };
+                        a_eta.cmp(&b_eta)
                     }
-                    crate::store::FilterStatus::Seeding => {
-                        t.status == shared::TorrentStatus::Seeding
-                    }
-                    crate::store::FilterStatus::Completed => {
-                        t.status == shared::TorrentStatus::Seeding
-                            || (t.status == shared::TorrentStatus::Paused
-                                && t.percent_complete >= 100.0)
-                    } // Approximate
-                    crate::store::FilterStatus::Paused => t.status == shared::TorrentStatus::Paused,
-                    crate::store::FilterStatus::Inactive => {
-                        t.status == shared::TorrentStatus::Paused
-                            || t.status == shared::TorrentStatus::Error
-                    }
-                    _ => true,
+                    SortColumn::AddedDate => a.added_date.cmp(&b.added_date),
                 };
-
-                let matches_search = if search.is_empty() {
-                    true
+                if dir == SortDirection::Descending {
+                    cmp.reverse()
                 } else {
-                    t.name.to_lowercase().contains(&search)
-                };
-
-                matches_filter && matches_search
-            })
-            .collect::<Vec<_>>();
-
-        torrents.sort_by(|a, b| {
-            let col = sort_col.get();
-            let dir = sort_dir.get();
-            let cmp = match col {
-                SortColumn::Name => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
-                SortColumn::Size => a.size.cmp(&b.size),
-                SortColumn::Progress => a
-                    .percent_complete
-                    .partial_cmp(&b.percent_complete)
-                    .unwrap_or(std::cmp::Ordering::Equal),
-                SortColumn::Status => format!("{:?}", a.status).cmp(&format!("{:?}", b.status)),
-                SortColumn::DownSpeed => a.down_rate.cmp(&b.down_rate),
-                SortColumn::UpSpeed => a.up_rate.cmp(&b.up_rate),
-                SortColumn::ETA => {
-                    let a_eta = if a.eta <= 0 { i64::MAX } else { a.eta };
-                    let b_eta = if b.eta <= 0 { i64::MAX } else { b.eta };
-                    a_eta.cmp(&b_eta)
+                    cmp
                 }
-                SortColumn::AddedDate => a.added_date.cmp(&b.added_date),
-            };
-            if dir == SortDirection::Descending {
-                cmp.reverse()
-            } else {
-                cmp
-            }
-        });
+            });
 
-        torrents
+            torrents.into_iter().map(|t| t.hash.clone()).collect::<Vec<String>>()
+        })
     };
 
     let handle_sort = move |col: SortColumn| {
@@ -268,124 +270,231 @@ pub fn TorrentTable() -> impl IntoView {
                         </tr>
                     </thead>
                     <tbody>
-                        {move || filtered_torrents().into_iter().map(|t| {
-                            let progress_class = if t.percent_complete >= 100.0 { "progress-success" } else { "progress-primary" };
-                            let status_str = format!("{:?}", t.status);
-                            let status_class = match t.status {
-                                shared::TorrentStatus::Seeding => "text-success",
-                                shared::TorrentStatus::Downloading => "text-primary",
-                                shared::TorrentStatus::Paused => "text-warning",
-                                shared::TorrentStatus::Error => "text-error",
-                                _ => "text-base-content/50"
-                            };
-                            let t_hash = t.hash.clone();
-                            let t_hash_click = t.hash.clone();
-
-                            let is_selected_fn = move || {
-                                selected_hash.get() == Some(t_hash.clone())
-                            };
-
-                            view! {
-                                <tr
-                                    class=move || {
-                                        let base = "hover border-b border-base-200 select-none";
-                                        if is_selected_fn() {
-                                            format!("{} bg-primary/10", base)
-                                        } else {
-                                            base.to_string()
-                                        }
+                        <For
+                            each=move || filtered_hashes()
+                            key=|hash| hash.clone()
+                            children={
+                                let handle_context_menu = handle_context_menu.clone();
+                                move |hash| {
+                                    view! {
+                                        <TorrentRow
+                                            hash=hash.clone()
+                                            selected_hash=selected_hash
+                                            set_selected_hash=set_selected_hash
+                                            on_context_menu=handle_context_menu.clone()
+                                        />
                                     }
-                                    on:contextmenu={
-                                        let t_hash = t_hash_click.clone();
-                                        move |e: web_sys::MouseEvent| handle_context_menu(e, t_hash.clone())
-                                    }
-                                    on:click={
-                                        let t_hash = t_hash_click.clone();
-                                        move |_| set_selected_hash.set(Some(t_hash.clone()))
-                                    }
-                                >
-                                    <td class="font-medium truncate max-w-xs" title={t.name.clone()}>
-                                        {t.name}
-                                    </td>
-                                    <td class="opacity-80 font-mono text-[11px]">{format_bytes(t.size)}</td>
-                                    <td>
-                                        <div class="flex items-center gap-2">
-                                            <progress class={format!("progress w-24 {}", progress_class)} value={t.percent_complete} max="100"></progress>
-                                            <span class="text-[10px] opacity-70">{format!("{:.1}%", t.percent_complete)}</span>
-                                        </div>
-                                    </td>
-                                    <td class={format!("text-[11px] font-medium {}", status_class)}>{status_str}</td>
-                                    <td class="text-right font-mono text-[11px] opacity-80 text-success">{format_speed(t.down_rate)}</td>
-                                    <td class="text-right font-mono text-[11px] opacity-80 text-primary">{format_speed(t.up_rate)}</td>
-                                    <td class="text-right font-mono text-[11px] opacity-80">{format_duration(t.eta)}</td>
-                                    <td class="text-right font-mono text-[11px] opacity-80 whitespace-nowrap">{format_date(t.added_date)}</td>
-                                </tr>
+                                }
                             }
-                        }).collect::<Vec<_>>()}
+                        />
                     </tbody>
                 </table>
             </div>
 
-                        <div class="md:hidden flex flex-col h-full bg-base-200 relative cursor-pointer">
-                            <div class="px-3 py-2 border-b border-base-200 flex justify-between items-center bg-base-100/95 backdrop-blur z-10 shrink-0 cursor-default">
-                                <span class="text-xs font-bold opacity-50 uppercase tracking-wider">"Torrents"</span>
+            <div class="md:hidden flex flex-col h-full bg-base-200 relative cursor-pointer">
+                <div class="px-3 py-2 border-b border-base-200 flex justify-between items-center bg-base-100/95 backdrop-blur z-10 shrink-0 cursor-default">
+                    <span class="text-xs font-bold opacity-50 uppercase tracking-wider">"Torrents"</span>
 
-                                <details class="dropdown dropdown-end" node_ref=sort_details_ref>
-                                    <summary class="btn btn-ghost btn-xs gap-1 opacity-70 font-normal list-none [&::-webkit-details-marker]:hidden cursor-pointer">
-                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 pointer-events-none">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 7.5L7.5 3m0 0L12 7.5M7.5 3v13.5m13.5 0L16.5 21m0 0L12 16.5m4.5 4.5V7.5" />
-                                        </svg>
-                                        <span class="pointer-events-none">"Sort"</span>
-                                    </summary>
-                                    <ul class="dropdown-content z-[100] menu p-2 shadow bg-base-100 rounded-box w-48 mt-1 border border-base-200 text-xs cursor-default">
-                                         <li class="menu-title px-2 py-1 opacity-50 text-[10px] uppercase font-bold">"Sort By"</li>
-                                         {
-                                              let columns = vec![
-                                                  (SortColumn::Name, "Name"),
-                                                  (SortColumn::Size, "Size"),
-                                                  (SortColumn::Progress, "Progress"),
-                                                  (SortColumn::Status, "Status"),
-                                                  (SortColumn::DownSpeed, "DL Speed"),
-                                                  (SortColumn::UpSpeed, "Up Speed"),
-                                                  (SortColumn::ETA, "ETA"),
-                                                  (SortColumn::AddedDate, "Date"),
-                                              ];
+                    <details class="dropdown dropdown-end" node_ref=sort_details_ref>
+                        <summary class="btn btn-ghost btn-xs gap-1 opacity-70 font-normal list-none [&::-webkit-details-marker]:hidden cursor-pointer">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 pointer-events-none">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 7.5L7.5 3m0 0L12 7.5M7.5 3v13.5m13.5 0L16.5 21m0 0L12 16.5m4.5 4.5V7.5" />
+                            </svg>
+                            <span class="pointer-events-none">"Sort"</span>
+                        </summary>
+                        <ul class="dropdown-content z-[100] menu p-2 shadow bg-base-100 rounded-box w-48 mt-1 border border-base-200 text-xs cursor-default">
+                                <li class="menu-title px-2 py-1 opacity-50 text-[10px] uppercase font-bold">"Sort By"</li>
+                                {
+                                    let columns = vec![
+                                        (SortColumn::Name, "Name"),
+                                        (SortColumn::Size, "Size"),
+                                        (SortColumn::Progress, "Progress"),
+                                        (SortColumn::Status, "Status"),
+                                        (SortColumn::DownSpeed, "DL Speed"),
+                                        (SortColumn::UpSpeed, "Up Speed"),
+                                        (SortColumn::ETA, "ETA"),
+                                        (SortColumn::AddedDate, "Date"),
+                                    ];
 
-                                              columns.into_iter().map(|(col, label)| {
-                                                  let is_active = move || sort_col.get() == col;
-                                                  let current_dir = move || sort_dir.get();
+                                    columns.into_iter().map(|(col, label)| {
+                                        let is_active = move || sort_col.get() == col;
+                                        let current_dir = move || sort_dir.get();
 
-                                                  view! {
-                                                      <li>
-                                                          <button
-                                                              type="button"
-                                                              class=move || if is_active() { "bg-primary/10 text-primary font-bold flex justify-between" } else { "flex justify-between" }
-                                                              on:click=move |_| {
-                                                                  handle_sort(col);
-                                                                  if let Some(el) = sort_details_ref.get_untracked() {
-                                                                      el.set_open(false);
-                                                                  }
-                                                              }
-                                                          >
-                                                             {label}
-                                                             <Show when=is_active fallback=|| ()>
-                                                                 <span class="opacity-70 text-[10px]">
-                                                                     {move || match current_dir() {
-                                                                         SortDirection::Ascending => "▲",
-                                                                         SortDirection::Descending => "▼",
-                                                                     }}
-                                                                 </span>
-                                                             </Show>
-                                                         </button>
-                                                     </li>
-                                                 }
-                                             }).collect::<Vec<_>>()
-                                         }
-                                    </ul>
-                                </details>
-                            </div>
+                                        view! {
+                                            <li>
+                                                <button
+                                                    type="button"
+                                                    class=move || if is_active() { "bg-primary/10 text-primary font-bold flex justify-between" } else { "flex justify-between" }
+                                                    on:click=move |_| {
+                                                        handle_sort(col);
+                                                        if let Some(el) = sort_details_ref.get_untracked() {
+                                                            el.set_open(false);
+                                                        }
+                                                    }
+                                                >
+                                                    {label}
+                                                    <Show when=is_active fallback=|| ()>
+                                                        <span class="opacity-70 text-[10px]">
+                                                            {move || match current_dir() {
+                                                                SortDirection::Ascending => "▲",
+                                                                SortDirection::Descending => "▼",
+                                                            }}
+                                                        </span>
+                                                    </Show>
+                                                </button>
+                                            </li>
+                                        }
+                                    }).collect::<Vec<_>>()
+                                }
+                        </ul>
+                    </details>
+                </div>
 
-                            <div class="overflow-y-auto p-3 pb-20 flex-1 grid grid-cols-1 content-start gap-3 cursor-pointer">                {move || filtered_torrents().into_iter().map(|t| {
+                <div class="overflow-y-auto p-3 pb-20 flex-1 grid grid-cols-1 content-start gap-3 cursor-pointer">
+                    <For
+                        each=move || filtered_hashes()
+                        key=|hash| hash.clone()
+                        children={
+                            let handle_context_menu = handle_context_menu.clone();
+                            move |hash| {
+                                view! {
+                                    <TorrentCard
+                                        hash=hash.clone()
+                                        selected_hash=selected_hash
+                                        set_selected_hash=set_selected_hash
+                                        set_menu_position=set_menu_position
+                                        set_menu_visible=set_menu_visible
+                                        on_context_menu=handle_context_menu.clone()
+                                    />
+                                }
+                            }
+                        }
+                    />
+                </div>
+            </div>
+
+            <Show when=move || menu_visible.get() fallback=|| ()>
+                <crate::components::context_menu::ContextMenu
+                    visible=true
+                    position=menu_position.get()
+                    torrent_hash=selected_hash.get().unwrap_or_default()
+                    on_close=Callback::from(move |_| set_menu_visible.set(false))
+                    on_action=Callback::from(on_action)
+                />
+            </Show>
+        </div>
+    }
+}
+
+#[component]
+fn TorrentRow(
+    hash: String,
+    selected_hash: ReadSignal<Option<String>>,
+    set_selected_hash: WriteSignal<Option<String>>,
+    on_context_menu: impl Fn(web_sys::MouseEvent, String) + 'static + Clone,
+) -> impl IntoView {
+    let store = use_context::<crate::store::TorrentStore>().expect("store not provided");
+
+    let h = hash.clone();
+    // Memoized access to the specific torrent data.
+    // This only re-renders the row if this specific torrent actually changes.
+    let torrent = create_memo(move |_| {
+        store.torrents.with(|map| map.get(&h).cloned())
+    });
+
+    view! {
+        <Show when=move || torrent.get().is_some() fallback=|| ()>
+            {
+                let on_context_menu = on_context_menu.clone();
+                let hash = hash.clone();
+
+                move || {
+                    let t = torrent.get().unwrap();
+                    let t_hash = hash.clone();
+                    let t_hash_class = t_hash.clone();
+                    let on_context_menu = on_context_menu.clone();
+
+                    let progress_class = if t.percent_complete >= 100.0 { "progress-success" } else { "progress-primary" };
+                    let status_str = format!("{:?}", t.status);
+                    let status_class = match t.status {
+                        shared::TorrentStatus::Seeding => "text-success",
+                        shared::TorrentStatus::Downloading => "text-primary",
+                        shared::TorrentStatus::Paused => "text-warning",
+                        shared::TorrentStatus::Error => "text-error",
+                        _ => "text-base-content/50"
+                    };
+
+                    view! {
+                        <tr
+                            class=move || {
+                                let base = "hover border-b border-base-200 select-none";
+                                if selected_hash.get() == Some(t_hash_class.clone()) {
+                                    format!("{} bg-primary/10", base)
+                                } else {
+                                    base.to_string()
+                                }
+                            }
+                            on:contextmenu={
+                                let t_hash = t_hash.clone();
+                                let on_context_menu = on_context_menu.clone();
+                                move |e: web_sys::MouseEvent| on_context_menu(e, t_hash.clone())
+                            }
+                            on:click={
+                                let t_hash = t_hash.clone();
+                                move |_| set_selected_hash.set(Some(t_hash.clone()))
+                            }
+                        >
+                            <td class="font-medium truncate max-w-xs" title={t.name.clone()}>
+                                {t.name}
+                            </td>
+                            <td class="opacity-80 font-mono text-[11px]">{format_bytes(t.size)}</td>
+                            <td>
+                                <div class="flex items-center gap-2">
+                                    <progress class={format!("progress w-24 {}", progress_class)} value={t.percent_complete} max="100"></progress>
+                                    <span class="text-[10px] opacity-70">{format!("{:.1}%", t.percent_complete)}</span>
+                                </div>
+                            </td>
+                            <td class={format!("text-[11px] font-medium {}", status_class)}>{status_str}</td>
+                            <td class="text-right font-mono text-[11px] opacity-80 text-success">{format_speed(t.down_rate)}</td>
+                            <td class="text-right font-mono text-[11px] opacity-80 text-primary">{format_speed(t.up_rate)}</td>
+                            <td class="text-right font-mono text-[11px] opacity-80">{format_duration(t.eta)}</td>
+                            <td class="text-right font-mono text-[11px] opacity-80 whitespace-nowrap">{format_date(t.added_date)}</td>
+                        </tr>
+                    }
+                }
+            }
+        </Show>
+    }
+}
+
+#[component]
+fn TorrentCard(
+    hash: String,
+    selected_hash: ReadSignal<Option<String>>,
+    set_selected_hash: WriteSignal<Option<String>>,
+    set_menu_position: WriteSignal<(i32, i32)>,
+    set_menu_visible: WriteSignal<bool>,
+    on_context_menu: impl Fn(web_sys::MouseEvent, String) + 'static + Clone,
+) -> impl IntoView {
+    let store = use_context::<crate::store::TorrentStore>().expect("store not provided");
+
+    let h = hash.clone();
+    let torrent = create_memo(move |_| {
+        store.torrents.with(|map| map.get(&h).cloned())
+    });
+
+    view! {
+        <Show when=move || torrent.get().is_some() fallback=|| ()>
+            {
+                let hash = hash.clone();
+                let on_context_menu = on_context_menu.clone();
+
+                move || {
+                    let t = torrent.get().unwrap();
+                    let t_hash = hash.clone();
+                    let t_hash_class = t_hash.clone();
+                    let on_context_menu = on_context_menu.clone();
+
                     let progress_class = if t.percent_complete >= 100.0 { "progress-success" } else { "progress-primary" };
                     let status_str = format!("{:?}", t.status);
                     let status_badge_class = match t.status {
@@ -395,10 +504,8 @@ pub fn TorrentTable() -> impl IntoView {
                         shared::TorrentStatus::Error => "badge-error badge-soft",
                         _ => "badge-ghost"
                     };
-                    let _t_hash = t.hash.clone();
-                    let t_hash_click = t.hash.clone();
 
-                    let t_hash_long = t.hash.clone();
+                    let t_hash_long = t_hash.clone();
                     let leptos_use::UseTimeoutFnReturn { start, stop, .. } = use_timeout_fn(
                         move |pos: (i32, i32)| {
                             set_menu_position.set(pos);
@@ -440,15 +547,21 @@ pub fn TorrentTable() -> impl IntoView {
                     view! {
                         <div
                             class=move || {
-                                "card card-compact bg-base-100 shadow-sm border border-base-200 transition-transform active:scale-[0.99] select-none cursor-pointer"
+                                let base = "card card-compact bg-base-100 shadow-sm border border-base-200 transition-transform active:scale-[0.99] select-none cursor-pointer";
+                                if selected_hash.get() == Some(t_hash_class.clone()) {
+                                    format!("{} ring-2 ring-primary ring-inset", base)
+                                } else {
+                                    base.to_string()
+                                }
                             }
                             style="user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;"
                             on:contextmenu={
-                                let t_hash = t.hash.clone();
-                                move |e: web_sys::MouseEvent| handle_context_menu(e, t_hash.clone())
+                                let t_hash = t_hash.clone();
+                                let on_context_menu = on_context_menu.clone();
+                                move |e: web_sys::MouseEvent| on_context_menu(e, t_hash.clone())
                             }
                             on:click={
-                                let t_hash = t_hash_click.clone();
+                                let t_hash = t_hash.clone();
                                 move |_| set_selected_hash.set(Some(t_hash.clone()))
                             }
                             on:touchstart=handle_touchstart
@@ -493,19 +606,8 @@ pub fn TorrentTable() -> impl IntoView {
                             </div>
                         </div>
                     }
-                }).collect::<Vec<_>>()}
-                </div>
-            </div>
-
-            <Show when=move || menu_visible.get() fallback=|| ()>
-                <crate::components::context_menu::ContextMenu
-                    visible=true
-                    position=menu_position.get()
-                    torrent_hash=selected_hash.get().unwrap_or_default()
-                    on_close=Callback::from(move |_| set_menu_visible.set(false))
-                    on_action=Callback::from(on_action)
-                />
-            </Show>
-        </div>
+                }
+            }
+        </Show>
     }
 }

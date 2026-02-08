@@ -97,7 +97,7 @@ pub fn StatusBar() -> impl IntoView {
         });
     };
 
-        // Refs for click outside detection
+        // Refs for click outside detection (Handled globally via JS in index.html for better iOS support)
         let down_details_ref = create_node_ref::<html::Details>();
         let up_details_ref = create_node_ref::<html::Details>();
         let theme_details_ref = create_node_ref::<html::Details>();
@@ -108,10 +108,6 @@ pub fn StatusBar() -> impl IntoView {
                 el.set_open(false);
             }
         };
-
-        let _ = on_click_outside(down_details_ref, move |_| close_details(down_details_ref));
-        let _ = on_click_outside(up_details_ref, move |_| close_details(up_details_ref));
-        let _ = on_click_outside(theme_details_ref, move |_| close_details(theme_details_ref));
 
         view! {
             <div class="fixed bottom-0 left-0 right-0 h-8 min-h-8 bg-base-200 border-t border-base-300 flex items-center px-4 text-xs gap-4 text-base-content/70 z-[99] cursor-pointer">

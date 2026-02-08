@@ -4,7 +4,7 @@
         <meta charset="utf-8" />
         <meta
             name="viewport"
-            content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+            content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
         />
         <title>VibeTorrent</title>
 
@@ -187,6 +187,17 @@
         
         <!-- Service Worker Registration & PWA Setup -->
         <script>
+            // Global Dropdown Closer for iOS/Mobile
+            document.addEventListener('click', function(event) {
+                const details = document.querySelectorAll('details[open]');
+                details.forEach(detail => {
+                    // Eğer tıklanan yer bu details'in içinde değilse kapat
+                    if (!detail.contains(event.target)) {
+                        detail.removeAttribute('open');
+                    }
+                });
+            }, true); // Use capture phase for better mobile support
+
             if ("serviceWorker" in navigator) {
                 window.addEventListener("load", () => {
                     navigator.serviceWorker

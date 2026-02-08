@@ -46,6 +46,9 @@ fn format_duration(seconds: i64) -> String {
 }
 
 fn format_date(timestamp: i64) -> String {
+    if timestamp <= 0 {
+        return "N/A".to_string();
+    }
     let dt = chrono::DateTime::from_timestamp(timestamp, 0);
     match dt {
         Some(dt) => dt.format("%d/%m/%Y %H:%M").to_string(),

@@ -254,7 +254,7 @@ pub fn TorrentTable() -> impl IntoView {
                                  <div class="flex items-center">"Status" {move || sort_arrow(SortColumn::Status)}</div>
                             </th>
                             <th class="w-24 cursor-pointer hover:bg-base-300 group select-none" on:click=move |_| handle_sort(SortColumn::DownSpeed)>
-                                 <div class="flex items-center">"Down Speed" {move || sort_arrow(SortColumn::DownSpeed)}</div>
+                                 <div class="flex items-center">"DL Speed" {move || sort_arrow(SortColumn::DownSpeed)}</div>
                             </th>
                             <th class="w-24 cursor-pointer hover:bg-base-300 group select-none" on:click=move |_| handle_sort(SortColumn::UpSpeed)>
                                  <div class="flex items-center">"Up Speed" {move || sort_arrow(SortColumn::UpSpeed)}</div>
@@ -345,7 +345,7 @@ pub fn TorrentTable() -> impl IntoView {
                                                   (SortColumn::Size, "Size"),
                                                   (SortColumn::Progress, "Progress"),
                                                   (SortColumn::Status, "Status"),
-                                                  (SortColumn::DownSpeed, "Down Speed"),
+                                                  (SortColumn::DownSpeed, "DL Speed"),
                                                   (SortColumn::UpSpeed, "Up Speed"),
                                                   (SortColumn::ETA, "ETA"),
                                                   (SortColumn::AddedDate, "Date"),

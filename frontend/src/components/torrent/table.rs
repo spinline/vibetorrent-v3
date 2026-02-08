@@ -1,4 +1,5 @@
 use leptos::*;
+use leptos_use::use_timeout_fn;
 use crate::store::{get_action_messages, show_toast_with_signal};
 use shared::NotificationLevel;
 
@@ -421,50 +422,44 @@ pub fn TorrentTable() -> impl IntoView {
                     let _t_hash = t.hash.clone();
                     let t_hash_click = t.hash.clone();
 
-                    let (timer_handle, set_timer_handle) = create_signal(Option::<leptos::leptos_dom::helpers::TimeoutHandle>::None);
                     let t_hash_long = t.hash.clone();
+                    let leptos_use::UseTimeoutFnReturn { start, stop, .. } = use_timeout_fn(
+                        move |pos: (i32, i32)| {
+                            set_menu_position.set(pos);
+                            set_selected_hash.set(Some(t_hash_long.clone()));
+                            set_menu_visible.set(true);
 
-                    let clear_long_press_timer = move || {
-                        if let Some(handle) = timer_handle.get_untracked() {
-                            handle.clear();
-                            set_timer_handle.set(None);
-                        }
-                    };
+                            // Haptic feedback
+                            let navigator = window().navigator();
+                            if let Ok(vibrate) = js_sys::Reflect::get(&navigator, &"vibrate".into()) {
+                                if vibrate.is_function() {
+                                    let _ = navigator.vibrate_with_duration(50);
+                                }
+                            }
+                        },
+                        600.0,
+                    );
 
                     let handle_touchstart = {
-                         let t_hash = t_hash_long.clone();
-                         move |e: web_sys::TouchEvent| {
-                            clear_long_press_timer();
+                        let start = start.clone();
+                        move |e: web_sys::TouchEvent| {
                             if let Some(touch) = e.touches().get(0) {
-                                let x = touch.client_x();
-                                let y = touch.client_y();
-                                let hash = t_hash.clone();
-
-                                // Use Leptos set_timeout: cleaner, safer, no manual Closure needed
-                                let handle = set_timeout_with_handle(move || {
-                                    set_menu_position.set((x, y));
-                                    set_selected_hash.set(Some(hash.clone()));
-                                    set_menu_visible.set(true);
-
-                                    // Haptic feedback
-                                    let navigator = window().navigator();
-                                    if let Ok(vibrate) = js_sys::Reflect::get(&navigator, &"vibrate".into()) {
-                                        if vibrate.is_function() {
-                                            let _ = navigator.vibrate_with_duration(50);
-                                        }
-                                    }
-                                    set_timer_handle.set(None);
-                                }, std::time::Duration::from_millis(600));
-
-                                if let Ok(h) = handle {
-                                    set_timer_handle.set(Some(h));
-                                }
+                                start((touch.client_x(), touch.client_y()));
                             }
                         }
                     };
 
-                    let handle_touchmove = move |_| clear_long_press_timer();
-                    let handle_touchend = move |_| clear_long_press_timer();
+                    let handle_touchmove = {
+                        let stop = stop.clone();
+                        move |_| stop()
+                    };
+
+                    let handle_touchend = {
+                        let stop = stop.clone();
+                        move |_| stop()
+                    };
+
+                    let handle_touchcancel = move |_| stop();
 
                     view! {
                         <div
@@ -483,7 +478,7 @@ pub fn TorrentTable() -> impl IntoView {
                             on:touchstart=handle_touchstart
                             on:touchmove=handle_touchmove
                             on:touchend=handle_touchend
-                            on:touchcancel=handle_touchend
+                            on:touchcancel=handle_touchcancel
                         >
                             <div class="card-body gap-3">
                                 <div class="flex justify-between items-start gap-2">

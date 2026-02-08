@@ -11,11 +11,15 @@ use app::App;
 #[wasm_bindgen(start)]
 pub fn main() {
     console_error_panic_hook::set_once();
-    console_log::init_with_level(log::Level::Debug).unwrap();
+    console_log::init_with_level(log::Level::Debug)
+        .expect("Failed to initialize logging");
 
-    let window = web_sys::window().unwrap();
-    let document = window.document().unwrap();
-    let body = document.body().unwrap();
+    let window = web_sys::window()
+        .expect("Failed to access window - browser may not be fully loaded");
+    let document = window.document()
+        .expect("Failed to access document");
+    let body = document.body()
+        .expect("Failed to access document body");
     
     // Add app-loaded class to body to hide spinner via CSS
     let _ = body.class_list().add_1("app-loaded");

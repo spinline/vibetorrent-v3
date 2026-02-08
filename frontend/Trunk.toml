@@ -12,4 +12,4 @@ target = "index.html"
 dist = "dist"
 
 [tools]
-wasm_opt = "version_117"
+wasm_opt = "version_121"

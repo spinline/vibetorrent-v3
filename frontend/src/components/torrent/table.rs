@@ -390,8 +390,7 @@ pub fn TorrentTable() -> impl IntoView {
                                                       <li>
                                                           <button
                                                               class=move || if is_active() { "bg-primary/10 text-primary font-bold flex justify-between" } else { "flex justify-between" }
-                                                              on:click=move |e| {
-                                                                  e.prevent_default();
+                                                              on:pointerdown=move |e| {
                                                                   e.stop_propagation();
                                                                   handle_sort(col);
                                                                   set_sort_open.set(false);

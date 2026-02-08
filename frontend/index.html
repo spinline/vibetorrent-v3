@@ -86,12 +86,15 @@
             id="app-loading"
             style="
                 display: flex;
+                flex-direction: column;
                 justify-content: center;
                 align-items: center;
                 height: 100vh;
+                font-family: sans-serif;
             "
         >
             <div
+                id="app-loading-spinner"
                 style="
                     width: 40px;
                     height: 40px;
@@ -102,6 +105,32 @@
                     opacity: 0.5;
                 "
             ></div>
+            <div
+                id="app-loading-error"
+                style="display: none; text-align: center; margin-top: 20px; padding: 0 20px"
+            >
+                <p style="color: #ef4444; font-weight: bold; margin-bottom: 8px">
+                    Uygulama yüklenemedi
+                </p>
+                <p style="font-size: 14px; opacity: 0.7">
+                    Bağlantınız yavaş olabilir veya bir sistem hatası oluşmuş olabilir.
+                </p>
+                <button
+                    onclick="location.reload()"
+                    style="
+                        margin-top: 16px;
+                        padding: 8px 16px;
+                        background: #3b82f6;
+                        color: white;
+                        border: none;
+                        border-radius: 6px;
+                        cursor: pointer;
+                        font-weight: 500;
+                    "
+                >
+                    Sayfayı Yenile
+                </button>
+            </div>
         </div>
         <style>
             @keyframes spin {
@@ -114,6 +143,34 @@
                 display: none !important;
             }
         </style>
+
+        <script>
+            // App loading timeout handler
+            (function () {
+                var timeout = setTimeout(function () {
+                    if (!document.body.classList.contains("app-loaded")) {
+                        var spinner = document.getElementById("app-loading-spinner");
+                        var error = document.getElementById("app-loading-error");
+                        if (spinner) spinner.style.display = "none";
+                        if (error) error.style.display = "block";
+                    }
+                }, 15000); // 15 seconds timeout
+
+                // Clean up timeout if app loads
+                var observer = new MutationObserver(function (mutations) {
+                    mutations.forEach(function (mutation) {
+                        if (
+                            mutation.attributeName === "class" &&
+                            document.body.classList.contains("app-loaded")
+                        ) {
+                            clearTimeout(timeout);
+                            observer.disconnect();
+                        }
+                    });
+                });
+                observer.observe(document.body, { attributes: true });
+            })();
+        </script>
         
         <!-- Service Worker Registration & PWA Setup -->
         <script>

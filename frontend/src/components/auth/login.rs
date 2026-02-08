@@ -1,12 +1,5 @@
 use leptos::*;
-use serde::Serialize;
-
-#[derive(Serialize)]
-struct LoginRequest {
-    username: String,
-    password: String,
-    remember_me: bool,
-}
+use crate::api;
 
 #[component]
 pub fn Login() -> impl IntoView {
@@ -23,35 +16,31 @@ pub fn Login() -> impl IntoView {
 
         logging::log!("Attempting login for user: {}", username.get());
 
+        let username = username.get();
+        let password = password.get();
+        let remember_me = remember_me.get();
+
         spawn_local(async move {
-            let req = LoginRequest {
-                username: username.get(),
-                password: password.get(),
-                remember_me: remember_me.get(),
-            };
-
-            let client = gloo_net::http::Request::post("/api/auth/login")
-                .json(&req)
-                .expect("Failed to create request");
-
-            match client.send().await {
-                Ok(resp) => {
-                    logging::log!("Login response status: {}", resp.status());
-                    if resp.ok() {
-                        logging::log!("Login successful, redirecting...");
-                        // Force a full reload to re-run auth checks in App.rs
-                        let _ = window().location().set_href("/");
-                    } else if resp.status() == 429 {
-                        set_error.set(Some("Çok fazla başarısız deneme yaptınız. Lütfen bir süre bekleyip tekrar deneyin.".to_string()));
-                    } else {
-                        let text = resp.text().await.unwrap_or_default();
-                        logging::error!("Login failed: {}", text);
-                        set_error.set(Some("Kullanıcı adı veya şifre hatalı".to_string()));
-                    }
+            match api::auth::login(&username, &password, remember_me).await {
+                Ok(_) => {
+                    logging::log!("Login successful, redirecting...");
+                    let _ = window().location().set_href("/");
                 }
                 Err(e) => {
-                    logging::error!("Network error: {}", e);
-                    set_error.set(Some("Bağlantı hatası".to_string()));
+                    logging::error!("Login failed: {:?}", e);
+                    let msg = match e {
+                        crate::api::ApiError::RateLimited => {
+                            "Çok fazla başarısız deneme yaptınız. Lütfen bir süre bekleyip tekrar deneyin.".to_string()
+                        }
+                        crate::api::ApiError::Unauthorized | crate::api::ApiError::LoginFailed => {
+                            "Kullanıcı adı veya şifre hatalı".to_string()
+                        }
+                        crate::api::ApiError::Network => {
+                            "Bağlantı hatası".to_string()
+                        }
+                        _ => "Bir hata oluştu".to_string()
+                    };
+                    set_error.set(Some(msg));
                 }
             }
             set_loading.set(false);

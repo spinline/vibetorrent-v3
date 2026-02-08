@@ -1,6 +1,7 @@
 use leptos::*;
 use leptos_use::{on_click_outside, use_timeout_fn};
 use crate::store::{get_action_messages, show_toast_with_signal};
+use crate::api;
 use shared::NotificationLevel;
 
 fn format_bytes(bytes: i64) -> String {
@@ -201,54 +202,33 @@ pub fn TorrentTable() -> impl IntoView {
 
     let on_action = move |(action, hash): (String, String)| {
         logging::log!("TorrentTable Action: {} on {}", action, hash);
-        // Note: Don't close menu here - ContextMenu's on_close handles it
-        // Closing here would dispose ContextMenu while still in callback chain
 
-        // Get action messages for toast (Clean Code: DRY)
         let (success_msg, error_msg) = get_action_messages(&action);
         let success_msg = success_msg.to_string();
         let error_msg = error_msg.to_string();
 
-        // Capture notifications signal before async (use_context unavailable in spawn_local)
         let notifications = store.notifications;
 
+        let hash = hash.clone();
+        let action = action.clone();
+
         spawn_local(async move {
-            let action_req = if action == "delete_with_data" {
-                "delete_with_data"
-            } else {
-                &action
+            let result = match action.as_str() {
+                "delete" => api::torrent::delete(&hash).await,
+                "delete_with_data" => api::torrent::delete_with_data(&hash).await,
+                "start" => api::torrent::start(&hash).await,
+                "stop" => api::torrent::stop(&hash).await,
+                _ => api::torrent::action(&hash, &action).await,
             };
 
-            let req_body = shared::TorrentActionRequest {
-                hash: hash.clone(),
-                action: action_req.to_string(),
-            };
-
-            let client = gloo_net::http::Request::post("/api/torrents/action").json(&req_body);
-
-            match client {
-                Ok(req) => match req.send().await {
-                    Ok(resp) => {
-                        if !resp.ok() {
-                            logging::error!(
-                                "Failed to execute action: {} {}",
-                                resp.status(),
-                                resp.status_text()
-                            );
-                            show_toast_with_signal(notifications, NotificationLevel::Error, error_msg);
-                        } else {
-                            logging::log!("Action {} executed successfully", action);
-                            show_toast_with_signal(notifications, NotificationLevel::Success, success_msg);
-                        }
-                    }
-                    Err(e) => {
-                        logging::error!("Network error executing action: {}", e);
-                        show_toast_with_signal(notifications, NotificationLevel::Error, format!("{}: Bağlantı hatası", error_msg));
-                    }
-                },
+            match result {
+                Ok(_) => {
+                    logging::log!("Action {} executed successfully", action);
+                    show_toast_with_signal(notifications, NotificationLevel::Success, success_msg);
+                }
                 Err(e) => {
-                    logging::error!("Failed to serialize request: {}", e);
-                    show_toast_with_signal(notifications, NotificationLevel::Error, error_msg);
+                    logging::error!("Action failed: {:?}", e);
+                    show_toast_with_signal(notifications, NotificationLevel::Error, format!("{}: {:?}", error_msg, e));
                 }
             }
         });

@@ -1,8 +1,8 @@
 mod app;
-// mod models; // Removed
 mod components;
 pub mod utils;
 pub mod store;
+pub mod api;
 
 use leptos::*;
 use wasm_bindgen::prelude::*;

@@ -1,11 +1,5 @@
 use leptos::*;
-use serde::Serialize;
-
-#[derive(Serialize)]
-struct SetupRequest {
-    username: String,
-    password: String,
-}
+use crate::api;
 
 #[component]
 pub fn Setup() -> impl IntoView {
@@ -35,29 +29,18 @@ pub fn Setup() -> impl IntoView {
             return;
         }
 
+        let username = username.get();
+        let password = pass;
+
         spawn_local(async move {
-            let req = SetupRequest {
-                username: username.get(),
-                password: pass,
-            };
-
-            let client = gloo_net::http::Request::post("/api/setup")
-                .json(&req)
-                .expect("Failed to create request");
-
-            match client.send().await {
-                Ok(resp) => {
-                    if resp.ok() {
-                        // Redirect to home after setup (auto-login handled by backend)
-                        // Full reload to ensure auth state is refreshed
-                        let _ = window().location().set_href("/");
-                    } else {
-                        let text = resp.text().await.unwrap_or_default();
-                        set_error.set(Some(format!("Hata: {}", text)));
-                    }
+            match api::setup::setup(&username, &password).await {
+                Ok(_) => {
+                    logging::log!("Setup completed successfully, redirecting...");
+                    let _ = window().location().set_href("/");
                 }
-                Err(_) => {
-                    set_error.set(Some("Bağlantı hatası".to_string()));
+                Err(e) => {
+                    logging::error!("Setup failed: {:?}", e);
+                    set_error.set(Some("Kurulum başarısız oldu".to_string()));
                 }
             }
             set_loading.set(false);

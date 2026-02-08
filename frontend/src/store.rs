@@ -314,21 +314,21 @@ use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
 #[derive(Serialize, Deserialize, Debug)]
-struct PushSubscriptionData {
-    endpoint: String,
-    keys: PushKeys,
+pub struct PushSubscriptionData {
+    pub endpoint: String,
+    pub keys: PushKeys,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct PushKeys {
-    p256dh: String,
-    auth: String,
+pub struct PushKeys {
+    pub p256dh: String,
+    pub auth: String,
 }
 
 /// Subscribe user to push notifications
 /// Requests notification permission if needed, then subscribes to push
 pub async fn subscribe_to_push_notifications() {
-    use gloo_net::http::Request;
+    use crate::api;
 
     // First, request notification permission if not already granted
     let window = web_sys::window().expect("window should exist");
@@ -347,28 +347,11 @@ pub async fn subscribe_to_push_notifications() {
 
     log::info!("Notification permission granted! Proceeding with push subscription...");
 
-
     // Get VAPID public key from backend
-    let public_key_response = match Request::get("/api/push/public-key").send().await {
-        Ok(resp) => resp,
+    let public_key = match api::push::get_public_key().await {
+        Ok(key) => key,
         Err(e) => {
             log::error!("Failed to get VAPID public key: {:?}", e);
-            return;
-        }
-    };
-
-    let public_key_data: serde_json::Value = match public_key_response.json().await {
-        Ok(data) => data,
-        Err(e) => {
-            log::error!("Failed to parse VAPID public key: {:?}", e);
-            return;
-        }
-    };
-
-    let public_key = match public_key_data.get("publicKey").and_then(|v| v.as_str()) {
-        Some(key) => key,
-        None => {
-            log::error!("Missing publicKey in response");
             return;
         }
     };
@@ -376,7 +359,7 @@ pub async fn subscribe_to_push_notifications() {
     log::info!("VAPID public key from backend: {} (len: {})", public_key, public_key.len());
 
     // Convert VAPID public key to Uint8Array
-    let public_key_array = match url_base64_to_uint8array(public_key) {
+    let public_key_array = match url_base64_to_uint8array(&public_key) {
         Ok(arr) => {
             log::info!("VAPID key converted to Uint8Array (length: {})", arr.length());
             arr
@@ -495,23 +478,8 @@ pub async fn subscribe_to_push_notifications() {
     };
 
     // Send to backend (subscription_data is already the struct we need)
-    let response = match Request::post("/api/push/subscribe")
-        .json(&subscription_data)
-        .expect("serialization should succeed")
-        .send()
-        .await
-    {
-        Ok(resp) => resp,
-        Err(e) => {
-            log::error!("Failed to send subscription to backend: {:?}", e);
-            return;
-        }
-    };
-
-    if response.ok() {
-        log::info!("Successfully subscribed to push notifications");
-    } else {
-        log::error!("Backend rejected push subscription: {:?}", response.status());
+    if let Err(e) = api::push::subscribe(&subscription_data).await {
+        log::error!("Failed to send subscription to backend: {:?}", e);
     }
 }
 

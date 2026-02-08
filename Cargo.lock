@@ -1218,6 +1218,7 @@ dependencies = [
  "serde_json",
  "shared",
  "tailwind_fuse",
+ "thiserror 2.0.18",
  "uuid",
  "wasm-bindgen",
  "wasm-bindgen-futures",

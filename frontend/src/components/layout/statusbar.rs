@@ -2,6 +2,7 @@ use leptos::*;
 use leptos_use::storage::use_local_storage;
 use codee::string::FromToStringCodec;
 use shared::GlobalLimitRequest;
+use crate::api;
 
 fn format_bytes(bytes: i64) -> String {
     const UNITS: [&str; 6] = ["B", "KB", "MB", "GB", "TB", "PB"];
@@ -60,38 +61,23 @@ pub fn StatusBar() -> impl IntoView {
         let limit_type = limit_type.to_string();
         logging::log!("Setting {} limit to {}", limit_type, val);
 
+        let req = if limit_type == "down" {
+            GlobalLimitRequest {
+                max_download_rate: Some(val),
+                max_upload_rate: None,
+            }
+        } else {
+            GlobalLimitRequest {
+                max_download_rate: None,
+                max_upload_rate: Some(val),
+            }
+        };
+
         spawn_local(async move {
-            let req_body = if limit_type == "down" {
-                GlobalLimitRequest {
-                    max_download_rate: Some(val),
-                    max_upload_rate: None,
-                }
+            if let Err(e) = api::settings::set_global_limits(&req).await {
+                logging::error!("Failed to set limit: {:?}", e);
             } else {
-                GlobalLimitRequest {
-                    max_download_rate: None,
-                    max_upload_rate: Some(val),
-                }
-            };
-
-            let client =
-                gloo_net::http::Request::post("/api/settings/global-limits").json(&req_body);
-
-            match client {
-                Ok(req) => match req.send().await {
-                    Ok(resp) => {
-                        if !resp.ok() {
-                            logging::error!(
-                                "Failed to set limit: {} {}",
-                                resp.status(),
-                                resp.status_text()
-                            );
-                        } else {
-                            logging::log!("Limit set successfully");
-                        }
-                    }
-                    Err(e) => logging::error!("Network error setting limit: {}", e),
-                },
-                Err(e) => logging::error!("Failed to create request: {}", e),
+                logging::log!("Limit set successfully");
             }
         });
     };

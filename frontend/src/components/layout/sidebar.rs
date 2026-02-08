@@ -1,5 +1,6 @@
 use leptos::wasm_bindgen::JsCast;
 use leptos::*;
+use crate::api;
 
 #[component]
 pub fn Sidebar() -> impl IntoView {
@@ -76,12 +77,8 @@ pub fn Sidebar() -> impl IntoView {
 
     let handle_logout = move |_| {
         spawn_local(async move {
-            let client = gloo_net::http::Request::post("/api/auth/logout");
-            if let Ok(resp) = client.send().await {
-                if resp.ok() {
-                    // Force full reload to clear state
-                    let _ = window().location().set_href("/login");
-                }
+            if api::auth::logout().await.is_ok() {
+                let _ = window().location().set_href("/login");
             }
         });
     };

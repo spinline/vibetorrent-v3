@@ -1,7 +1,8 @@
 use leptos::*;
 use leptos::html::Dialog;
 use crate::store::{show_toast_with_signal, TorrentStore};
-use shared::{AddTorrentRequest, NotificationLevel};
+use crate::api;
+use shared::NotificationLevel;
 
 
 #[component]
@@ -17,7 +18,6 @@ pub fn AddTorrentModal(
     let (is_loading, set_loading) = create_signal(false);
     let (error_msg, set_error_msg) = create_signal(Option::<String>::None);
 
-    // Effect to open the dialog when the component mounts/renders
     create_effect(move |_| {
         if let Some(dialog) = dialog_ref.get() {
             let _ = dialog.show_modal();
@@ -35,44 +35,22 @@ pub fn AddTorrentModal(
         set_loading.set(true);
         set_error_msg.set(None);
 
+        let uri_val = uri_val;
         spawn_local(async move {
-            let req_body = AddTorrentRequest { uri: uri_val };
-
-            match gloo_net::http::Request::post("/api/torrents/add")
-                .json(&req_body)
-            {
-                Ok(req) => {
-                    match req.send().await {
-                        Ok(resp) => {
-                            if resp.ok() {
-                                logging::log!("Torrent added successfully");
-                                show_toast_with_signal(notifications, NotificationLevel::Success, "Torrent eklendi");
-                                set_loading.set(false);
-                                if let Some(dialog) = dialog_ref.get() {
-                                    dialog.close();
-                                }
-                                on_close.call(());
-                            } else {
-                                let status = resp.status();
-                                let text = resp.text().await.unwrap_or_default();
-                                logging::error!("Failed to add torrent: {} - {}", status, text);
-                                show_toast_with_signal(notifications, NotificationLevel::Error, "Torrent eklenemedi");
-                                set_error_msg.set(Some(format!("Error {}: {}", status, text)));
-                                set_loading.set(false);
-                            }
-                        }
-                        Err(e) => {
-                            logging::error!("Network error: {}", e);
-                            show_toast_with_signal(notifications, NotificationLevel::Error, "Bağlantı hatası");
-                            set_error_msg.set(Some(format!("Network Error: {}", e)));
-                            set_loading.set(false);
-                        }
+            match api::torrent::add(&uri_val).await {
+                Ok(_) => {
+                    logging::log!("Torrent added successfully");
+                    show_toast_with_signal(notifications, NotificationLevel::Success, "Torrent eklendi");
+                    set_loading.set(false);
+                    if let Some(dialog) = dialog_ref.get() {
+                        dialog.close();
                     }
+                    on_close.call(());
                 }
                 Err(e) => {
-                    logging::error!("Serialization error: {}", e);
-                    show_toast_with_signal(notifications, NotificationLevel::Error, "İstek hatası");
-                    set_error_msg.set(Some(format!("Request Error: {}", e)));
+                    logging::error!("Failed to add torrent: {:?}", e);
+                    show_toast_with_signal(notifications, NotificationLevel::Error, "Torrent eklenemedi");
+                    set_error_msg.set(Some(format!("Error: {:?}", e)));
                     set_loading.set(false);
                 }
             }

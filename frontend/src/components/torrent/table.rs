@@ -368,7 +368,6 @@ pub fn TorrentTable() -> impl IntoView {
                                     <ul
                                         class="absolute top-full right-0 z-[100] menu p-2 shadow bg-base-100 rounded-box w-48 mt-1 border border-base-200 text-xs"
                                         style=move || if sort_open.get() { "display: block" } else { "display: none" }
-                                        on:pointerdown=move |e| e.stop_propagation()
                                     >
                                          <li class="menu-title px-2 py-1 opacity-50 text-[10px] uppercase font-bold">"Sort By"</li>
                                          {
@@ -383,20 +382,21 @@ pub fn TorrentTable() -> impl IntoView {
                                                   (SortColumn::AddedDate, "Date"),
                                               ];
 
-                                             columns.into_iter().map(|(col, label)| {
-                                                 let is_active = move || sort_col.get() == col;
-                                                 let current_dir = move || sort_dir.get();
+                                              columns.into_iter().map(|(col, label)| {
+                                                  let is_active = move || sort_col.get() == col;
+                                                  let current_dir = move || sort_dir.get();
 
-                                                 view! {
-                                                     <li>
-                                                         <button
-                                                             class=move || if is_active() { "bg-primary/10 text-primary font-bold flex justify-between" } else { "flex justify-between" }
-                                                             on:pointerdown=move |e| {
-                                                                 e.stop_propagation();
-                                                                 handle_sort(col);
-                                                                 set_sort_open.set(false);
-                                                             }
-                                                         >
+                                                  view! {
+                                                      <li>
+                                                          <button
+                                                              class=move || if is_active() { "bg-primary/10 text-primary font-bold flex justify-between" } else { "flex justify-between" }
+                                                              on:click=move |e| {
+                                                                  e.prevent_default();
+                                                                  e.stop_propagation();
+                                                                  handle_sort(col);
+                                                                  set_sort_open.set(false);
+                                                              }
+                                                          >
                                                              {label}
                                                              <Show when=is_active fallback=|| ()>
                                                                  <span class="opacity-70 text-[10px]">

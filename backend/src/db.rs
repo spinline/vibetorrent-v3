@@ -1,6 +1,7 @@
-use sqlx::{sqlite::SqlitePoolOptions, Pool, Sqlite, Row};
+use sqlx::{sqlite::SqlitePoolOptions, Pool, Sqlite, Row, sqlite::SqliteConnectOptions};
 use std::time::Duration;
 use anyhow::Result;
+use std::str::FromStr;
 
 #[derive(Clone)]
 pub struct Db {
@@ -9,10 +10,16 @@ pub struct Db {
 
 impl Db {
     pub async fn new(db_url: &str) -> Result<Self> {
+        let options = SqliteConnectOptions::from_str(db_url)?
+            .create_if_missing(true)
+            .busy_timeout(Duration::from_secs(10)) // Bekleme süresini 10 saniyeye çıkardık
+            .journal_mode(sqlx::sqlite::SqliteJournalMode::Wal)
+            .synchronous(sqlx::sqlite::SqliteSynchronous::Normal);
+
         let pool = SqlitePoolOptions::new()
             .max_connections(5)
-            .acquire_timeout(Duration::from_secs(3))
-            .connect(db_url)
+            .acquire_timeout(Duration::from_secs(10))
+            .connect_with(options)
             .await?;
 
         let db = Self { pool };
@@ -21,21 +28,6 @@ impl Db {
     }
 
     async fn run_migrations(&self) -> Result<()> {
-        // WAL mode - enables concurrent reads while writing
-        sqlx::query("PRAGMA journal_mode=WAL")
-            .execute(&self.pool)
-            .await?;
-
-        // NORMAL synchronous - faster than FULL, still safe enough
-        sqlx::query("PRAGMA synchronous=NORMAL")
-            .execute(&self.pool)
-            .await?;
-
-        // 5 second busy timeout - reduces "database locked" errors
-        sqlx::query("PRAGMA busy_timeout=5000")
-            .execute(&self.pool)
-            .await?;
-
         sqlx::migrate!("./migrations").run(&self.pool).await?;
         Ok(())
     }

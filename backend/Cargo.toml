@@ -39,3 +39,5 @@ axum-extra = { version = "0.10", features = ["cookie"] }
 rand = "0.8"
 anyhow = "1.0.101"
 time = { version = "0.3.47", features = ["serde", "formatting", "parsing"] }
+tower_governor = "0.8.0"
+governor = "0.10.4"

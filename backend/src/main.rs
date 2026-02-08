@@ -3,6 +3,7 @@ mod diff;
 mod handlers;
 #[cfg(feature = "push-notifications")]
 mod push;
+mod rate_limit;
 mod scgi;
 mod sse;
 mod xmlrpc;
@@ -25,6 +26,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::{broadcast, watch};
 use tower::ServiceBuilder;
+use tower_governor::GovernorLayer;
 use tower_http::{
     compression::{CompressionLayer, CompressionLevel},
     cors::CorsLayer,
@@ -467,7 +469,12 @@ async fn main() {
         // Setup & Auth Routes
         .route("/api/setup/status", get(handlers::setup::get_setup_status_handler))
         .route("/api/setup", post(handlers::setup::setup_handler))
-        .route("/api/auth/login", post(handlers::auth::login_handler))
+        .route(
+            "/api/auth/login",
+            post(handlers::auth::login_handler).layer(GovernorLayer::new(Arc::new(
+                rate_limit::get_login_rate_limit_config(),
+            ))),
+        )
         .route("/api/auth/logout", post(handlers::auth::logout_handler))
         .route("/api/auth/check", get(handlers::auth::check_auth_handler))
         // App Routes
@@ -536,7 +543,12 @@ async fn main() {
         }
     };
     tracing::info!("Backend listening on {}", addr);
-    if let Err(e) = axum::serve(listener, app).await {
+    if let Err(e) = axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .await
+    {
         tracing::error!("Server error: {}", e);
         std::process::exit(1);
     }

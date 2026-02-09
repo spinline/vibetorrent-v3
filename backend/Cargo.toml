@@ -4,15 +4,15 @@ version = "0.1.0"
 edition = "2021"
 
 [features]
-default = ["push-notifications", "swagger"]
+default = ["swagger"] # push-notifications kaldırıldı
 push-notifications = ["web-push", "openssl"]
 swagger = ["utoipa-swagger-ui"]
 
 [dependencies]
 axum = { version = "0.8", features = ["macros", "ws"] }
 tokio = { version = "1", features = ["full"] }
-tower = { version = "0.4", features = ["util", "timeout"] }
-tower-http = { version = "0.5", features = ["fs", "trace", "cors", "compression-full"] }
+tower = { version = "0.5", features = ["util", "timeout"] }
+tower-http = { version = "0.6", features = ["fs", "trace", "cors", "compression-full"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tracing = "0.1"
@@ -21,16 +21,15 @@ tokio-stream = "0.1"
 bytes = "1"
 futures = "0.3"
 quick-xml = { version = "0.31", features = ["serde", "serialize"] }
-# We might need `tokio-util` for codecs if we implement SCGI manually
 tokio-util = { version = "0.7", features = ["codec", "io"] }
 clap = { version = "4.4", features = ["derive", "env"] }
 rust-embed = "8.2"
 mime_guess = "2.0"
-shared = { path = "../shared" }
+shared = { path = "../shared", features = ["ssr"] }
 thiserror = "2.0.18"
 dotenvy = "0.15.7"
 utoipa = { version = "5.4.0", features = ["axum_extras"] }
-utoipa-swagger-ui = { version = "9.0.2", features = ["axum"], optional = true }
+utoipa-swagger-ui = { version = "9.0", features = ["axum"], optional = true }
 web-push = { version = "0.10", default-features = false, features = ["hyper-client"], optional = true }
 base64 = "0.22"
 openssl = { version = "0.10", features = ["vendored"], optional = true }
@@ -42,3 +41,7 @@ anyhow = "1.0.101"
 time = { version = "0.3.47", features = ["serde", "formatting", "parsing"] }
 tower_governor = "0.8.0"
 governor = "0.10.4"
+
+# Leptos
+leptos = { version = "0.8.15", features = ["nightly"] }
+leptos_axum = { version = "0.8.7" }

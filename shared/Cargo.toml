@@ -1,8 +1,32 @@
 [package]
 name = "shared"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
+
+[features]
+default = []
+ssr = [
+    "dep:tokio",
+    "dep:bytes",
+    "dep:thiserror",
+    "dep:quick-xml",
+    "dep:leptos_axum",
+    "leptos/ssr",
+    "leptos_router/ssr",
+]
+hydrate = ["leptos/hydrate"]
 
 [dependencies]
-serde = { version = "1.0.228", features = ["derive"] }
+serde = { version = "1.0", features = ["derive"] }
 utoipa = { version = "5.4.0", features = ["axum_extras"] }
+
+# Leptos 0.8.7
+leptos = { version = "0.8.7", features = ["nightly"] }
+leptos_router = { version = "0.8.7", features = ["nightly"] }
+leptos_axum = { version = "0.8.7", optional = true }
+
+# SSR Dependencies (XML-RPC & SCGI)
+tokio = { version = "1", features = ["full"], optional = true }
+bytes = { version = "1", optional = true }
+thiserror = { version = "2", optional = true }
+quick-xml = { version = "0.31", features = ["serde", "serialize"], optional = true }

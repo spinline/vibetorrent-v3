@@ -1,7 +1,9 @@
-use crate::{
+use shared::{
     xmlrpc::{self, RpcParam},
-    AppState,
+    AddTorrentRequest, GlobalLimitRequest, SetFilePriorityRequest, SetLabelRequest, TorrentActionRequest,
+    TorrentFile, TorrentPeer, TorrentTracker,
 };
+use crate::AppState;
 #[cfg(feature = "push-notifications")]
 use crate::push;
 use axum::{
@@ -11,10 +13,6 @@ use axum::{
     BoxError,
 };
 use rust_embed::RustEmbed;
-use shared::{
-    AddTorrentRequest, GlobalLimitRequest, SetFilePriorityRequest, SetLabelRequest, TorrentActionRequest,
-    TorrentFile,     TorrentPeer, TorrentTracker,
-};
 
 pub mod auth;
 pub mod setup;

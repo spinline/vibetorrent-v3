@@ -1,3 +1,5 @@
+#![cfg(feature = "ssr")]
+
 use bytes::Bytes;
 use std::collections::HashMap;
 use thiserror::Error;
@@ -94,15 +96,33 @@ pub async fn send_request(socket_path: &str, request: ScgiRequest) -> Result<Byt
         .await
         .map_err(|_| ScgiError::Timeout)??;
 
-    let double_newline = b"\r\n\r\n";
     let mut response_vec = response;
-    if let Some(pos) = response_vec
-        .windows(double_newline.len())
-        .position(|window| window == double_newline)
-    {
-        Ok(Bytes::from(
-            response_vec.split_off(pos + double_newline.len()),
-        ))
+    
+    // Improved header stripping: find the first occurrence of "<?xml" OR double newline
+    let patterns = [
+        &b"\r\n\r\n"[..],
+        &b"\n\n"[..],
+        &b"<?xml"[..] // If headers are missing or weird, find start of XML
+    ];
+
+    let mut found_pos = None;
+    for (i, pattern) in patterns.iter().enumerate() {
+        if let Some(pos) = response_vec
+            .windows(pattern.len())
+            .position(|window| window == *pattern)
+        {
+            // For XML pattern, we keep it. For newlines, we skip them.
+            if i == 2 {
+                found_pos = Some(pos);
+            } else {
+                found_pos = Some(pos + pattern.len());
+            }
+            break;
+        }
+    }
+
+    if let Some(pos) = found_pos {
+        Ok(Bytes::from(response_vec.split_off(pos)))
     } else {
         Ok(Bytes::from(response_vec))
     }

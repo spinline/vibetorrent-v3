@@ -1,4 +1,4 @@
-use crate::xmlrpc::{
+use shared::xmlrpc::{
     parse_i64_response, parse_multicall_response, RpcParam, RtorrentClient, XmlRpcError,
 };
 use crate::AppState;

@@ -4,9 +4,9 @@ mod handlers;
 #[cfg(feature = "push-notifications")]
 mod push;
 mod rate_limit;
-mod scgi;
 mod sse;
-mod xmlrpc;
+
+use shared::{scgi, xmlrpc};
 
 use axum::error_handling::HandleErrorLayer;
 use axum::{
@@ -59,6 +59,7 @@ async fn auth_middleware(
     if path.starts_with("/api/auth/login")
        || path.starts_with("/api/auth/check") // Used by frontend to decide where to go
        || path.starts_with("/api/setup")
+       || path.starts_with("/api/server_fns")
        || path.starts_with("/swagger-ui")
        || path.starts_with("/api-docs")
        || !path.starts_with("/api/") // Allow static files (frontend)
@@ -528,6 +529,7 @@ async fn main() {
             "/api/settings/global-limits",
             get(handlers::get_global_limit_handler).post(handlers::set_global_limit_handler),
         )
+        .route("/api/server_fns/{*fn_name}", post(leptos_axum::handle_server_fns))
         .fallback(handlers::static_handler); // Serve static files for everything else
 
     #[cfg(feature = "push-notifications")]

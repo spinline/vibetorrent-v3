@@ -1,6 +1,14 @@
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
+#[cfg(feature = "ssr")]
+pub mod scgi;
+
+#[cfg(feature = "ssr")]
+pub mod xmlrpc;
+
+pub mod server_fns;
+
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, ToSchema)]
 pub struct Torrent {
     pub hash: String,

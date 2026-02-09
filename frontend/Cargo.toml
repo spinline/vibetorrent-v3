@@ -7,15 +7,15 @@ edition = "2021"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-leptos = { version = "0.6", features = ["csr"] }
-leptos_router = { version = "0.6", features = ["csr"] }
+leptos = { version = "0.8.7", features = ["csr", "nightly"] }
+leptos_router = { version = "0.8.7", features = ["nightly"] }
 
 console_error_panic_hook = "0.1"
 console_log = "1"
 log = "0.4"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-gloo-net = "0.5"
+gloo-net = "0.6"
 gloo-timers = { version = "0.3", features = ["futures"] }
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
@@ -23,11 +23,11 @@ uuid = { version = "1", features = ["v4", "js"] }
 futures = "0.3"
 chrono = { version = "0.4", features = ["serde", "wasm-bindgen"] }
 web-sys = { version = "0.3", features = ["HtmlDivElement", "HtmlUListElement", "HtmlLiElement", "HtmlAnchorElement", "MouseEvent", "Event", "Window", "Document", "Element", "DomTokenList", "CssStyleDeclaration", "Storage", "TouchEvent", "TouchList", "Touch", "Navigator", "Notification", "NotificationOptions", "NotificationPermission", "ServiceWorkerContainer", "ServiceWorkerRegistration", "PushManager", "PushSubscription", "PushSubscriptionOptions", "PushSubscriptionOptionsInit", "HtmlDetailsElement"] }
-shared = { path = "../shared" }
+shared = { path = "../shared", features = ["hydrate"] }
 tailwind_fuse = "0.3.2"
 js-sys = "0.3.85"
 base64 = "0.22.1"
 serde-wasm-bindgen = "0.6.5"
-leptos-use = "0.13"
+leptos-use = "0.15"
 codee = "0.2"
 thiserror = "2.0"

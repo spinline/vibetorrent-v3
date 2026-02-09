@@ -1,3 +1,5 @@
+#![cfg(feature = "ssr")]
+
 use crate::scgi::{send_request, ScgiError, ScgiRequest};
 use quick_xml::de::from_str;
 use quick_xml::se::to_string;

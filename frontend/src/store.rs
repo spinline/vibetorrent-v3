@@ -108,6 +108,7 @@ pub fn provide_torrent_store() {
 
         loop {
             let user_val = user_for_sse.get();
+            log::debug!("SSE: user = {:?}", user_val);
             if user_val.is_none() {
                 log::debug!("SSE: User not authenticated, waiting...");
                 gloo_timers::future::TimeoutFuture::new(1000).await;

@@ -1,6 +1,7 @@
 use futures::StreamExt;
 use gloo_net::eventsource::futures::EventSource;
 use leptos::prelude::*;
+use leptos::task::spawn_local;
 use shared::{AppEvent, GlobalStats, NotificationLevel, SystemNotification, Torrent};
 use std::collections::HashMap;
 use serde::{Serialize, Deserialize};

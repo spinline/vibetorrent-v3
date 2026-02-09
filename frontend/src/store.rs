@@ -133,12 +133,16 @@ pub fn provide_torrent_store() {
             let mut disconnect_notified = false;
 
             loop {
+                log::debug!("SSE: Creating EventSource...");
                 let es_result = EventSource::new("/api/events");
                 match es_result {
                     Ok(mut es) => {
+                        log::debug!("SSE: EventSource created, subscribing to message channel...");
                         if let Ok(mut stream) = es.subscribe("message") {
+                            log::debug!("SSE: Subscribed to message channel");
                             let mut got_first_message = false;
                             while let Some(Ok((_, msg))) = stream.next().await {
+                                log::debug!("SSE: Received message: {:?}", msg.data());
                                 if !got_first_message {
                                     got_first_message = true;
                                     backoff_ms = 1000;
@@ -150,10 +154,11 @@ pub fn provide_torrent_store() {
                                 }
 
                                 if let Some(data_str) = msg.data().as_string() {
+                                    log::debug!("SSE: Parsing JSON: {}", data_str);
                                     if let Ok(event) = serde_json::from_str::<AppEvent>(&data_str) {
                                         match event {
                                             AppEvent::FullList { torrents: list, .. } => {
-                                                log::debug!("SSE: Received FullList with {} torrents", list.len());
+                                                log::info!("SSE: Received FullList with {} torrents", list.len());
                                                 torrents.update(|map| {
                                                     let new_hashes: std::collections::HashSet<String> = list.iter().map(|t| t.hash.clone()).collect();
                                                     map.retain(|hash, _| new_hashes.contains(hash));

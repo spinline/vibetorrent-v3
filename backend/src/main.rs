@@ -6,7 +6,7 @@ mod push;
 mod rate_limit;
 mod sse;
 
-use shared::{scgi, xmlrpc};
+use shared::xmlrpc;
 
 use axum::error_handling::HandleErrorLayer;
 use axum::{

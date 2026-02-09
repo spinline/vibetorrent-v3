@@ -12,9 +12,11 @@ use leptos_router::hooks::use_navigate;
 #[component]
 pub fn App() -> impl IntoView {
     crate::store::provide_torrent_store();
+    let store = use_context::<crate::store::TorrentStore>();
 
     let is_loading = signal(true);
     let is_authenticated = signal(false);
+    let needs_setup = signal(false);
 
     Effect::new(move |_| {
         spawn_local(async move {
@@ -26,6 +28,7 @@ pub fn App() -> impl IntoView {
                 Ok(status) => {
                     if !status.completed {
                         log::info!("Setup not completed");
+                        needs_setup.1.set(true);
                         is_loading.1.set(false);
                         return;
                     }
@@ -40,8 +43,8 @@ pub fn App() -> impl IntoView {
                     log::info!("Authenticated!");
 
                     if let Ok(user_info) = api::auth::get_user().await {
-                        if let Some(store) = use_context::<crate::store::TorrentStore>() {
-                            store.user.set(Some(user_info.username));
+                        if let Some(s) = store {
+                            s.user.set(Some(user_info.username));
                         }
                     }
 
@@ -77,9 +80,13 @@ pub fn App() -> impl IntoView {
                 <Routes fallback=|| view! { <div class="p-4">"404 Not Found"</div> }>
                     <Route path=leptos_router::path!("/login") view=move || {
                         let authenticated = is_authenticated.0.get();
+                        let setup_needed = needs_setup.0.get();
                         
                         Effect::new(move |_| {
-                            if authenticated {
+                            if setup_needed {
+                                let navigate = use_navigate();
+                                navigate("/setup", Default::default());
+                            } else if authenticated {
                                 log::info!("Already authenticated, redirecting to home");
                                 let navigate = use_navigate();
                                 navigate("/", Default::default());
@@ -101,7 +108,11 @@ pub fn App() -> impl IntoView {
 
                     <Route path=leptos_router::path!("/") view=move || {
                         Effect::new(move |_| {
-                            if !is_loading.0.get() && !is_authenticated.0.get() {
+                            if !is_loading.0.get() && needs_setup.0.get() {
+                                log::info!("Setup not completed, redirecting to setup");
+                                let navigate = use_navigate();
+                                navigate("/setup", Default::default());
+                            } else if !is_loading.0.get() && !is_authenticated.0.get() {
                                 log::info!("Not authenticated, redirecting to login");
                                 let navigate = use_navigate();
                                 navigate("/login", Default::default());

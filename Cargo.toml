@@ -16,3 +16,6 @@ strip = true
 # Artık (incremental) build'i kapat ki optimizasyon tam olsun
 incremental = false
 
+[patch.crates-io]
+coarsetime = { path = "patches/coarsetime" }
+

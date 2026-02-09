@@ -114,7 +114,9 @@ pub fn provide_torrent_store() {
 
     Effect::new(move |_| {
         let user_val = user.get();
+        log::debug!("SSE Effect: user = {:?}", user_val);
         if user_val.is_none() {
+            log::debug!("SSE Effect: user is None, skipping connection");
             return;
         }
 
@@ -151,6 +153,7 @@ pub fn provide_torrent_store() {
                                     if let Ok(event) = serde_json::from_str::<AppEvent>(&data_str) {
                                         match event {
                                             AppEvent::FullList { torrents: list, .. } => {
+                                                log::debug!("SSE: Received FullList with {} torrents", list.len());
                                                 torrents.update(|map| {
                                                     let new_hashes: std::collections::HashSet<String> = list.iter().map(|t| t.hash.clone()).collect();
                                                     map.retain(|hash, _| new_hashes.contains(hash));
@@ -158,6 +161,7 @@ pub fn provide_torrent_store() {
                                                         map.insert(new_torrent.hash.clone(), new_torrent);
                                                     }
                                                 });
+                                                log::debug!("SSE: torrents map now has {} entries", torrents.with(|m| m.len()));
                                             }
                                             AppEvent::Update(update) => {
                                                 torrents.update(|map| {

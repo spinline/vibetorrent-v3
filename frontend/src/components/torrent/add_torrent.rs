@@ -1,4 +1,7 @@
-use leptos::*;
+use leptos::prelude::*;
+use leptos::logging;
+use leptos::html;
+use leptos::task::spawn_local;
 use leptos::html::Dialog;
 use crate::store::{show_toast_with_signal, TorrentStore};
 use crate::api;
@@ -85,9 +88,9 @@ pub fn AddTorrentModal(
                     <button class="btn" on:click=handle_close disabled=is_loading>"Cancel"</button>
                     <button class="btn btn-primary" on:click=handle_submit disabled=is_loading>
                         {move || if is_loading.get() {
-                            view! { <span class="loading loading-spinner"></span> "Adding..." }.into_view()
+                            leptos::either::Either::Left(view! { <span class="loading loading-spinner"></span> "Adding..." })
                         } else {
-                            view! { "Add" }.into_view()
+                            leptos::either::Either::Right(view! { "Add" })
                         }}
                     </button>
                 </div>

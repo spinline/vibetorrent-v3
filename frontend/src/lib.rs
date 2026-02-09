@@ -4,7 +4,8 @@ pub mod utils;
 pub mod store;
 pub mod api;
 
-use leptos::*;
+use leptos::prelude::*;
+use leptos::mount::mount_to_body;
 use wasm_bindgen::prelude::*;
 use app::App;
 

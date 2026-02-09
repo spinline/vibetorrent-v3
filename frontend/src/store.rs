@@ -1,6 +1,8 @@
 use futures::StreamExt;
 use gloo_net::eventsource::futures::EventSource;
-use leptos::*;
+use leptos::prelude::*;
+use leptos::logging;
+use leptos::task::spawn_local;
 use shared::{AppEvent, GlobalStats, NotificationLevel, SystemNotification, Torrent};
 
 #[derive(Clone, Debug, PartialEq)]

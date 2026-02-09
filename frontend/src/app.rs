@@ -4,8 +4,11 @@ use crate::components::torrent::table::TorrentTable;
 use crate::components::auth::login::Login;
 use crate::components::auth::setup::Setup;
 use crate::api;
-use leptos::*;
-use leptos_router::*;
+use leptos::prelude::*;
+use leptos::logging;
+use leptos::task::spawn_local;
+use leptos_router::components::{Router, Routes, Route};
+use leptos_router::hooks::use_navigate;
 
 #[component]
 pub fn App() -> impl IntoView {
@@ -89,7 +92,7 @@ pub fn App() -> impl IntoView {
     view! {
         <div class="relative w-full h-screen" style="height: 100dvh;">
             <Router>
-                <Routes>
+                <Routes fallback=|| view! { "404 Not Found" }>
                     <Route path="/login" view=move || view! { <Login /> } />
                     <Route path="/setup" view=move || view! { <Setup /> } />
 

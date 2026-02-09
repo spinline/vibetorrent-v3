@@ -1,8 +1,12 @@
-use leptos::*;
+use leptos::prelude::*;
+use leptos::logging;
+use leptos::html;
+use leptos::task::spawn_local;
 use leptos_use::{on_click_outside, use_timeout_fn};
-use crate::store::{get_action_messages, show_toast_with_signal};
+use crate::store::{get_action_messages, show_toast_with_signal, FilterStatus, TorrentStore};
 use crate::api;
-use shared::NotificationLevel;
+use shared::{NotificationLevel, Torrent};
+use std::collections::HashMap;
 
 fn format_bytes(bytes: i64) -> String {
     const UNITS: [&str; 6] = ["B", "KB", "MB", "GB", "TB", "PB"];
@@ -180,10 +184,10 @@ pub fn TorrentTable() -> impl IntoView {
         if sort_col.get() == col {
             match sort_dir.get() {
                 SortDirection::Ascending => {
-                    view! { <span class="ml-1 text-xs">"▲"</span> }.into_view()
+                    view! { <span class="ml-1 text-xs">"▲"</span> }.into_any()
                 }
                 SortDirection::Descending => {
-                    view! { <span class="ml-1 text-xs">"▼"</span> }.into_view()
+                    view! { <span class="ml-1 text-xs">"▼"</span> }.into_any()
                 }
             }
         } else {
@@ -378,8 +382,8 @@ pub fn TorrentTable() -> impl IntoView {
                     visible=true
                     position=menu_position.get()
                     torrent_hash=selected_hash.get().unwrap_or_default()
-                    on_close=Callback::from(move |_| set_menu_visible.set(false))
-                    on_action=Callback::from(on_action)
+                    on_close=Callback::from(move |()| set_menu_visible.set(false))
+                    on_action=Callback::from(move |args| on_action(args))
                 />
             </Show>
         </div>
@@ -391,7 +395,7 @@ fn TorrentRow(
     hash: String,
     selected_hash: ReadSignal<Option<String>>,
     set_selected_hash: WriteSignal<Option<String>>,
-    on_context_menu: impl Fn(web_sys::MouseEvent, String) + 'static + Clone,
+    on_context_menu: impl Fn(web_sys::MouseEvent, String) + 'static + Clone + Send + Sync,
 ) -> impl IntoView {
     let store = use_context::<crate::store::TorrentStore>().expect("store not provided");
 
@@ -474,7 +478,7 @@ fn TorrentCard(
     set_selected_hash: WriteSignal<Option<String>>,
     set_menu_position: WriteSignal<(i32, i32)>,
     set_menu_visible: WriteSignal<bool>,
-    on_context_menu: impl Fn(web_sys::MouseEvent, String) + 'static + Clone,
+    on_context_menu: impl Fn(web_sys::MouseEvent, String) + 'static + Clone + Send + Sync,
 ) -> impl IntoView {
     let store = use_context::<crate::store::TorrentStore>().expect("store not provided");
 

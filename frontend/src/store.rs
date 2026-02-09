@@ -95,7 +95,6 @@ pub fn provide_torrent_store() {
     let store = TorrentStore { torrents, filter, search_query, global_stats, notifications, user };
     provide_context(store);
 
-    let user_for_sse = user;
     let notifications_for_sse = notifications;
     let global_stats_for_sse = global_stats;
     let torrents_for_sse = torrents;
@@ -107,13 +106,6 @@ pub fn provide_torrent_store() {
         let mut disconnect_notified = false;
 
         loop {
-            let user_val = user_for_sse.get();
-            log::debug!("SSE: user = {:?}", user_val);
-            if user_val.is_none() {
-                log::debug!("SSE: User not authenticated, waiting...");
-                gloo_timers::future::TimeoutFuture::new(1000).await;
-                continue;
-            }
 
             log::debug!("SSE: Creating EventSource...");
             let es_result = EventSource::new("/api/events");

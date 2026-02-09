@@ -51,49 +51,49 @@ pub fn TorrentTable() -> impl IntoView {
     let sort_dir = signal(SortDirection::Descending);
 
     let filtered_hashes = move || {
-        store.torrents.with(|map| {
-            let count = map.len();
-            log::debug!("TorrentTable: store.torrents has {} entries", count);
-            
-            let mut torrents: Vec<&shared::Torrent> = map.values().filter(|t| {
-                let filter = store.filter.get();
-                let search = store.search_query.get().to_lowercase();
-                let matches_filter = match filter {
-                    crate::store::FilterStatus::All => true,
-                    crate::store::FilterStatus::Downloading => t.status == shared::TorrentStatus::Downloading,
-                    crate::store::FilterStatus::Seeding => t.status == shared::TorrentStatus::Seeding,
-                    crate::store::FilterStatus::Completed => t.status == shared::TorrentStatus::Seeding || (t.status == shared::TorrentStatus::Paused && t.percent_complete >= 100.0),
-                    crate::store::FilterStatus::Paused => t.status == shared::TorrentStatus::Paused,
-                    crate::store::FilterStatus::Inactive => t.status == shared::TorrentStatus::Paused || t.status == shared::TorrentStatus::Error,
-                    _ => true,
-                };
-                let matches_search = if search.is_empty() { true } else { t.name.to_lowercase().contains(&search) };
-                matches_filter && matches_search
-            }).collect();
+        let torrents_map = store.torrents.get();
+        log::debug!("TorrentTable: store.torrents has {} entries", torrents_map.len());
+        
+        let filter = store.filter.get();
+        let search = store.search_query.get();
+        let search_lower = search.to_lowercase();
+        
+        let mut torrents: Vec<&shared::Torrent> = torrents_map.values().filter(|t| {
+            let matches_filter = match filter {
+                crate::store::FilterStatus::All => true,
+                crate::store::FilterStatus::Downloading => t.status == shared::TorrentStatus::Downloading,
+                crate::store::FilterStatus::Seeding => t.status == shared::TorrentStatus::Seeding,
+                crate::store::FilterStatus::Completed => t.status == shared::TorrentStatus::Seeding || (t.status == shared::TorrentStatus::Paused && t.percent_complete >= 100.0),
+                crate::store::FilterStatus::Paused => t.status == shared::TorrentStatus::Paused,
+                crate::store::FilterStatus::Inactive => t.status == shared::TorrentStatus::Paused || t.status == shared::TorrentStatus::Error,
+                _ => true,
+            };
+            let matches_search = if search_lower.is_empty() { true } else { t.name.to_lowercase().contains(&search_lower) };
+            matches_filter && matches_search
+        }).collect();
 
-            log::debug!("TorrentTable: {} torrents after filtering", torrents.len());
+        log::debug!("TorrentTable: {} torrents after filtering", torrents.len());
 
-            torrents.sort_by(|a, b| {
-                let col = sort_col.0.get();
-                let dir = sort_dir.0.get();
-                let cmp = match col {
-                    SortColumn::Name => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
-                    SortColumn::Size => a.size.cmp(&b.size),
-                    SortColumn::Progress => a.percent_complete.partial_cmp(&b.percent_complete).unwrap_or(std::cmp::Ordering::Equal),
-                    SortColumn::Status => format!("{:?}", a.status).cmp(&format!("{:?}", b.status)),
-                    SortColumn::DownSpeed => a.down_rate.cmp(&b.down_rate),
-                    SortColumn::UpSpeed => a.up_rate.cmp(&b.up_rate),
-                    SortColumn::ETA => {
-                        let a_eta = if a.eta <= 0 { i64::MAX } else { a.eta };
-                        let b_eta = if b.eta <= 0 { i64::MAX } else { b.eta };
-                        a_eta.cmp(&b_eta)
-                    }
-                    SortColumn::AddedDate => a.added_date.cmp(&b.added_date),
-                };
-                if dir == SortDirection::Descending { cmp.reverse() } else { cmp }
-            });
-            torrents.into_iter().map(|t| t.hash.clone()).collect::<Vec<String>>()
-        })
+        torrents.sort_by(|a, b| {
+            let col = sort_col.0.get();
+            let dir = sort_dir.0.get();
+            let cmp = match col {
+                SortColumn::Name => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
+                SortColumn::Size => a.size.cmp(&b.size),
+                SortColumn::Progress => a.percent_complete.partial_cmp(&b.percent_complete).unwrap_or(std::cmp::Ordering::Equal),
+                SortColumn::Status => format!("{:?}", a.status).cmp(&format!("{:?}", b.status)),
+                SortColumn::DownSpeed => a.down_rate.cmp(&b.down_rate),
+                SortColumn::UpSpeed => a.up_rate.cmp(&b.up_rate),
+                SortColumn::ETA => {
+                    let a_eta = if a.eta <= 0 { i64::MAX } else { a.eta };
+                    let b_eta = if b.eta <= 0 { i64::MAX } else { b.eta };
+                    a_eta.cmp(&b_eta)
+                }
+                SortColumn::AddedDate => a.added_date.cmp(&b.added_date),
+            };
+            if dir == SortDirection::Descending { cmp.reverse() } else { cmp }
+        });
+        torrents.into_iter().map(|t| t.hash.clone()).collect::<Vec<String>>()
     };
 
     let handle_sort = move |col: SortColumn| {

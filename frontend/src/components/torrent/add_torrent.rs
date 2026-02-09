@@ -48,7 +48,7 @@ pub fn AddTorrentModal(
                     if let Some(dialog) = dialog_ref.get() {
                         dialog.close();
                     }
-                    on_close.call(());
+                    on_close.run(());
                 }
                 Err(e) => {
                     logging::error!("Failed to add torrent: {:?}", e);
@@ -64,7 +64,7 @@ pub fn AddTorrentModal(
         if let Some(dialog) = dialog_ref.get() {
             dialog.close();
         }
-        on_close.call(());
+        on_close.run(());
     };
 
     view! {

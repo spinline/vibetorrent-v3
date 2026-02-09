@@ -14,15 +14,15 @@ pub fn ContextMenu(
 ) -> impl IntoView {
     let container_ref = create_node_ref::<html::Div>();
     
-    let _ = on_click_outside(container_ref, move |_| on_close.call(()));
+    let _ = on_click_outside(container_ref, move |_| on_close.run(()));
 
     let handle_action = move |action: &str| {
         let hash = torrent_hash.clone();
         let action_str = action.to_string();
         
         logging::log!("ContextMenu: Action '{}' for hash '{}'", action_str, hash);
-        on_action.call((action_str, hash)); // Delegate FIRST
-        on_close.call(()); // Close menu AFTER
+        on_action.run((action_str, hash)); // Delegate FIRST
+        on_close.run(()); // Close menu AFTER
     };
 
     if !visible {

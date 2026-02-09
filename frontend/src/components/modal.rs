@@ -14,13 +14,13 @@ pub fn Modal(
     #[prop(into, default = "Cancel".to_string())] cancel_text: String,
     #[prop(into, default = false)] is_danger: bool,
 ) -> impl IntoView {
-    let title = store_value(title);
+    let title = StoredValue::new_local(title);
     // Eagerly render children to a Fragment, which is Clone
-    let child_view = store_value(children());
-    let on_confirm = store_value(on_confirm);
-    let on_cancel = store_value(on_cancel);
-    let confirm_text = store_value(confirm_text);
-    let cancel_text = store_value(cancel_text);
+    let child_view = StoredValue::new_local(children());
+    let on_confirm = StoredValue::new_local(on_confirm);
+    let on_cancel = StoredValue::new_local(on_cancel);
+    let confirm_text = StoredValue::new_local(confirm_text);
+    let cancel_text = StoredValue::new_local(cancel_text);
     
     view! {
         <Show when=move || visible.get() fallback=|| ()>
@@ -35,7 +35,7 @@ pub fn Modal(
                     <div class="flex justify-end gap-3">
                         <button 
                             class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
-                            on:click=move |_| on_cancel.with_value(|cb| cb.call(()))
+                            on:click=move |_| on_cancel.with_value(|cb| cb.run(()))
                         >
                             {cancel_text.get_value()}
                         </button>
@@ -46,7 +46,7 @@ pub fn Modal(
                             ))
                             on:click=move |_| {
                                 logging::log!("Modal: Confirm clicked");
-                                on_confirm.with_value(|cb| cb.call(()))
+                                on_confirm.with_value(|cb| cb.run(()))
                             }
                         >
                             {confirm_text.get_value()}

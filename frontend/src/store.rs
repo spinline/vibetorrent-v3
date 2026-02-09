@@ -107,11 +107,24 @@ pub fn provide_torrent_store() {
     let store = TorrentStore { torrents, filter, search_query, global_stats, notifications, user };
     provide_context(store);
 
-    // SSE Connection
-    Effect::new(move |_| {
-        if user.get().is_none() { return; }
+    let notifications_for_effect = notifications;
+    let global_stats_for_effect = global_stats;
+    let torrents_for_effect = torrents;
+    let show_browser_notification = show_browser_notification.clone();
 
+    Effect::new(move |_| {
+        let user_val = user.get();
+        if user_val.is_none() {
+            return;
+        }
+
+        let notifications = notifications_for_effect;
+        let global_stats = global_stats_for_effect;
+        let torrents = torrents_for_effect;
         let show_browser_notification = show_browser_notification.clone();
+
+        log::info!("SSE: Starting connection (user logged in)");
+
         leptos::task::spawn_local(async move {
             let mut backoff_ms: u32 = 1000;
             let mut was_connected = false;

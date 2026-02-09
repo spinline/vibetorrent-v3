@@ -52,6 +52,9 @@ pub fn TorrentTable() -> impl IntoView {
 
     let filtered_hashes = move || {
         store.torrents.with(|map| {
+            let count = map.len();
+            log::debug!("TorrentTable: store.torrents has {} entries", count);
+            
             let mut torrents: Vec<&shared::Torrent> = map.values().filter(|t| {
                 let filter = store.filter.get();
                 let search = store.search_query.get().to_lowercase();
@@ -67,6 +70,8 @@ pub fn TorrentTable() -> impl IntoView {
                 let matches_search = if search.is_empty() { true } else { t.name.to_lowercase().contains(&search) };
                 matches_filter && matches_search
             }).collect();
+
+            log::debug!("TorrentTable: {} torrents after filtering", torrents.len());
 
             torrents.sort_by(|a, b| {
                 let col = sort_col.0.get();

@@ -1,52 +1,39 @@
 use leptos::prelude::*;
-use leptos::logging;
-use leptos::html;
 use leptos::task::spawn_local;
 use crate::api;
 
 #[component]
 pub fn Login() -> impl IntoView {
-    let (username, set_username) = create_signal(String::new());
-    let (password, set_password) = create_signal(String::new());
-    let (remember_me, set_remember_me) = create_signal(false);
-    let (error, set_error) = create_signal(Option::<String>::None);
-    let (loading, set_loading) = create_signal(false);
+    let username = signal(String::new());
+    let password = signal(String::new());
+    let remember_me = signal(false);
+    let error = signal(Option::<String>::None);
+    let loading = signal(false);
 
     let handle_login = move |ev: web_sys::SubmitEvent| {
         ev.prevent_default();
-        set_loading.set(true);
-        set_error.set(None);
+        loading.1.set(true);
+        error.1.set(None);
 
-        logging::log!("Attempting login for user: {}", username.get());
+        let user = username.0.get();
+        let pass = password.0.get();
+        let rem = remember_me.0.get();
 
-        let username = username.get();
-        let password = password.get();
-        let remember_me = remember_me.get();
+        log::info!("Attempting login for user: {}", user);
 
         spawn_local(async move {
-            match api::auth::login(&username, &password, remember_me).await {
+            match api::auth::login(&user, &pass, rem).await {
                 Ok(_) => {
-                    logging::log!("Login successful, redirecting...");
-                    let _ = window().location().set_href("/");
+                    log::info!("Login successful, redirecting...");
+                    let window = web_sys::window().expect("window should exist");
+                    let _ = window.location().set_href("/");
                 }
                 Err(e) => {
-                    logging::error!("Login failed: {:?}", e);
-                    let msg = match e {
-                        crate::api::ApiError::RateLimited => {
-                            "Çok fazla başarısız deneme yaptınız. Lütfen bir süre bekleyip tekrar deneyin.".to_string()
-                        }
-                        crate::api::ApiError::Unauthorized | crate::api::ApiError::LoginFailed => {
-                            "Kullanıcı adı veya şifre hatalı".to_string()
-                        }
-                        crate::api::ApiError::Network => {
-                            "Bağlantı hatası".to_string()
-                        }
-                        _ => "Bir hata oluştu".to_string()
-                    };
-                    set_error.set(Some(msg));
+                    log::error!("Login failed: {:?}", e);
+                    error.1.set(Some("Geçersiz kullanıcı adı veya şifre".to_string()));
+                    loading.1.set(false);
                 }
             }
-            set_loading.set(false);
         });
     };
 
@@ -54,66 +41,73 @@ pub fn Login() -> impl IntoView {
         <div class="flex items-center justify-center min-h-screen bg-base-200">
             <div class="card w-full max-w-sm shadow-xl bg-base-100">
                 <div class="card-body">
-                    <h2 class="card-title justify-center mb-4">"VibeTorrent Giriş"</h2>
+                    <div class="flex flex-col items-center mb-6">
+                        <div class="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center text-primary-content shadow-lg mb-4">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-10 h-10">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.25 0 003 2.48z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 18a3.75 3.75 0 00.495-7.467 5.99 5.99 0 00-1.925 3.546 5.974 5.974 0 01-2.133-1A3.75 3.75 0 0012 18z" />
+                            </svg>
+                        </div>
+                        <h2 class="card-title text-2xl font-bold">"VibeTorrent"</h2>
+                        <p class="text-base-content/60 text-sm">"Hesabınıza giriş yapın"</p>
+                    </div>
 
-                    <form on:submit=handle_login>
-                        <div class="form-control w-full">
+                    <form on:submit=handle_login class="space-y-4">
+                        <div class="form-control">
                             <label class="label">
                                 <span class="label-text">"Kullanıcı Adı"</span>
                             </label>
-                            <input
-                                type="text"
-                                placeholder="Kullanıcı adınız"
-                                class="input input-bordered w-full"
-                                prop:value=username
-                                on:input=move |ev| set_username.set(event_target_value(&ev))
-                                disabled=move || loading.get()
+                            <input 
+                                type="text" 
+                                placeholder="Kullanıcı adınız" 
+                                class="input input-bordered w-full" 
+                                prop:value=move || username.0.get()
+                                on:input=move |ev| username.1.set(event_target_value(&ev))
+                                disabled=move || loading.0.get()
+                                required 
                             />
                         </div>
-
-                        <div class="form-control w-full mt-4">
+                        <div class="form-control">
                             <label class="label">
                                 <span class="label-text">"Şifre"</span>
                             </label>
-                            <input
-                                type="password"
-                                placeholder="******"
-                                class="input input-bordered w-full"
-                                prop:value=password
-                                on:input=move |ev| set_password.set(event_target_value(&ev))
-                                disabled=move || loading.get()
+                            <input 
+                                type="password" 
+                                placeholder="******" 
+                                class="input input-bordered w-full" 
+                                prop:value=move || password.0.get()
+                                on:input=move |ev| password.1.set(event_target_value(&ev))
+                                disabled=move || loading.0.get()
+                                required 
                             />
                         </div>
 
-                        <div class="form-control mt-4">
+                        <div class="form-control">
                             <label class="label cursor-pointer justify-start gap-3">
-                                <input
-                                    type="checkbox"
-                                    class="checkbox checkbox-primary checkbox-sm"
-                                    prop:checked=remember_me
-                                    on:change=move |ev| set_remember_me.set(event_target_checked(&ev))
-                                    disabled=move || loading.get()
+                                <input 
+                                    type="checkbox" 
+                                    class="checkbox checkbox-primary checkbox-sm" 
+                                    prop:checked=move || remember_me.0.get()
+                                    on:change=move |ev| remember_me.1.set(event_target_checked(&ev))
                                 />
-                                <span class="label-text">"Beni Hatırla"</span>
+                                <span class="label-text">"Beni hatırla"</span>
                             </label>
                         </div>
 
-                        <Show when=move || error.get().is_some()>
-                            <div class="alert alert-error mt-4 text-sm py-2">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                <span>{move || error.get()}</span>
+                        <Show when=move || error.0.get().is_some() fallback=|| ()>
+                            <div class="alert alert-error text-xs py-2 shadow-sm">
+                                <span>{move || error.0.get().unwrap_or_default()}</span>
                             </div>
                         </Show>
 
-                        <div class="card-actions justify-end mt-6">
-                            <button
-                                class="btn btn-primary w-full"
+                        <div class="form-control mt-6">
+                            <button 
+                                class="btn btn-primary w-full" 
                                 type="submit"
-                                disabled=move || loading.get()
+                                disabled=move || loading.0.get()
                             >
-                                <Show when=move || loading.get() fallback=|| "Giriş Yap">
+                                <Show when=move || loading.0.get() fallback=|| "Giriş Yap">
                                     <span class="loading loading-spinner"></span>
-                                    "Giriş Yapılıyor..."
                                 </Show>
                             </button>
                         </div>

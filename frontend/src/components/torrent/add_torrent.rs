@@ -1,66 +1,64 @@
 use leptos::prelude::*;
-use leptos::logging;
 use leptos::html;
 use leptos::task::spawn_local;
-use leptos::html::Dialog;
-use crate::store::{show_toast_with_signal, TorrentStore};
+use crate::store::TorrentStore;
 use crate::api;
-use shared::NotificationLevel;
-
 
 #[component]
-pub fn AddTorrentModal(
-    #[prop(into)]
+pub fn AddTorrentDialog(
     on_close: Callback<()>,
 ) -> impl IntoView {
     let store = use_context::<TorrentStore>().expect("TorrentStore not provided");
     let notifications = store.notifications;
-    
-    let dialog_ref = create_node_ref::<Dialog>();
-    let (uri, set_uri) = create_signal(String::new());
-    let (is_loading, set_loading) = create_signal(false);
-    let (error_msg, set_error_msg) = create_signal(Option::<String>::None);
 
-    create_effect(move |_| {
+    let dialog_ref = NodeRef::<html::Dialog>::new();
+    let uri = signal(String::new());
+    let is_loading = signal(false);
+    let error_msg = signal(Option::<String>::None);
+
+    Effect::new(move |_| {
         if let Some(dialog) = dialog_ref.get() {
             let _ = dialog.show_modal();
         }
     });
 
-    let handle_submit = move |_| {
-        let uri_val = uri.get();
+    let handle_submit = move |ev: web_sys::SubmitEvent| {
+        ev.prevent_default();
+        let uri_val = uri.0.get();
+        
         if uri_val.is_empty() {
-            show_toast_with_signal(notifications, NotificationLevel::Warning, "Lütfen bir Magnet URI veya URL girin");
-            set_error_msg.set(Some("Please enter a Magnet URI or URL".to_string()));
+            error_msg.1.set(Some("Please enter a Magnet URI or URL".to_string()));
             return;
         }
 
-        set_loading.set(true);
-        set_error_msg.set(None);
+        is_loading.1.set(true);
+        error_msg.1.set(None);
 
-        let uri_val = uri_val;
+        let on_close = on_close.clone();
         spawn_local(async move {
             match api::torrent::add(&uri_val).await {
                 Ok(_) => {
-                    logging::log!("Torrent added successfully");
-                    show_toast_with_signal(notifications, NotificationLevel::Success, "Torrent eklendi");
-                    set_loading.set(false);
+                    log::info!("Torrent added successfully");
+                    crate::store::show_toast_with_signal(
+                        notifications, 
+                        shared::NotificationLevel::Success, 
+                        "Torrent başarıyla eklendi"
+                    );
                     if let Some(dialog) = dialog_ref.get() {
                         dialog.close();
                     }
                     on_close.run(());
                 }
                 Err(e) => {
-                    logging::error!("Failed to add torrent: {:?}", e);
-                    show_toast_with_signal(notifications, NotificationLevel::Error, "Torrent eklenemedi");
-                    set_error_msg.set(Some(format!("Error: {:?}", e)));
-                    set_loading.set(false);
+                    log::error!("Failed to add torrent: {:?}", e);
+                    error_msg.1.set(Some(format!("Hata: {:?}", e)));
+                    is_loading.1.set(false);
                 }
             }
         });
     };
 
-    let handle_close = move |_| {
+    let handle_cancel = move |_| {
         if let Some(dialog) = dialog_ref.get() {
             dialog.close();
         }
@@ -71,36 +69,39 @@ pub fn AddTorrentModal(
         <dialog node_ref=dialog_ref class="modal modal-bottom sm:modal-middle">
             <div class="modal-box">
                 <h3 class="font-bold text-lg">"Add Torrent"</h3>
-                <p class="py-4">"Enter a Magnet URI or direct URL to a .torrent file."</p>
+                <p class="py-4 text-sm opacity-70">"Enter a Magnet link or a .torrent file URL."</p>
                 
-                <div class="form-control w-full">
-                    <input 
-                        type="text" 
-                        placeholder="magnet:?xt=urn:btih:..." 
-                        class="input input-bordered w-full" 
-                        prop:value=uri
-                        on:input=move |ev| set_uri.set(event_target_value(&ev))
-                        disabled=is_loading
-                    />
-                </div>
+                <form on:submit=handle_submit>
+                    <div class="form-control w-full">
+                        <input 
+                            type="text" 
+                            placeholder="magnet:?xt=urn:btih:..." 
+                            class="input input-bordered w-full" 
+                            prop:value=move || uri.0.get()
+                            on:input=move |ev| uri.1.set(event_target_value(&ev))
+                            disabled=move || is_loading.0.get()
+                            autofocus
+                        />
+                    </div>
+                    
+                    <div class="modal-action">
+                        <button type="button" class="btn btn-ghost" on:click=handle_cancel>"Cancel"</button>
+                        <button type="submit" class="btn btn-primary" disabled=move || is_loading.0.get()>
+                            {move || if is_loading.0.get() {
+                                leptos::either::Either::Left(view! { <span class="loading loading-spinner"></span> "Adding..." })
+                            } else {
+                                leptos::either::Either::Right(view! { "Add" })
+                            }}
+                        </button>
+                    </div>
+                </form>
 
-                <div class="modal-action">
-                    <button class="btn" on:click=handle_close disabled=is_loading>"Cancel"</button>
-                    <button class="btn btn-primary" on:click=handle_submit disabled=is_loading>
-                        {move || if is_loading.get() {
-                            leptos::either::Either::Left(view! { <span class="loading loading-spinner"></span> "Adding..." })
-                        } else {
-                            leptos::either::Either::Right(view! { "Add" })
-                        }}
-                    </button>
-                </div>
-                
-                {move || error_msg.get().map(|msg| view! {
+                {move || error_msg.0.get().map(|msg| view! {
                     <div class="text-error text-sm mt-2">{msg}</div>
                 })}
             </div>
             <form method="dialog" class="modal-backdrop">
-                <button type="button" on:click=handle_close>"close"</button>
+                <button on:click=handle_cancel>"close"</button>
             </form>
         </dialog>
     }

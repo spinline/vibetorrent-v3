@@ -1,52 +1,49 @@
 use leptos::prelude::*;
-use leptos::logging;
-use leptos::html;
 use leptos::task::spawn_local;
 use crate::api;
 
 #[component]
 pub fn Setup() -> impl IntoView {
-    let (username, set_username) = create_signal(String::new());
-    let (password, set_password) = create_signal(String::new());
-    let (confirm_password, set_confirm_password) = create_signal(String::new());
-    let (error, set_error) = create_signal(Option::<String>::None);
-    let (loading, set_loading) = create_signal(false);
+    let username = signal(String::new());
+    let password = signal(String::new());
+    let confirm_password = signal(String::new());
+    let error = signal(Option::<String>::None);
+    let loading = signal(false);
 
     let handle_setup = move |ev: web_sys::SubmitEvent| {
         ev.prevent_default();
-        set_loading.set(true);
-        set_error.set(None);
-
-        let pass = password.get();
-        let confirm = confirm_password.get();
-
+        
+        let pass = password.0.get();
+        let confirm = confirm_password.0.get();
+        
         if pass != confirm {
-            set_error.set(Some("Şifreler eşleşmiyor".to_string()));
-            set_loading.set(false);
+            error.1.set(Some("Şifreler eşleşmiyor".to_string()));
             return;
         }
 
         if pass.len() < 6 {
-            set_error.set(Some("Şifre en az 6 karakter olmalıdır".to_string()));
-            set_loading.set(false);
+            error.1.set(Some("Şifre en az 6 karakter olmalıdır".to_string()));
             return;
         }
 
-        let username = username.get();
-        let password = pass;
+        loading.1.set(true);
+        error.1.set(None);
+
+        let user = username.0.get();
 
         spawn_local(async move {
-            match api::setup::setup(&username, &password).await {
+            match api::setup::setup(&user, &pass).await {
                 Ok(_) => {
-                    logging::log!("Setup completed successfully, redirecting...");
-                    let _ = window().location().set_href("/");
+                    log::info!("Setup completed successfully, redirecting...");
+                    let window = web_sys::window().expect("window should exist");
+                    let _ = window.location().set_href("/");
                 }
                 Err(e) => {
-                    logging::error!("Setup failed: {:?}", e);
-                    set_error.set(Some("Kurulum başarısız oldu".to_string()));
+                    log::error!("Setup failed: {:?}", e);
+                    error.1.set(Some(format!("Hata: {:?}", e)));
+                    loading.1.set(false);
                 }
             }
-            set_loading.set(false);
         });
     };
 
@@ -54,71 +51,74 @@ pub fn Setup() -> impl IntoView {
         <div class="flex items-center justify-center min-h-screen bg-base-200">
             <div class="card w-full max-w-md shadow-xl bg-base-100">
                 <div class="card-body">
-                    <h2 class="card-title justify-center mb-2">"VibeTorrent Kurulumu"</h2>
-                    <p class="text-center text-sm opacity-70 mb-4">"Yönetici hesabınızı oluşturun"</p>
+                    <div class="flex flex-col items-center mb-6 text-center">
+                        <div class="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center text-primary-content shadow-lg mb-4">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-10 h-10">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63m5.108-3.497a2.548 2.548 0 113.586 3.586l-6.837 5.63m-5.108 3.497l2.496-3.03c.317-.384.74-.626 1.208-.766M15.75 9.25a2.548 2.548 0 11-5.096 0 2.548 2.548 0 015.096 0z" />
+                            </svg>
+                        </div>
+                        <h2 class="card-title text-2xl font-bold">"VibeTorrent Kurulumu"</h2>
+                        <p class="text-base-content/60 text-sm">"Yönetici hesabınızı oluşturun"</p>
+                    </div>
 
-                    <form on:submit=handle_setup>
-                        <div class="form-control w-full">
+                    <form on:submit=handle_setup class="space-y-4">
+                        <div class="form-control">
                             <label class="label">
-                                <span class="label-text">"Kullanıcı Adı"</span>
+                                <span class="label-text">"Yönetici Kullanıcı Adı"</span>
                             </label>
-                            <input
-                                type="text"
-                                placeholder="admin"
-                                class="input input-bordered w-full"
-                                prop:value=username
-                                on:input=move |ev| set_username.set(event_target_value(&ev))
-                                disabled=move || loading.get()
-                                required
+                            <input 
+                                type="text" 
+                                placeholder="admin" 
+                                class="input input-bordered w-full" 
+                                prop:value=move || username.0.get()
+                                on:input=move |ev| username.1.set(event_target_value(&ev))
+                                disabled=move || loading.0.get()
+                                required 
                             />
                         </div>
-
-                        <div class="form-control w-full mt-4">
+                        <div class="form-control">
                             <label class="label">
                                 <span class="label-text">"Şifre"</span>
                             </label>
-                            <input
-                                type="password"
-                                placeholder="******"
-                                class="input input-bordered w-full"
-                                prop:value=password
-                                on:input=move |ev| set_password.set(event_target_value(&ev))
-                                disabled=move || loading.get()
-                                required
+                            <input 
+                                type="password" 
+                                placeholder="******" 
+                                class="input input-bordered w-full" 
+                                prop:value=move || password.0.get()
+                                on:input=move |ev| password.1.set(event_target_value(&ev))
+                                disabled=move || loading.0.get()
+                                required 
                             />
                         </div>
-
-                        <div class="form-control w-full mt-4">
+                        <div class="form-control">
                             <label class="label">
-                                <span class="label-text">"Şifre Tekrar"</span>
+                                <span class="label-text">"Şifre Onay"</span>
                             </label>
-                            <input
-                                type="password"
-                                placeholder="******"
-                                class="input input-bordered w-full"
-                                prop:value=confirm_password
-                                on:input=move |ev| set_confirm_password.set(event_target_value(&ev))
-                                disabled=move || loading.get()
-                                required
+                            <input 
+                                type="password" 
+                                placeholder="******" 
+                                class="input input-bordered w-full" 
+                                prop:value=move || confirm_password.0.get()
+                                on:input=move |ev| confirm_password.1.set(event_target_value(&ev))
+                                disabled=move || loading.0.get()
+                                required 
                             />
                         </div>
 
-                        <Show when=move || error.get().is_some()>
-                            <div class="alert alert-error mt-4 text-sm py-2">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                <span>{move || error.get()}</span>
+                        <Show when=move || error.0.get().is_some() fallback=|| ()>
+                            <div class="alert alert-error text-xs py-2 shadow-sm">
+                                <span>{move || error.0.get().unwrap_or_default()}</span>
                             </div>
                         </Show>
 
-                        <div class="card-actions justify-end mt-6">
-                            <button
-                                class="btn btn-primary w-full"
+                        <div class="form-control mt-6">
+                            <button 
+                                class="btn btn-primary w-full" 
                                 type="submit"
-                                disabled=move || loading.get()
+                                disabled=move || loading.0.get()
                             >
-                                <Show when=move || loading.get() fallback=|| "Kurulumu Tamamla">
+                                <Show when=move || loading.0.get() fallback=|| "Kurulumu Tamamla">
                                     <span class="loading loading-spinner"></span>
-                                    "İşleniyor..."
                                 </Show>
                             </button>
                         </div>

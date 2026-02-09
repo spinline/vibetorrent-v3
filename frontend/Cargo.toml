@@ -7,8 +7,8 @@ edition = "2021"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-leptos = { version = "0.8.7", features = ["csr", "nightly"] }
-leptos_router = { version = "0.8.7", features = ["nightly"] }
+leptos = { version = "0.8.15", features = ["csr"] }
+leptos_router = { version = "0.8.11" }
 
 console_error_panic_hook = "0.1"
 console_log = "1"
@@ -22,12 +22,12 @@ wasm-bindgen-futures = "0.4"
 uuid = { version = "1", features = ["v4", "js"] }
 futures = "0.3"
 chrono = { version = "0.4", features = ["serde", "wasm-bindgen"] }
-web-sys = { version = "0.3", features = ["HtmlDivElement", "HtmlUListElement", "HtmlLiElement", "HtmlAnchorElement", "MouseEvent", "Event", "Window", "Document", "Element", "DomTokenList", "CssStyleDeclaration", "Storage", "TouchEvent", "TouchList", "Touch", "Navigator", "Notification", "NotificationOptions", "NotificationPermission", "ServiceWorkerContainer", "ServiceWorkerRegistration", "PushManager", "PushSubscription", "PushSubscriptionOptions", "PushSubscriptionOptionsInit", "HtmlDetailsElement"] }
+web-sys = { version = "0.3", features = ["HtmlDivElement", "HtmlUListElement", "HtmlLiElement", "HtmlAnchorElement", "MouseEvent", "Event", "Window", "Document", "Element", "DomTokenList", "CssStyleDeclaration", "Storage", "TouchEvent", "TouchList", "Touch", "Navigator", "Notification", "NotificationOptions", "NotificationPermission", "ServiceWorkerContainer", "ServiceWorkerRegistration", "PushManager", "PushSubscription", "PushSubscriptionOptions", "PushSubscriptionOptionsInit", "HtmlDetailsElement", "HtmlInputElement", "HtmlFormElement", "HtmlDialogElement", "ProgressEvent"] }
 shared = { path = "../shared", features = ["hydrate"] }
 tailwind_fuse = "0.3.2"
 js-sys = "0.3.85"
 base64 = "0.22.1"
 serde-wasm-bindgen = "0.6.5"
-leptos-use = "0.15"
-codee = "0.2"
+leptos-use = { version = "0.16", features = ["storage"] }
+codee = "0.3"
 thiserror = "2.0"

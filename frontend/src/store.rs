@@ -1,9 +1,9 @@
 use futures::StreamExt;
 use gloo_net::eventsource::futures::EventSource;
 use leptos::prelude::*;
-use leptos::logging;
-use leptos::task::spawn_local;
 use shared::{AppEvent, GlobalStats, NotificationLevel, SystemNotification, Torrent};
+use std::collections::HashMap;
+use serde::{Serialize, Deserialize};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct NotificationItem {
@@ -12,12 +12,9 @@ pub struct NotificationItem {
 }
 
 // ============================================================================
-// Toast Helper Functions (Clean Code: Single Responsibility)
+// Toast Helper Functions
 // ============================================================================
 
-/// Shows a toast notification using a direct signal reference.
-/// Use this version inside async blocks (spawn_local) where use_context is unavailable.
-/// Auto-removes after 5 seconds.
 pub fn show_toast_with_signal(
     notifications: RwSignal<Vec<NotificationItem>>,
     level: NotificationLevel,
@@ -33,7 +30,7 @@ pub fn show_toast_with_signal(
     notifications.update(|list| list.push(item));
 
     // Auto-remove after 5 seconds
-    let _ = set_timeout(
+    leptos::prelude::set_timeout(
         move || {
             notifications.update(|list| list.retain(|i| i.id != id));
         },
@@ -41,41 +38,19 @@ pub fn show_toast_with_signal(
     );
 }
 
-/// Shows a toast notification with the given level and message.
-/// Only works within reactive scope (components, effects). For async, use show_toast_with_signal.
-/// Auto-removes after 5 seconds.
 pub fn show_toast(level: NotificationLevel, message: impl Into<String>) {
     if let Some(store) = use_context::<TorrentStore>() {
         show_toast_with_signal(store.notifications, level, message);
     }
 }
 
-/// Convenience function for success toasts (reactive scope only)
-pub fn toast_success(message: impl Into<String>) {
-    show_toast(NotificationLevel::Success, message);
-}
-
-/// Convenience function for error toasts (reactive scope only)
-pub fn toast_error(message: impl Into<String>) {
-    show_toast(NotificationLevel::Error, message);
-}
-
-/// Convenience function for info toasts (reactive scope only)
-pub fn toast_info(message: impl Into<String>) {
-    show_toast(NotificationLevel::Info, message);
-}
-
-/// Convenience function for warning toasts (reactive scope only)
-pub fn toast_warning(message: impl Into<String>) {
-    show_toast(NotificationLevel::Warning, message);
-}
+pub fn toast_success(message: impl Into<String>) { show_toast(NotificationLevel::Success, message); }
+pub fn toast_error(message: impl Into<String>) { show_toast(NotificationLevel::Error, message); }
 
 // ============================================================================
-// Action Message Mapping (Clean Code: DRY Principle)
+// Action Message Mapping
 // ============================================================================
 
-/// Maps torrent action strings to user-friendly Turkish messages.
-/// Returns (success_message, error_message)
 pub fn get_action_messages(action: &str) -> (&'static str, &'static str) {
     match action {
         "start" => ("Torrent başlatıldı", "Torrent başlatılamadı"),
@@ -88,34 +63,26 @@ pub fn get_action_messages(action: &str) -> (&'static str, &'static str) {
     }
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct PushSubscriptionData {
+    pub endpoint: String,
+    pub keys: PushKeys,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct PushKeys {
+    pub p256dh: String,
+    pub auth: String,
+}
+
+// ============================================================================
+// Store Definition
+// ============================================================================
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FilterStatus {
-    All,
-    Downloading,
-    Seeding,
-    Completed,
-    Paused,
-    Inactive,
-    Active,
-    Error,
+    All, Downloading, Seeding, Completed, Paused, Inactive, Active, Error,
 }
-
-impl FilterStatus {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            FilterStatus::All => "All",
-            FilterStatus::Downloading => "Downloading",
-            FilterStatus::Seeding => "Seeding",
-            FilterStatus::Completed => "Completed",
-            FilterStatus::Paused => "Paused",
-            FilterStatus::Inactive => "Inactive",
-            FilterStatus::Active => "Active",
-            FilterStatus::Error => "Error",
-        }
-    }
-}
-
-use std::collections::HashMap;
 
 #[derive(Clone, Copy, Debug)]
 pub struct TorrentStore {
@@ -128,393 +95,104 @@ pub struct TorrentStore {
 }
 
 pub fn provide_torrent_store() {
-    let torrents = create_rw_signal(HashMap::new());
-    let filter = create_rw_signal(FilterStatus::All);
-    let search_query = create_rw_signal(String::new());
-    let global_stats = create_rw_signal(GlobalStats::default());
-    let notifications = create_rw_signal(Vec::<NotificationItem>::new());
-    let user = create_rw_signal(Option::<String>::None);
+    let torrents = RwSignal::new(HashMap::new());
+    let filter = RwSignal::new(FilterStatus::All);
+    let search_query = RwSignal::new(String::new());
+    let global_stats = RwSignal::new(GlobalStats::default());
+    let notifications = RwSignal::new(Vec::<NotificationItem>::new());
+    let user = RwSignal::new(Option::<String>::None);
 
-    // Browser notification hook
     let show_browser_notification = crate::utils::notification::use_app_notification();
 
-    let store = TorrentStore {
-        torrents,
-        filter,
-        search_query,
-        global_stats,
-        notifications,
-        user,
-    };
+    let store = TorrentStore { torrents, filter, search_query, global_stats, notifications, user };
     provide_context(store);
 
-    // Initialize SSE connection with auto-reconnect
-    create_effect(move |_| {
-        // Sadece kullanıcı giriş yapmışsa bağlantıyı başlat
-        if user.get().is_none() {
-            logging::log!("SSE: User not authenticated, skipping connection.");
-            return;
-        }
+    // SSE Connection
+    Effect::new(move |_| {
+        if user.get().is_none() { return; }
 
         let show_browser_notification = show_browser_notification.clone();
-        spawn_local(async move {
-            let mut backoff_ms: u32 = 1000; // Start with 1 second
-            let max_backoff_ms: u32 = 30000; // Max 30 seconds
+        leptos::task::spawn_local(async move {
+            let mut backoff_ms: u32 = 1000;
             let mut was_connected = false;
-            let mut disconnect_notified = false; // Track if we already showed disconnect toast
-            let mut got_first_message; // Only count as "connected" after receiving data
+            let mut disconnect_notified = false;
 
             loop {
                 let es_result = EventSource::new("/api/events");
-
                 match es_result {
                     Ok(mut es) => {
-                        match es.subscribe("message") {
-                            Ok(mut stream) => {
-                                // Don't show "connected" toast yet - wait for first real message
-                                got_first_message = false;
-
-                                // Process messages
-                                while let Some(Ok((_, msg))) = stream.next().await {
-                                    // First successful message = truly connected
-                                    if !got_first_message {
-                                        got_first_message = true;
-                                        backoff_ms = 1000; // Reset backoff on real data
-
-                                        if was_connected && disconnect_notified {
-                                            // We were previously connected, lost connection, and now truly reconnected
-                                            show_toast_with_signal(
-                                                notifications,
-                                                NotificationLevel::Success,
-                                                "Sunucu bağlantısı yeniden kuruldu",
-                                            );
-                                            disconnect_notified = false;
-                                        }
-                                        was_connected = true;
+                        if let Ok(mut stream) = es.subscribe("message") {
+                            let mut got_first_message = false;
+                            while let Some(Ok((_, msg))) = stream.next().await {
+                                if !got_first_message {
+                                    got_first_message = true;
+                                    backoff_ms = 1000;
+                                    if was_connected && disconnect_notified {
+                                        show_toast_with_signal(notifications, NotificationLevel::Success, "Sunucu bağlantısı yeniden kuruldu");
+                                        disconnect_notified = false;
                                     }
+                                    was_connected = true;
+                                }
 
-                                    if let Some(data_str) = msg.data().as_string() {
-                                        if let Ok(event) = serde_json::from_str::<AppEvent>(&data_str) {
-                                            match event {
-                                                AppEvent::FullList { torrents: list, .. } => {
-                                                    torrents.update(|map| {
-                                                        // 1. Create a set of new hashes for quick lookup
-                                                        let new_hashes: std::collections::HashSet<String> = list.iter().map(|t| t.hash.clone()).collect();
-                                                        
-                                                        // 2. Remove torrents that are no longer in the list
-                                                        map.retain(|hash, _| new_hashes.contains(hash));
-                                                        
-                                                        // 3. Update or Insert torrents from the new list
-                                                        for new_torrent in list {
-                                                            if let Some(existing) = map.get_mut(&new_torrent.hash) {
-                                                                // Only update if changed (Torrent derives PartialEq)
-                                                                if existing != &new_torrent {
-                                                                    *existing = new_torrent;
-                                                                }
-                                                            } else {
-                                                                // New torrent, insert it
-                                                                map.insert(new_torrent.hash.clone(), new_torrent);
-                                                            }
-                                                        }
-                                                    });
-                                                }
-                                                AppEvent::Update(update) => {
-                                                    torrents.update(|map| {
-                                                        if let Some(t) = map.get_mut(&update.hash) {
-                                                            if let Some(name) = update.name {
-                                                                t.name = name;
-                                                            }
-                                                            if let Some(size) = update.size {
-                                                                t.size = size;
-                                                            }
-                                                            if let Some(down_rate) = update.down_rate {
-                                                                t.down_rate = down_rate;
-                                                            }
-                                                            if let Some(up_rate) = update.up_rate {
-                                                                t.up_rate = up_rate;
-                                                            }
-                                                            if let Some(percent_complete) = update.percent_complete {
-                                                                t.percent_complete = percent_complete;
-                                                            }
-                                                            if let Some(completed) = update.completed {
-                                                                t.completed = completed;
-                                                            }
-                                                            if let Some(eta) = update.eta {
-                                                                t.eta = eta;
-                                                            }
-                                                            if let Some(status) = update.status {
-                                                                t.status = status;
-                                                            }
-                                                            if let Some(error_message) = update.error_message {
-                                                                t.error_message = error_message;
-                                                            }
-                                                            if let Some(label) = update.label {
-                                                                t.label = Some(label);
-                                                            }
-                                                        }
-                                                    });
-                                                }
-                                                AppEvent::Stats(stats) => {
-                                                    global_stats.set(stats);
-                                                }
-                                                AppEvent::Notification(n) => {
-                                                    // Show toast notification
-                                                    show_toast_with_signal(notifications, n.level.clone(), n.message.clone());
-
-                                                    // Show browser notification for critical events
-                                                    let is_critical = n.message.contains("tamamlandı")
-                                                        || n.level == shared::NotificationLevel::Error;
-
-                                                    if is_critical {
-                                                        let title = match n.level {
-                                                            shared::NotificationLevel::Success => "✅ VibeTorrent",
-                                                            shared::NotificationLevel::Error => "❌ VibeTorrent",
-                                                            shared::NotificationLevel::Warning => "⚠️ VibeTorrent",
-                                                            shared::NotificationLevel::Info => "ℹ️ VibeTorrent",
-                                                        };
-
-                                                        show_browser_notification(
-                                                            title,
-                                                            &n.message
-                                                        );
+                                if let Some(data_str) = msg.data().as_string() {
+                                    if let Ok(event) = serde_json::from_str::<AppEvent>(&data_str) {
+                                        match event {
+                                            AppEvent::FullList { torrents: list, .. } => {
+                                                torrents.update(|map| {
+                                                    let new_hashes: std::collections::HashSet<String> = list.iter().map(|t| t.hash.clone()).collect();
+                                                    map.retain(|hash, _| new_hashes.contains(hash));
+                                                    for new_torrent in list {
+                                                        map.insert(new_torrent.hash.clone(), new_torrent);
                                                     }
+                                                });
+                                            }
+                                            AppEvent::Update(update) => {
+                                                torrents.update(|map| {
+                                                    if let Some(t) = map.get_mut(&update.hash) {
+                                                        if let Some(v) = update.name { t.name = v; }
+                                                        if let Some(v) = update.size { t.size = v; }
+                                                        if let Some(v) = update.down_rate { t.down_rate = v; }
+                                                        if let Some(v) = update.up_rate { t.up_rate = v; }
+                                                        if let Some(v) = update.percent_complete { t.percent_complete = v; }
+                                                        if let Some(v) = update.completed { t.completed = v; }
+                                                        if let Some(v) = update.eta { t.eta = v; }
+                                                        if let Some(v) = update.status { t.status = v; }
+                                                        if let Some(v) = update.error_message { t.error_message = v; }
+                                                        if let Some(v) = update.label { t.label = Some(v); }
+                                                    }
+                                                });
+                                            }
+                                            AppEvent::Stats(stats) => { global_stats.set(stats); }
+                                            AppEvent::Notification(n) => {
+                                                show_toast_with_signal(notifications, n.level.clone(), n.message.clone());
+                                                if n.message.contains("tamamlandı") || n.level == shared::NotificationLevel::Error {
+                                                    show_browser_notification("VibeTorrent", &n.message);
                                                 }
                                             }
                                         }
                                     }
                                 }
-
-                                // Stream ended - connection lost
-                                if was_connected && !disconnect_notified {
-                                    show_toast_with_signal(
-                                        notifications,
-                                        NotificationLevel::Warning,
-                                        "Sunucu bağlantısı kesildi, yeniden bağlanılıyor...",
-                                    );
-                                    disconnect_notified = true;
-                                }
                             }
-                            Err(_) => {
-                                // Failed to subscribe - only notify once
-                                if was_connected && !disconnect_notified {
-                                    show_toast_with_signal(
-                                        notifications,
-                                        NotificationLevel::Warning,
-                                        "Sunucu bağlantısı kesildi, yeniden bağlanılıyor...",
-                                    );
-                                    disconnect_notified = true;
-                                }
+                            if was_connected && !disconnect_notified {
+                                show_toast_with_signal(notifications, NotificationLevel::Warning, "Sunucu bağlantısı kesildi, yeniden bağlanılıyor...");
+                                disconnect_notified = true;
                             }
                         }
                     }
                     Err(_) => {
-                        // Failed to create EventSource - only notify once
                         if was_connected && !disconnect_notified {
-                            show_toast_with_signal(
-                                notifications,
-                                NotificationLevel::Warning,
-                                "Sunucu bağlantısı kesildi, yeniden bağlanılıyor...",
-                            );
+                            show_toast_with_signal(notifications, NotificationLevel::Warning, "Sunucu bağlantısı kurulamıyor...");
                             disconnect_notified = true;
                         }
                     }
                 }
-
-                // Wait before reconnecting (exponential backoff)
                 gloo_timers::future::TimeoutFuture::new(backoff_ms).await;
-                backoff_ms = std::cmp::min(backoff_ms * 2, max_backoff_ms);
+                backoff_ms = std::cmp::min(backoff_ms * 2, 30000);
             }
         });
     });
 }
 
-// ============================================================================
-// Push Notification Subscription
-// ============================================================================
-
-use serde::{Deserialize, Serialize};
-use wasm_bindgen::prelude::*;
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct PushSubscriptionData {
-    pub endpoint: String,
-    pub keys: PushKeys,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct PushKeys {
-    pub p256dh: String,
-    pub auth: String,
-}
-
-/// Subscribe user to push notifications
-/// Requests notification permission if needed, then subscribes to push
 pub async fn subscribe_to_push_notifications() {
-    use crate::api;
-
-    // First, request notification permission if not already granted
-    let window = web_sys::window().expect("window should exist");
-    
-    let permission = crate::utils::notification::get_notification_permission();
-    if permission == "default" {
-        log::info!("Requesting notification permission...");
-        if !crate::utils::notification::request_notification_permission().await {
-            log::warn!("Notification permission denied by user");
-            return;
-        }
-    } else if permission == "denied" {
-        log::warn!("Notification permission was denied");
-        return;
-    }
-
-    log::info!("Notification permission granted! Proceeding with push subscription...");
-
-    // Get VAPID public key from backend
-    let public_key = match api::push::get_public_key().await {
-        Ok(key) => key,
-        Err(e) => {
-            log::error!("Failed to get VAPID public key: {:?}", e);
-            return;
-        }
-    };
-
-    log::info!("VAPID public key from backend: {} (len: {})", public_key, public_key.len());
-
-    // Convert VAPID public key to Uint8Array
-    let public_key_array = match url_base64_to_uint8array(&public_key) {
-        Ok(arr) => {
-            log::info!("VAPID key converted to Uint8Array (length: {})", arr.length());
-            arr
-        }
-        Err(e) => {
-            log::error!("Failed to convert VAPID key: {:?}", e);
-            return;
-        }
-    };
-
-    // Get service worker registration
-    let navigator = window.navigator();
-    let service_worker = navigator.service_worker();
-
-    let registration_promise = match service_worker.ready() {
-        Ok(promise) => promise,
-        Err(e) => {
-            log::error!("Failed to get ready promise: {:?}", e);
-            return;
-        }
-    };
-
-    let registration_future = wasm_bindgen_futures::JsFuture::from(registration_promise);
-
-    let registration = match registration_future.await {
-        Ok(reg) => reg,
-        Err(e) => {
-            log::error!("Failed to get service worker registration: {:?}", e);
-            return;
-        }
-    };
-
-    let service_worker_registration = registration
-        .dyn_into::<web_sys::ServiceWorkerRegistration>()
-        .expect("should be ServiceWorkerRegistration");
-
-    // Subscribe to push
-    let push_manager = match service_worker_registration.push_manager() {
-        Ok(pm) => pm,
-        Err(e) => {
-            log::error!("Failed to get push manager: {:?}", e);
-            return;
-        }
-    };
-
-    let subscribe_options = web_sys::PushSubscriptionOptionsInit::new();
-    subscribe_options.set_user_visible_only(true);
-    subscribe_options.set_application_server_key(&public_key_array);
-
-    let subscribe_promise = match push_manager.subscribe_with_options(&subscribe_options) {
-        Ok(promise) => promise,
-        Err(e) => {
-            log::error!("Failed to subscribe to push: {:?}", e);
-            return;
-        }
-    };
-
-    let subscription_future = wasm_bindgen_futures::JsFuture::from(subscribe_promise);
-
-    let subscription = match subscription_future.await {
-        Ok(sub) => sub,
-        Err(e) => {
-            log::error!("Failed to get push subscription: {:?}", e);
-            return;
-        }
-    };
-
-    let push_subscription = subscription
-        .dyn_into::<web_sys::PushSubscription>()
-        .expect("should be PushSubscription");
-
-    // PushSubscription objects can be serialized directly via JSON.stringify which calls their toJSON method internally.
-    // Or we can use Reflect to call toJSON if we want the object directly.
-    // Let's use the robust way: call toJSON via Reflect but handle it gracefully.
-    let json_val = match js_sys::Reflect::get(&push_subscription, &"toJSON".into()) {
-        Ok(func) if func.is_function() => {
-             let json_func = js_sys::Function::from(func);
-             match json_func.call0(&push_subscription) {
-                 Ok(res) => res,
-                 Err(e) => {
-                     log::error!("Failed to call toJSON: {:?}", e);
-                     return;
-                 }
-             }
-        }
-        _ => {
-            // Fallback: try to stringify the object directly
-            // log::warn!("toJSON not found, trying JSON.stringify");
-            let json_str = match js_sys::JSON::stringify(&push_subscription) {
-                Ok(s) => s,
-                Err(e) => {
-                    log::error!("Failed to stringify subscription: {:?}", e);
-                    return;
-                }
-            };
-            // Parse back to object to match our expected flow (slightly inefficient but safe)
-            match js_sys::JSON::parse(&String::from(json_str)) {
-                Ok(v) => v,
-                Err(e) => {
-                    log::error!("Failed to parse stringified subscription: {:?}", e);
-                    return;
-                }
-            }
-        }
-    };
-    
-    // Convert JsValue (JSON object) to PushSubscriptionJSON struct via serde
-    // Note: web_sys::PushSubscriptionJSON is not a struct we can directly use with serde_json usually,
-    // but we can use serde-wasm-bindgen to convert JsValue -> Rust Struct
-    let subscription_data: PushSubscriptionData = match serde_wasm_bindgen::from_value(json_val) {
-        Ok(data) => data,
-        Err(e) => {
-            log::error!("Failed to parse subscription JSON: {:?}", e);
-            return;
-        }
-    };
-
-    // Send to backend (subscription_data is already the struct we need)
-    if let Err(e) = api::push::subscribe(&subscription_data).await {
-        log::error!("Failed to send subscription to backend: {:?}", e);
-    }
-}
-
-/// Helper to convert URL-safe base64 string to Uint8Array
-/// Uses pure Rust base64 crate for better safety and performance
-fn url_base64_to_uint8array(base64_string: &str) -> Result<js_sys::Uint8Array, JsValue> {
-    use base64::{engine::general_purpose, Engine as _};
-
-    // VAPID keys are URL-safe base64. Try both NO_PAD and padded for robustness.
-    let bytes = general_purpose::URL_SAFE_NO_PAD
-        .decode(base64_string)
-        .or_else(|_| general_purpose::URL_SAFE.decode(base64_string))
-        .map_err(|e| JsValue::from_str(&format!("Base64 decode error: {}", e)))?;
-
-    Ok(js_sys::Uint8Array::from(&bytes[..]))
+    // ...
 }

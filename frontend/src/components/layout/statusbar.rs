@@ -1,11 +1,8 @@
 use leptos::prelude::*;
-use leptos::logging;
 use leptos::html;
-use leptos::task::spawn_local;
 use leptos_use::storage::use_local_storage;
 use ::codee::string::FromToStringCodec;
 use shared::GlobalLimitRequest;
-use reactive_graph::traits::{Get, Set, GetUntracked};
 use crate::api;
 
 fn format_bytes(bytes: i64) -> String {
@@ -33,16 +30,16 @@ pub fn StatusBar() -> impl IntoView {
     let store = use_context::<crate::store::TorrentStore>().expect("store not provided");
     let stats = store.global_stats;
 
-    // Use leptos-use for reactive localStorage management
     let (current_theme, set_current_theme, _) = use_local_storage::<String, FromToStringCodec>("vibetorrent_theme");
 
     // Initialize with default if empty
-    if current_theme.get_untracked().is_empty() {
+    let current_theme_val = current_theme.get();
+    if current_theme_val.is_empty() {
         set_current_theme.set("dark".to_string());
     }
 
     // Automatically sync theme to document attribute
-    create_effect(move |_| {
+    Effect::new(move |_| {
         let theme = current_theme.get().to_lowercase();
         if let Some(doc) = document().document_element() {
             let _ = doc.set_attribute("data-theme", &theme);
@@ -50,7 +47,7 @@ pub fn StatusBar() -> impl IntoView {
     });
 
     // Preset limits in bytes/s
-    let limits: Vec<(i64, &str)> = vec![
+    let limits: Vec<(i64, &str)> = vec!(
         (0, "Unlimited"),
         (100 * 1024, "100 KB/s"),
         (500 * 1024, "500 KB/s"),
@@ -59,11 +56,11 @@ pub fn StatusBar() -> impl IntoView {
         (5 * 1024 * 1024, "5 MB/s"),
         (10 * 1024 * 1024, "10 MB/s"),
         (20 * 1024 * 1024, "20 MB/s"),
-    ];
+    );
 
     let set_limit = move |limit_type: &str, val: i64| {
         let limit_type = limit_type.to_string();
-        logging::log!("Setting {} limit to {}", limit_type, val);
+        log::info!("Setting {} limit to {}", limit_type, val);
 
         let req = if limit_type == "down" {
             GlobalLimitRequest {
@@ -77,22 +74,20 @@ pub fn StatusBar() -> impl IntoView {
             }
         };
 
-        spawn_local(async move {
+        leptos::task::spawn_local(async move {
             if let Err(e) = api::settings::set_global_limits(&req).await {
-                logging::error!("Failed to set limit: {:?}", e);
+                log::error!("Failed to set limit: {:?}", e);
             } else {
-                logging::log!("Limit set successfully");
+                log::info!("Limit set successfully");
             }
         });
     };
 
-        // Refs for click outside detection (Handled globally via JS in index.html for better iOS support)
-        let down_details_ref = create_node_ref::<html::Details>();
-        let up_details_ref = create_node_ref::<html::Details>();
-        let theme_details_ref = create_node_ref::<html::Details>();
+        let down_details_ref = NodeRef::<html::Details>::new();
+        let up_details_ref = NodeRef::<html::Details>::new();
+        let theme_details_ref = NodeRef::<html::Details>::new();
 
-        // Helper to close a details element
-        let close_details = |node_ref: NodeRef<html::Details>| {
+        let close_details = move |node_ref: NodeRef<html::Details>| {
             if let Some(el) = node_ref.get_untracked() {
                 el.set_open(false);
             }
@@ -199,16 +194,19 @@ pub fn StatusBar() -> impl IntoView {
                                     "light", "dark", "dim", "nord", "cupcake", "dracula", "cyberpunk", "emerald", "sunset", "abyss"
                                 ];
                                 themes.into_iter().map(|theme| {
+                                    let theme_name = theme.to_string();
+                                    let theme_name_for_class = theme_name.clone();
+                                    let theme_name_for_onclick = theme_name.clone();
                                     view! {
                                         <li>
                                             <button
-                                                class=move || if current_theme.get() == theme { "bg-primary/10 text-primary font-bold text-xs capitalize" } else { "text-xs capitalize" }
+                                                class=move || if current_theme.get() == theme_name_for_class { "bg-primary/10 text-primary font-bold text-xs capitalize" } else { "text-xs capitalize" }
                                                 on:click=move |_| {
-                                                    set_current_theme.set(theme.to_string());
+                                                    set_current_theme.set(theme_name_for_onclick.clone());
                                                     close_details(theme_details_ref);
                                                 }
                                             >
-                                                {theme}
+                                                {theme_name}
                                             </button>
                                         </li>
                                     }
@@ -221,7 +219,7 @@ pub fn StatusBar() -> impl IntoView {
                     title="Settings & Notification Permissions"
                     on:click=move |_| {
                         // Request push notification permission when settings button is clicked
-                        spawn_local(async {
+                        leptos::task::spawn_local(async {
                             log::info!("Settings button clicked - requesting push notification permission");
 
                             // Check current permission state before requesting
@@ -266,7 +264,7 @@ pub fn StatusBar() -> impl IntoView {
                     }
                 >
                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.212 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.212 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 012.6-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" />
                         <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
                 </button>

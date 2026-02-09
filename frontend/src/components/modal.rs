@@ -1,7 +1,7 @@
 use leptos::prelude::*;
 
-#[allow(dead_code)]
 #[component]
+#[allow(dead_code)]
 pub fn Modal(
     #[prop(into)] title: String,
     children: ChildrenFn,

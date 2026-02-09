@@ -15,6 +15,8 @@ pub fn App() -> impl IntoView {
 
     let is_loading = signal(true);
     let is_authenticated = signal(false);
+    let needs_auth_redirect = signal(false);
+    let needs_setup_redirect = signal(false);
 
     Effect::new(move |_| {
         spawn_local(async move {
@@ -26,7 +28,8 @@ pub fn App() -> impl IntoView {
                 Ok(status) => {
                     if !status.completed {
                         log::info!("Setup not completed, redirecting to /setup");
-                        is_loading.1.set(false);
+                        needs_setup_redirect.set(true);
+                        is_loading.set(false);
                         return;
                     }
                 }
@@ -45,22 +48,24 @@ pub fn App() -> impl IntoView {
                         }
                     }
 
-                    is_authenticated.1.set(true);
+                    is_authenticated.set(true);
                 }
                 Ok(false) => {
                     log::info!("Not authenticated");
+                    needs_auth_redirect.set(true);
                 }
                 Err(e) => {
                     log::error!("Auth check failed: {:?}", e);
+                    needs_auth_redirect.set(true);
                 }
             }
 
-            is_loading.1.set(false);
+            is_loading.set(false);
         });
     });
 
     Effect::new(move |_| {
-        if is_authenticated.0.get() {
+        if is_authenticated.get() {
             spawn_local(async {
                 gloo_timers::future::TimeoutFuture::new(2000).await;
 
@@ -76,12 +81,12 @@ pub fn App() -> impl IntoView {
             <Router>
                 <Routes fallback=|| view! { <div class="p-4">"404 Not Found"</div> }>
                     <Route path=leptos_router::path!("/login") view=move || {
-                        let authenticated = is_authenticated.0.get();
-                        let navigate = use_navigate();
+                        let authenticated = is_authenticated.get();
                         
                         Effect::new(move |_| {
                             if authenticated {
                                 log::info!("Already authenticated, redirecting to home");
+                                let navigate = use_navigate();
                                 navigate("/", Default::default());
                             }
                         });
@@ -89,10 +94,9 @@ pub fn App() -> impl IntoView {
                         view! { <Login /> }
                     } />
                     <Route path=leptos_router::path!("/setup") view=move || {
-                        let navigate = use_navigate();
-                        
                         Effect::new(move |_| {
-                            if is_authenticated.0.get() {
+                            if is_authenticated.get() {
+                                let navigate = use_navigate();
                                 navigate("/", Default::default());
                             }
                         });
@@ -101,22 +105,21 @@ pub fn App() -> impl IntoView {
                     } />
 
                     <Route path=leptos_router::path!("/") view=move || {
-                        let navigate = use_navigate();
-                        
                         Effect::new(move |_| {
-                            if !is_loading.0.get() && !is_authenticated.0.get() {
+                            if !is_loading.get() && !is_authenticated.get() {
                                 log::info!("Not authenticated, redirecting to login");
+                                let navigate = use_navigate();
                                 navigate("/login", Default::default());
                             }
                         });
                         
                         view! {
-                            <Show when=move || !is_loading.0.get() fallback=|| view! {
+                            <Show when=move || !is_loading.get() fallback=|| view! {
                                 <div class="flex items-center justify-center h-screen bg-base-100">
                                     <span class="loading loading-spinner loading-lg"></span>
                                 </div>
                             }>
-                                <Show when=move || is_authenticated.0.get() fallback=|| ()>
+                                <Show when=move || is_authenticated.get() fallback=|| ()>
                                     <Protected>
                                         <TorrentTable />
                                     </Protected>
@@ -126,17 +129,16 @@ pub fn App() -> impl IntoView {
                     }/>
 
                     <Route path=leptos_router::path!("/settings") view=move || {
-                        let navigate = use_navigate();
-                        
                         Effect::new(move |_| {
-                            if !is_authenticated.0.get() {
+                            if !is_authenticated.get() {
+                                let navigate = use_navigate();
                                 navigate("/login", Default::default());
                             }
                         });
                         
                         view! {
-                            <Show when=move || !is_loading.0.get() fallback=|| ()>
-                                <Show when=move || is_authenticated.0.get() fallback=|| ()>
+                            <Show when=move || !is_loading.get() fallback=|| ()>
+                                <Show when=move || is_authenticated.get() fallback=|| ()>
                                     <Protected>
                                         <div class="p-4">"Settings Page (Coming Soon)"</div>
                                     </Protected>

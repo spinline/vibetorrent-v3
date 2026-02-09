@@ -3,7 +3,7 @@ use leptos::logging;
 use leptos::html;
 use leptos::task::spawn_local;
 use leptos_use::{on_click_outside, use_timeout_fn};
-use crate::store::{get_action_messages, show_toast_with_signal, FilterStatus, TorrentStore};
+use crate::store::{get_action_messages, show_toast_with_signal, FilterStatus};
 use crate::api;
 use shared::{NotificationLevel, Torrent};
 use std::collections::HashMap;
@@ -192,7 +192,7 @@ pub fn TorrentTable() -> impl IntoView {
             }
         } else {
             view! { <span class="ml-1 text-xs opacity-0 group-hover:opacity-50">"▲"</span> }
-                .into_view()
+                .into_any()
         }
     };
 
@@ -382,8 +382,8 @@ pub fn TorrentTable() -> impl IntoView {
                     visible=true
                     position=menu_position.get()
                     torrent_hash=selected_hash.get().unwrap_or_default()
-                    on_close=Callback::from(move |()| set_menu_visible.set(false))
-                    on_action=Callback::from(move |args| on_action(args))
+                    on_close=Callback::new(move |()| set_menu_visible.set(false))
+                    on_action=Callback::new(move |args| on_action(args))
                 />
             </Show>
         </div>
@@ -449,7 +449,7 @@ fn TorrentRow(
                             }
                         >
                             <td class="font-medium truncate max-w-xs" title={t.name.clone()}>
-                                {t.name}
+                                {t.name.clone()}
                             </td>
                             <td class="opacity-80 font-mono text-[11px]">{format_bytes(t.size)}</td>
                             <td>

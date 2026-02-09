@@ -1,6 +1,7 @@
 use wasm_bindgen::prelude::*;
 use web_sys::{Notification, NotificationOptions};
-use leptos::*;
+use leptos::prelude::*;
+use reactive_graph::traits::Get; // Signal::get() için gerekli
 use leptos_use::{use_web_notification, UseWebNotificationReturn, NotificationPermission};
 
 /// Request browser notification permission from user

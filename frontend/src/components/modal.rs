@@ -1,5 +1,6 @@
 use leptos::prelude::*;
 
+#[allow(dead_code)]
 #[component]
 pub fn Modal(
     #[prop(into)] title: String,

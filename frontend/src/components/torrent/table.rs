@@ -4,7 +4,7 @@ use leptos::task::spawn_local;
 use leptos_use::use_timeout_fn;
 use crate::store::{get_action_messages, show_toast_with_signal};
 use crate::api;
-use shared::{NotificationLevel, Torrent};
+use shared::NotificationLevel;
 
 fn format_bytes(bytes: i64) -> String {
     const UNITS: [&str; 6] = ["B", "KB", "MB", "GB", "TB", "PB"];

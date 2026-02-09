@@ -330,7 +330,6 @@ dependencies = [
  "serde",
  "serde_json",
  "shared",
- "sqlx",
  "thiserror 2.0.18",
  "time",
  "tokio",
@@ -3651,12 +3650,14 @@ dependencies = [
 name = "shared"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "bytes",
  "leptos",
  "leptos_axum",
  "leptos_router",
  "quick-xml",
  "serde",
+ "sqlx",
  "thiserror 2.0.18",
  "tokio",
  "utoipa",

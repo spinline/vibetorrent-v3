@@ -55,18 +55,6 @@ pub fn get_action_messages(action: &str) -> (&'static str, &'static str) {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct PushSubscriptionData {
-    pub endpoint: String,
-    pub keys: PushKeys,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct PushKeys {
-    pub p256dh: String,
-    pub auth: String,
-}
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FilterStatus {
     All, Downloading, Seeding, Completed, Paused, Inactive, Active, Error,

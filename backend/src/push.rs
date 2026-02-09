@@ -7,7 +7,7 @@ use web_push::{
 };
 use futures::StreamExt;
 
-use crate::db::Db;
+use shared::db::Db;
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct PushSubscription {

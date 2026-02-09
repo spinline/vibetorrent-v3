@@ -1,4 +1,3 @@
-mod db;
 mod diff;
 mod handlers;
 #[cfg(feature = "push-notifications")]
@@ -42,7 +41,7 @@ pub struct AppState {
     pub tx: Arc<watch::Sender<Vec<Torrent>>>,
     pub event_bus: broadcast::Sender<AppEvent>,
     pub scgi_socket_path: String,
-    pub db: db::Db,
+    pub db: shared::db::Db,
     #[cfg(feature = "push-notifications")]
     pub push_store: push::PushSubscriptionStore,
     pub notify_poll: Arc<tokio::sync::Notify>,
@@ -103,46 +102,6 @@ struct Args {
 }
 
 #[cfg(feature = "swagger")]
-#[cfg(feature = "push-notifications")]
-#[derive(OpenApi)]
-#[openapi(
-    paths(
-        handlers::get_push_public_key_handler,
-        handlers::subscribe_push_handler,
-        handlers::auth::login_handler,
-        handlers::auth::logout_handler,
-        handlers::auth::check_auth_handler,
-        handlers::setup::setup_handler,
-        handlers::setup::get_setup_status_handler
-    ),
-    components(
-        schemas(
-            shared::AddTorrentRequest,
-            shared::TorrentActionRequest,
-            shared::Torrent,
-            shared::TorrentStatus,
-            shared::TorrentFile,
-            shared::TorrentPeer,
-            shared::TorrentTracker,
-            shared::SetFilePriorityRequest,
-            shared::SetLabelRequest,
-            shared::GlobalLimitRequest,
-            push::PushSubscription,
-            push::PushKeys,
-            handlers::auth::LoginRequest,
-            handlers::setup::SetupRequest,
-            handlers::setup::SetupStatusResponse,
-            handlers::auth::UserResponse
-        )
-    ),
-    tags(
-        (name = "vibetorrent", description = "VibeTorrent API")
-    )
-)]
-struct ApiDoc;
-
-#[cfg(feature = "swagger")]
-#[cfg(not(feature = "push-notifications"))]
 #[derive(OpenApi)]
 #[openapi(
     paths(
@@ -206,7 +165,7 @@ async fn main() {
         }
     }
 
-    let db: db::Db = match db::Db::new(&args.db_url).await {
+    let db: shared::db::Db = match shared::db::Db::new(&args.db_url).await {
         Ok(db) => db,
         Err(e) => {
             tracing::error!("Failed to connect to database: {}", e);
@@ -470,6 +429,7 @@ async fn main() {
 
     // Setup & Auth Routes (cookie-based, stay as REST)
     let scgi_path_for_ctx = args.socket.clone();
+    let db_for_ctx = db.clone();
     let app = app
         .route("/api/setup/status", get(handlers::setup::get_setup_status_handler))
         .route("/api/setup", post(handlers::setup::setup_handler))
@@ -484,11 +444,17 @@ async fn main() {
         .route("/api/events", get(sse::sse_handler))
         .route("/api/server_fns/{*fn_name}", post({
             let scgi_path = scgi_path_for_ctx.clone();
+            let db = db_for_ctx.clone();
             move |req: Request<Body>| {
+                let scgi_path = scgi_path.clone();
+                let db = db.clone();
                 leptos_axum::handle_server_fns_with_context(
                     move || {
                         leptos::context::provide_context(shared::ServerContext {
                             scgi_socket_path: scgi_path.clone(),
+                        });
+                        leptos::context::provide_context(shared::DbContext {
+                            db: db.clone(),
                         });
                     },
                     req,
@@ -496,11 +462,6 @@ async fn main() {
             }
         }))
         .fallback(handlers::static_handler);
-
-    #[cfg(feature = "push-notifications")]
-    let app = app
-        .route("/api/push/public-key", get(handlers::get_push_public_key_handler))
-        .route("/api/push/subscribe", post(handlers::subscribe_push_handler));
 
     let app = app
         .layer(middleware::from_fn_with_state(app_state.clone(), auth_middleware))

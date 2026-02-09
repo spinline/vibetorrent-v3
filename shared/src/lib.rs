@@ -7,11 +7,20 @@ pub mod scgi;
 #[cfg(feature = "ssr")]
 pub mod xmlrpc;
 
+#[cfg(feature = "ssr")]
+pub mod db;
+
 pub mod server_fns;
 
 #[derive(Clone, Debug)]
 pub struct ServerContext {
     pub scgi_socket_path: String,
+}
+
+#[cfg(feature = "ssr")]
+#[derive(Clone)]
+pub struct DbContext {
+    pub db: db::Db,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, ToSchema)]

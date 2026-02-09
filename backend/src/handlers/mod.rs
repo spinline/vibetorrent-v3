@@ -49,21 +49,3 @@ pub async fn handle_timeout_error(err: BoxError) -> (StatusCode, &'static str) {
         )
     }
 }
-
-#[cfg(feature = "push-notifications")]
-pub async fn get_push_public_key_handler(
-    axum::extract::State(state): axum::extract::State<crate::AppState>,
-) -> impl IntoResponse {
-    let public_key = state.push_store.get_public_key();
-    (StatusCode::OK, axum::extract::Json(serde_json::json!({ "publicKey": public_key }))).into_response()
-}
-
-#[cfg(feature = "push-notifications")]
-pub async fn subscribe_push_handler(
-    axum::extract::State(state): axum::extract::State<crate::AppState>,
-    axum::extract::Json(subscription): axum::extract::Json<crate::push::PushSubscription>,
-) -> impl IntoResponse {
-    tracing::info!("Received push subscription: {:?}", subscription);
-    state.push_store.add_subscription(subscription).await;
-    (StatusCode::OK, "Subscription saved").into_response()
-}

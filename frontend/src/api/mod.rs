@@ -142,25 +142,21 @@ pub mod settings {
 
 pub mod push {
     use super::*;
-    use crate::store::PushSubscriptionData;
 
     pub async fn get_public_key() -> Result<String, ApiError> {
-        let resp = Request::get(&format!("{}/push/public-key", base_url()))
-            .send()
+        shared::server_fns::push::get_public_key()
             .await
-            .map_err(|_| ApiError::Network)?;
-        let key = resp.text().await.map_err(|_| ApiError::Network)?;
-        Ok(key)
+            .map_err(|e| ApiError::ServerFn(e.to_string()))
     }
 
-    pub async fn subscribe(req: &PushSubscriptionData) -> Result<(), ApiError> {
-        Request::post(&format!("{}/push/subscribe", base_url()))
-            .json(req)
-            .map_err(|_| ApiError::Network)?
-            .send()
-            .await
-            .map_err(|_| ApiError::Network)?;
-        Ok(())
+    pub async fn subscribe(endpoint: &str, p256dh: &str, auth: &str) -> Result<(), ApiError> {
+        shared::server_fns::push::subscribe_push(
+            endpoint.to_string(),
+            p256dh.to_string(),
+            auth.to_string(),
+        )
+        .await
+        .map_err(|e| ApiError::ServerFn(e.to_string()))
     }
 }
 

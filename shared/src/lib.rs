@@ -9,6 +9,11 @@ pub mod xmlrpc;
 
 pub mod server_fns;
 
+#[derive(Clone, Debug)]
+pub struct ServerContext {
+    pub scgi_socket_path: String,
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, ToSchema)]
 pub struct Torrent {
     pub hash: String,

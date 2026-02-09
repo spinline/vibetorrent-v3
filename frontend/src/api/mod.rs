@@ -1,5 +1,4 @@
 use gloo_net::http::Request;
-use shared::{AddTorrentRequest, TorrentActionRequest};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -14,6 +13,8 @@ pub enum ApiError {
     Unauthorized,
     #[error("Too many requests")]
     RateLimited,
+    #[error("Server function error: {0}")]
+    ServerFn(String),
 }
 
 fn base_url() -> String {
@@ -130,13 +131,12 @@ pub mod settings {
     use shared::GlobalLimitRequest;
 
     pub async fn set_global_limits(req: &GlobalLimitRequest) -> Result<(), ApiError> {
-        Request::post(&format!("{}/settings/global-limits", base_url()))
-            .json(req)
-            .map_err(|_| ApiError::Network)?
-            .send()
-            .await
-            .map_err(|_| ApiError::Network)?;
-        Ok(())
+        shared::server_fns::settings::set_global_limits(
+            req.max_download_rate,
+            req.max_upload_rate,
+        )
+        .await
+        .map_err(|e| ApiError::ServerFn(e.to_string()))
     }
 }
 
@@ -168,30 +168,16 @@ pub mod torrent {
     use super::*;
 
     pub async fn add(uri: &str) -> Result<(), ApiError> {
-        let req = AddTorrentRequest {
-            uri: uri.to_string(),
-        };
-        Request::post(&format!("{}/torrents/add", base_url()))
-            .json(&req)
-            .map_err(|_| ApiError::Network)?
-            .send()
+        shared::server_fns::torrent::add_torrent(uri.to_string())
             .await
-            .map_err(|_| ApiError::Network)?;
-        Ok(())
+            .map_err(|e| ApiError::ServerFn(e.to_string()))
     }
 
     pub async fn action(hash: &str, action: &str) -> Result<(), ApiError> {
-        let req = TorrentActionRequest {
-            hash: hash.to_string(),
-            action: action.to_string(),
-        };
-        Request::post(&format!("{}/torrents/action", base_url()))
-            .json(&req)
-            .map_err(|_| ApiError::Network)?
-            .send()
+        shared::server_fns::torrent::torrent_action(hash.to_string(), action.to_string())
             .await
-            .map_err(|_| ApiError::Network)?;
-        Ok(())
+            .map(|_| ())
+            .map_err(|e| ApiError::ServerFn(e.to_string()))
     }
 
     pub async fn delete(hash: &str) -> Result<(), ApiError> {
@@ -211,33 +197,18 @@ pub mod torrent {
     }
 
     pub async fn set_label(hash: &str, label: &str) -> Result<(), ApiError> {
-        use shared::SetLabelRequest;
-        let req = SetLabelRequest {
-            hash: hash.to_string(),
-            label: label.to_string(),
-        };
-        Request::post(&format!("{}/torrents/set_label", base_url()))
-            .json(&req)
-            .map_err(|_| ApiError::Network)?
-            .send()
+        shared::server_fns::torrent::set_label(hash.to_string(), label.to_string())
             .await
-            .map_err(|_| ApiError::Network)?;
-        Ok(())
+            .map_err(|e| ApiError::ServerFn(e.to_string()))
     }
 
     pub async fn set_priority(hash: &str, file_index: u32, priority: u8) -> Result<(), ApiError> {
-        use shared::SetFilePriorityRequest;
-        let req = SetFilePriorityRequest {
-            hash: hash.to_string(),
+        shared::server_fns::torrent::set_file_priority(
+            hash.to_string(),
             file_index,
             priority,
-        };
-        Request::post(&format!("{}/torrents/set_priority", base_url()))
-            .json(&req)
-            .map_err(|_| ApiError::Network)?
-            .send()
-            .await
-            .map_err(|_| ApiError::Network)?;
-        Ok(())
+        )
+        .await
+        .map_err(|e| ApiError::ServerFn(e.to_string()))
     }
 }

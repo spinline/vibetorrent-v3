@@ -107,16 +107,6 @@ struct Args {
 #[derive(OpenApi)]
 #[openapi(
     paths(
-        handlers::add_torrent_handler,
-        handlers::handle_torrent_action,
-        handlers::get_version_handler,
-        handlers::get_files_handler,
-        handlers::get_peers_handler,
-        handlers::get_trackers_handler,
-        handlers::set_file_priority_handler,
-        handlers::set_label_handler,
-        handlers::get_global_limit_handler,
-        handlers::set_global_limit_handler,
         handlers::get_push_public_key_handler,
         handlers::subscribe_push_handler,
         handlers::auth::login_handler,
@@ -156,16 +146,6 @@ struct ApiDoc;
 #[derive(OpenApi)]
 #[openapi(
     paths(
-        handlers::add_torrent_handler,
-        handlers::handle_torrent_action,
-        handlers::get_version_handler,
-        handlers::get_files_handler,
-        handlers::get_peers_handler,
-        handlers::get_trackers_handler,
-        handlers::set_file_priority_handler,
-        handlers::set_label_handler,
-        handlers::get_global_limit_handler,
-        handlers::set_global_limit_handler,
         handlers::auth::login_handler,
         handlers::auth::logout_handler,
         handlers::auth::check_auth_handler,
@@ -336,7 +316,7 @@ async fn main() {
     };
 
     #[cfg(not(feature = "push-notifications"))]
-    let push_store = ();
+    let _push_store = ();
 
     let notify_poll = Arc::new(tokio::sync::Notify::new());
 
@@ -488,7 +468,8 @@ async fn main() {
     #[cfg(feature = "swagger")]
     let app = app.merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()));
 
-    // Setup & Auth Routes
+    // Setup & Auth Routes (cookie-based, stay as REST)
+    let scgi_path_for_ctx = args.socket.clone();
     let app = app
         .route("/api/setup/status", get(handlers::setup::get_setup_status_handler))
         .route("/api/setup", post(handlers::setup::setup_handler))
@@ -500,37 +481,21 @@ async fn main() {
         )
         .route("/api/auth/logout", post(handlers::auth::logout_handler))
         .route("/api/auth/check", get(handlers::auth::check_auth_handler))
-        // App Routes
         .route("/api/events", get(sse::sse_handler))
-        .route("/api/torrents/add", post(handlers::add_torrent_handler))
-        .route(
-            "/api/torrents/action",
-            post(handlers::handle_torrent_action),
-        )
-        .route("/api/system/version", get(handlers::get_version_handler))
-        .route(
-            "/api/torrents/{hash}/files",
-            get(handlers::get_files_handler),
-        )
-        .route(
-            "/api/torrents/{hash}/peers",
-            get(handlers::get_peers_handler),
-        )
-        .route(
-            "/api/torrents/{hash}/trackers",
-            get(handlers::get_trackers_handler),
-        )
-        .route(
-            "/api/torrents/files/priority",
-            post(handlers::set_file_priority_handler),
-        )
-        .route("/api/torrents/label", post(handlers::set_label_handler))
-        .route(
-            "/api/settings/global-limits",
-            get(handlers::get_global_limit_handler).post(handlers::set_global_limit_handler),
-        )
-        .route("/api/server_fns/{*fn_name}", post(leptos_axum::handle_server_fns))
-        .fallback(handlers::static_handler); // Serve static files for everything else
+        .route("/api/server_fns/{*fn_name}", post({
+            let scgi_path = scgi_path_for_ctx.clone();
+            move |req: Request<Body>| {
+                leptos_axum::handle_server_fns_with_context(
+                    move || {
+                        leptos::context::provide_context(shared::ServerContext {
+                            scgi_socket_path: scgi_path.clone(),
+                        });
+                    },
+                    req,
+                )
+            }
+        }))
+        .fallback(handlers::static_handler);
 
     #[cfg(feature = "push-notifications")]
     let app = app

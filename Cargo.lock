@@ -1274,6 +1274,7 @@ dependencies = [
  "leptos-shadcn-scroll-area",
  "leptos-shadcn-separator",
  "leptos-shadcn-sheet",
+ "leptos-shadcn-skeleton",
  "leptos-shadcn-tabs",
  "leptos-shadcn-toast",
  "leptos-shadcn-tooltip",
@@ -2388,6 +2389,21 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror 1.0.69",
+]
+
+[[package]]
+name = "leptos-shadcn-skeleton"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6c14b6bd0f2fe191e3e114a34cee889fc983546ad488e76e76511e3d75ea3f86"
+dependencies = [
+ "leptos",
+ "leptos-node-ref",
+ "leptos-shadcn-signal-management",
+ "leptos-struct-component",
+ "leptos-style",
+ "tailwind_fuse",
+ "web-sys",
 ]
 
 [[package]]

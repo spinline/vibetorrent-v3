@@ -3,6 +3,9 @@ use leptos::task::spawn_local;
 use leptos_shadcn_button::{Button, ButtonVariant, ButtonSize};
 use leptos_shadcn_avatar::{Avatar, AvatarFallback};
 use leptos_shadcn_separator::Separator;
+use leptos::html;
+use leptos_use::storage::use_local_storage;
+use ::codee::string::FromToStringCodec;
 
 #[component]
 pub fn Sidebar() -> impl IntoView {
@@ -66,6 +69,37 @@ pub fn Sidebar() -> impl IntoView {
     let first_letter = move || {
         username().chars().next().unwrap_or('?').to_uppercase().to_string()
     };
+
+    // --- THEME LOGIC START ---
+    let (current_theme, set_current_theme, _) = use_local_storage::<String, FromToStringCodec>("vibetorrent_theme");
+
+    // Initialize with default if empty
+    let current_theme_val = current_theme.get();
+    if current_theme_val.is_empty() {
+        set_current_theme.set("dark".to_string());
+    }
+
+    // Automatically sync theme to document attribute
+    Effect::new(move |_| {
+        let theme = current_theme.get().to_lowercase();
+        if let Some(doc) = document().document_element() {
+            let _ = doc.set_attribute("data-theme", &theme);
+            // Also set class for Shadcn dark mode support
+            if theme == "dark" || theme == "dracula" || theme == "dim" || theme == "abyss" || theme == "sunset" || theme == "cyberpunk" || theme == "nord" || theme == "business" || theme == "night" || theme == "black" || theme == "luxury" || theme == "coffee" || theme == "forest" || theme == "halloween" || theme == "synthwave" {
+                let _ = doc.class_list().add_1("dark");
+            } else {
+                let _ = doc.class_list().remove_1("dark");
+            }
+        }
+    });
+
+    let theme_details_ref = NodeRef::<html::Details>::new();
+    let close_details = move |node_ref: NodeRef<html::Details>| {
+        if let Some(el) = node_ref.get_untracked() {
+            el.set_open(false);
+        }
+    };
+    // --- THEME LOGIC END ---
 
     view! {
         <div class="w-full h-full flex flex-col bg-card" style="padding-top: env(safe-area-inset-top);">
@@ -169,6 +203,52 @@ pub fn Sidebar() -> impl IntoView {
                         <div class="font-medium text-sm truncate text-foreground">{username}</div>
                         <div class="text-[10px] text-muted-foreground truncate">"Online"</div>
                     </div>
+
+                    // --- THEME BUTTON ---
+                    <details class="group relative" node_ref=theme_details_ref>
+                        <summary class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-8 w-8 cursor-pointer outline-none list-none [&::-webkit-details-marker]:hidden">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9.53 16.122a3 3 0 0 0-5.78 1.128 2.25 2.25 0 0 1-2.4 2.245 4.5 4.5 0 0 0 8.4-2.245c0-.399-.078-.78-.22-1.128Zm0 0a15.998 15.998 0 0 0 3.388-1.62m-5.043-.025a15.994 15.994 0 0 1 1.622-3.395m3.42 3.42a15.995 15.995 0 0 0 4.764-4.648l3.876-5.814a1.151 1.151 0 0 0-1.597-1.597L14.146 6.32a15.996 15.996 0 0 0-4.649 4.763m3.42 3.42a6.776 6.776 0 0 0-3.42-3.42" />
+                            </svg>
+                        </summary>
+
+                        <div class="absolute bottom-full left-0 mb-2 z-[100] min-w-[8rem] overflow-hidden rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md hidden group-open:block animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-2 max-h-64 overflow-y-auto">
+                            <ul class="w-full">
+                                {
+                                    let themes = vec![
+                                        "light", "dark", "dim", "nord", "cupcake", "dracula", "cyberpunk", "emerald", "sunset", "abyss"
+                                    ];
+                                    themes.into_iter().map(|theme| {
+                                        let theme_name = theme.to_string();
+                                        let theme_name_for_class = theme_name.clone();
+                                        let theme_name_for_onclick = theme_name.clone();
+                                        let is_active = move || current_theme.get() == theme_name_for_class;
+                                        view! {
+                                            <li>
+                                                <button
+                                                    class=move || {
+                                                        let base = "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-xs outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 hover:bg-accent hover:text-accent-foreground capitalize";
+                                                        if is_active() { format!("{} bg-accent text-accent-foreground font-medium", base) } else { base.to_string() }
+                                                    }
+                                                    on:click=move |_| {
+                                                        set_current_theme.set(theme_name_for_onclick.clone());
+                                                        close_details(theme_details_ref);
+                                                    }
+                                                >
+                                                    <span class="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+                                                        <Show when=is_active.clone() fallback=|| ()>
+                                                            <span>"✓"</span>
+                                                        </Show>
+                                                    </span>
+                                                    {theme_name}
+                                                </button>
+                                            </li>
+                                        }
+                                    }).collect::<Vec<_>>()
+                                }
+                            </ul>
+                        </div>
+                    </details>
                     <Button
                         variant=ButtonVariant::Ghost
                         size=ButtonSize::Icon

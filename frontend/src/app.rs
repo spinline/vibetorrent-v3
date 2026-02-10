@@ -22,9 +22,8 @@ pub fn App() -> impl IntoView {
         spawn_local(async move {
             log::info!("App initialization started...");
 
-            let setup_res = api::setup::get_status().await;
-
-            match setup_res {
+            // Check if setup is needed via Server Function
+            match shared::server_fns::auth::get_setup_status().await {
                 Ok(status) => {
                     if !status.completed {
                         log::info!("Setup not completed");
@@ -36,21 +35,16 @@ pub fn App() -> impl IntoView {
                 Err(e) => log::error!("Failed to get setup status: {:?}", e),
             }
 
-            let auth_res = api::auth::check_auth().await;
-
-            match auth_res {
-                Ok(true) => {
-                    log::info!("Authenticated!");
-
-                    if let Ok(user_info) = api::auth::get_user().await {
-                        if let Some(s) = store {
-                            s.user.set(Some(user_info.username));
-                        }
+            // Check authentication via GetUser Server Function
+            match shared::server_fns::auth::get_user().await {
+                Ok(Some(user_info)) => {
+                    log::info!("Authenticated as {}", user_info.username);
+                    if let Some(s) = store {
+                        s.user.set(Some(user_info.username));
                     }
-
                     is_authenticated.1.set(true);
                 }
-                Ok(false) => {
+                Ok(None) => {
                     log::info!("Not authenticated");
                 }
                 Err(e) => {
@@ -107,22 +101,26 @@ pub fn App() -> impl IntoView {
                     } />
 
                     <Route path=leptos_router::path!("/") view=move || {
+                        let navigate = use_navigate();
                         Effect::new(move |_| {
-                            if !is_loading.0.get() && needs_setup.0.get() {
-                                log::info!("Setup not completed, redirecting to setup");
-                                let navigate = use_navigate();
-                                navigate("/setup", Default::default());
-                            } else if !is_loading.0.get() && !is_authenticated.0.get() {
-                                log::info!("Not authenticated, redirecting to login");
-                                let navigate = use_navigate();
-                                navigate("/login", Default::default());
+                            if !is_loading.0.get() {
+                                if needs_setup.0.get() {
+                                    log::info!("Setup not completed, redirecting to setup");
+                                    navigate("/setup", Default::default());
+                                } else if !is_authenticated.0.get() {
+                                    log::info!("Not authenticated, redirecting to login");
+                                    navigate("/login", Default::default());
+                                }
                             }
                         });
                         
                         view! {
                             <Show when=move || !is_loading.0.get() fallback=|| view! {
-                                <div class="flex items-center justify-center h-screen bg-base-100">
-                                    <span class="loading loading-spinner loading-lg"></span>
+                                <div class="flex items-center justify-center h-screen bg-background">
+                                    <div class="flex flex-col items-center gap-4">
+                                        <div class="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
+                                        <p class="text-sm text-muted-foreground">"Yükleniyor..."</p>
+                                    </div>
                                 </div>
                             }>
                                 <Show when=move || is_authenticated.0.get() fallback=|| ()>

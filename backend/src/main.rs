@@ -162,17 +162,7 @@ async fn main() {
 
     // Initialize Database
     tracing::info!("Connecting to database: {}", args.db_url);
-    // Ensure the db file exists if it's sqlite
-    if args.db_url.starts_with("sqlite:") {
-        let path = args.db_url.trim_start_matches("sqlite:");
-        if !std::path::Path::new(path).exists() {
-            tracing::info!("Database file not found, creating: {}", path);
-            match std::fs::File::create(path) {
-                Ok(_) => tracing::info!("Created empty database file"),
-                Err(e) => tracing::error!("Failed to create database file: {}", e),
-            }
-        }
-    }
+    // Redundant manual creation removed, shared::db handles it
 
     let db: shared::db::Db = match shared::db::Db::new(&args.db_url).await {
         Ok(db) => db,
@@ -440,8 +430,6 @@ async fn main() {
     let scgi_path_for_ctx = args.socket.clone();
     let db_for_ctx = db.clone();
     let app = app
-        .route("/api/setup/status", get(handlers::setup::get_setup_status_handler))
-        .route("/api/setup", post(handlers::setup::setup_handler))
         .route("/api/events", get(sse::sse_handler))
         .route("/api/server_fns/{*fn_name}", post({
             let scgi_path = scgi_path_for_ctx.clone();

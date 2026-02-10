@@ -1,8 +1,7 @@
 use leptos::prelude::*;
 use leptos::html;
 use leptos::task::spawn_local;
-use leptos_use::{use_virtual_list, UseVirtualListOptions, UseVirtualListReturn};
-use leptos_use::use_timeout_fn;
+use leptos_use::{use_timeout_fn, UseTimeoutFnReturn};
 use crate::store::{get_action_messages, show_toast_with_signal};
 use crate::api;
 use shared::NotificationLevel;
@@ -57,7 +56,7 @@ pub fn TorrentTable() -> impl IntoView {
         let search = store.search_query.get();
         let search_lower = search.to_lowercase();
         
-        let mut torrents: Vec<&shared::Torrent> = torrents_map.values().filter(|t| {
+        let mut torrents: Vec<shared::Torrent> = torrents_map.values().filter(|t| {
             let matches_filter = match filter {
                 crate::store::FilterStatus::All => true,
                 crate::store::FilterStatus::Downloading => t.status == shared::TorrentStatus::Downloading,
@@ -69,7 +68,7 @@ pub fn TorrentTable() -> impl IntoView {
             };
             let matches_search = if search_lower.is_empty() { true } else { t.name.to_lowercase().contains(&search_lower) };
             matches_filter && matches_search
-        }).collect();
+        }).cloned().collect();
 
         torrents.sort_by(|a, b| {
             let col = sort_col.0.get();
@@ -146,27 +145,6 @@ pub fn TorrentTable() -> impl IntoView {
         });
     };
 
-    // --- Virtual List Setup ---
-    let UseVirtualListReturn {
-        list: desktop_list,
-        container_el: desktop_container_el,
-        wrapper_style: desktop_wrapper_style,
-        ..
-    } = use_virtual_list(
-        filtered_hashes,
-        UseVirtualListOptions::default().item_height(49.0), // Compact row height + border
-    );
-
-    let UseVirtualListReturn {
-        list: mobile_list,
-        container_el: mobile_container_el,
-        wrapper_style: mobile_wrapper_style,
-        ..
-    } = use_virtual_list(
-        filtered_hashes,
-        UseVirtualListOptions::default().item_height(140.0), // Card height + gap
-    );
-
     view! {
         <div class="h-full bg-background relative flex flex-col">
             // --- DESKTOP VIEW ---
@@ -199,32 +177,26 @@ pub fn TorrentTable() -> impl IntoView {
                     </div>
                 </div>
 
-                // Virtual List Container
-                <div class="flex-1 overflow-y-auto" node_ref=desktop_container_el>
-                    <div style=desktop_wrapper_style class="relative">
-                        // We use Flex/Div rows instead of Table for virtualization simplicity
-                        <For each=desktop_list key=|hash| hash.data.clone() children={
-                            let handle_context_menu = handle_context_menu.clone();
-                            move |item| {
-                                let top_offset = format!("{}px", item.index * 49); // Manual offset based on index
-                                view! { 
-                                    <div style=format!("position: absolute; top: {}; left: 0; right: 0; height: 49px;", top_offset)>
-                                        <TorrentRow 
-                                            hash=item.data.clone() 
-                                            selected_hash=selected_hash.0 
-                                            set_selected_hash=selected_hash.1 
-                                            on_context_menu=handle_context_menu.clone() 
-                                        /> 
-                                    </div>
-                                }
+                // Regular List (Standard For loop)
+                <div class="flex-1 overflow-y-auto min-h-0">
+                    <For each=filtered_hashes key=|hash| hash.clone() children={
+                        let handle_context_menu = handle_context_menu.clone();
+                        move |hash| {
+                            view! { 
+                                <TorrentRow 
+                                    hash=hash.clone() 
+                                    selected_hash=selected_hash.0 
+                                    set_selected_hash=selected_hash.1 
+                                    on_context_menu=handle_context_menu.clone() 
+                                /> 
                             }
-                        } />
-                    </div>
+                        }
+                    } />
                 </div>
             </div>
 
             // --- MOBILE VIEW ---
-            <div class="md:hidden flex flex-col h-full bg-muted/10 relative">
+            <div class="md:hidden flex flex-col h-full bg-muted/10 relative overflow-hidden">
                  <div class="px-3 py-2 border-b border-border flex justify-between items-center bg-background/95 backdrop-blur z-10 shrink-0">
                     <span class="text-xs font-bold opacity-50 uppercase tracking-wider text-muted-foreground">"Torrents"</span>
                     <details class="dropdown dropdown-end" node_ref=sort_details_ref>
@@ -254,29 +226,26 @@ pub fn TorrentTable() -> impl IntoView {
                     </details>
                 </div>
                 
-                <div class="flex-1 overflow-y-auto p-3" node_ref=mobile_container_el>
-                    <div style=mobile_wrapper_style class="relative">
-                         <For each=mobile_list key=|hash| hash.data.clone() children={
-                            let handle_context_menu = handle_context_menu.clone();
-                            let menu_pos_setter = menu_position.1.clone();
-                            let menu_vis_setter = menu_visible.1.clone();
-                            move |item| {
-                                let top_offset = format!("{}px", item.index * 140); 
-                                view! { 
-                                     <div style=format!("position: absolute; top: {}; left: 0; right: 0; height: 140px; padding-bottom: 0.75rem;", top_offset)>
-                                        <TorrentCard 
-                                            hash=item.data.clone() 
-                                            selected_hash=selected_hash.0 
-                                            set_selected_hash=selected_hash.1 
-                                            set_menu_position=menu_pos_setter 
-                                            set_menu_visible=menu_vis_setter 
-                                            on_context_menu=handle_context_menu.clone() 
-                                        /> 
-                                    </div>
-                                }
+                <div class="flex-1 overflow-y-auto p-3 min-h-0">
+                    <For each=filtered_hashes key=|hash| hash.clone() children={
+                        let handle_context_menu = handle_context_menu.clone();
+                        let menu_pos_setter = menu_position.1.clone();
+                        let menu_vis_setter = menu_visible.1.clone();
+                        move |hash| {
+                            view! { 
+                                 <div class="pb-3">
+                                    <TorrentCard 
+                                        hash=hash.clone() 
+                                        selected_hash=selected_hash.0 
+                                        set_selected_hash=selected_hash.1 
+                                        set_menu_position=menu_pos_setter 
+                                        set_menu_visible=menu_vis_setter 
+                                        on_context_menu=handle_context_menu.clone() 
+                                    /> 
+                                </div>
                             }
-                        } />
-                    </div>
+                        }
+                    } />
                 </div>
             </div>
 
@@ -380,7 +349,7 @@ fn TorrentCard(
                     let set_menu_position = set_menu_position.clone();
                     let set_selected_hash = set_selected_hash.clone();
                     let set_menu_visible = set_menu_visible.clone();
-                    let leptos_use::UseTimeoutFnReturn { start, .. } = use_timeout_fn(
+                    let UseTimeoutFnReturn { start, .. } = use_timeout_fn(
                         move |pos: (i32, i32)| {
                             set_menu_position.set(pos);
                             set_selected_hash.set(Some(t_hash_long.clone()));

@@ -226,19 +226,18 @@ pub fn StatusBar() -> impl IntoView {
                                                         let base = "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-xs outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 hover:bg-accent hover:text-accent-foreground capitalize";
                                                         if is_active() { format!("{} bg-accent text-accent-foreground font-medium", base) } else { base.to_string() }
                                                     }
-                                                    on:click=move |_| {
-                                                        set_current_theme.set(theme_name_for_onclick.clone());
-                                                        close_details(theme_details_ref);
-                                                    }
-                                                >
-                                                    <span class="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
-                                                        <Show when=is_active fallback=|| ()>
-                                                            <span>"✓"</span>
-                                                        </Show>
-                                                    </span>
-                                                    {theme_name}
-                                                </button>
-                                            </li>
+                                                                                                    on:click=move |_| {
+                                                                                                        set_current_theme.set(theme_name_for_onclick.clone());
+                                                                                                        close_details(theme_details_ref);
+                                                                                                    }
+                                                                                                >
+                                                                                                    <span class="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+                                                                                                        <Show when=is_active.clone() fallback=|| ()>
+                                                                                                            <span>"✓"</span>
+                                                                                                        </Show>
+                                                                                                    </span>
+                                                                                                    {theme_name}
+                                                                                                </button>                                            </li>
                                         }
                                     }).collect::<Vec<_>>()
                                 }

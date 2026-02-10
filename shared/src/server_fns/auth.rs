@@ -14,7 +14,47 @@ pub struct Claims {
     pub exp: usize,
 }
 
-#[server(Login, "/api/auth/login")]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct SetupStatus {
+    pub completed: bool,
+}
+
+#[server(GetSetupStatus, "/api/server_fns/GetSetupStatus")]
+pub async fn get_setup_status() -> Result<SetupStatus, ServerFnError> {
+    use crate::DbContext;
+
+    let db_context = use_context::<DbContext>().ok_or_else(|| ServerFnError::new("DB Context missing"))?;
+    let has_users = db_context.db.has_users().await
+        .map_err(|e| ServerFnError::new(format!("DB error: {}", e)))?;
+
+    Ok(SetupStatus {
+        completed: has_users,
+    })
+}
+
+#[server(Setup, "/api/server_fns/Setup")]
+pub async fn setup(username: String, password: String) -> Result<(), ServerFnError> {
+    use crate::DbContext;
+
+    let db_context = use_context::<DbContext>().ok_or_else(|| ServerFnError::new("DB Context missing"))?;
+    
+    // Check if setup is already done
+    let has_users = db_context.db.has_users().await.unwrap_or(false);
+    if has_users {
+        return Err(ServerFnError::new("Setup already completed"));
+    }
+
+    // Hash password (low cost for MIPS)
+    let password_hash = bcrypt::hash(&password, 6)
+        .map_err(|_| ServerFnError::new("Hashing error"))?;
+
+    db_context.db.create_user(&username, &password_hash).await
+        .map_err(|e| ServerFnError::new(format!("DB error: {}", e)))?;
+
+    Ok(())
+}
+
+#[server(Login, "/api/server_fns/Login")]
 pub async fn login(username: String, password: String) -> Result<UserResponse, ServerFnError> {
     use crate::DbContext;
     use leptos_axum::ResponseOptions;
@@ -22,15 +62,15 @@ pub async fn login(username: String, password: String) -> Result<UserResponse, S
     use cookie::{Cookie, SameSite};
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    let db_context = use_context::<DbContext>().ok_or(ServerFnError::ServerError("DB Context missing".to_string()))?;
+    let db_context = use_context::<DbContext>().ok_or_else(|| ServerFnError::new("DB Context missing"))?;
     
     let user_opt = db_context.db.get_user_by_username(&username).await
-        .map_err(|e| ServerFnError::ServerError(format!("DB error: {}", e)))?;
+        .map_err(|e| ServerFnError::new(format!("DB error: {}", e)))?;
 
     if let Some((uid, password_hash)) = user_opt {
         let valid = bcrypt::verify(&password, &password_hash).unwrap_or(false);
         if !valid {
-             return Err(ServerFnError::ServerError("Invalid credentials".to_string()));
+             return Err(ServerFnError::new("Invalid credentials"));
         }
 
         let expiration = SystemTime::now()
@@ -46,7 +86,7 @@ pub async fn login(username: String, password: String) -> Result<UserResponse, S
 
         let secret = std::env::var("JWT_SECRET").unwrap_or_else(|_| "secret".to_string());
         let token = encode(&Header::default(), &claims, &EncodingKey::from_secret(secret.as_bytes()))
-            .map_err(|e| ServerFnError::ServerError(format!("Token error: {}", e)))?;
+            .map_err(|e| ServerFnError::new(format!("Token error: {}", e)))?;
 
         let cookie = Cookie::build(("auth_token", token))
             .path("/")
@@ -66,11 +106,11 @@ pub async fn login(username: String, password: String) -> Result<UserResponse, S
             username,
         })
     } else {
-        Err(ServerFnError::ServerError("Invalid credentials".to_string()))
+        Err(ServerFnError::new("Invalid credentials"))
     }
 }
 
-#[server(Logout, "/api/auth/logout")]
+#[server(Logout, "/api/server_fns/Logout")]
 pub async fn logout() -> Result<(), ServerFnError> {
     use leptos_axum::ResponseOptions;
     use cookie::{Cookie, SameSite};
@@ -91,18 +131,17 @@ pub async fn logout() -> Result<(), ServerFnError> {
     Ok(())
 }
 
-#[server(GetUser, "/api/auth/user")]
+#[server(GetUser, "/api/server_fns/GetUser")]
 pub async fn get_user() -> Result<Option<UserResponse>, ServerFnError> {
     use axum::http::HeaderMap;
     use leptos_axum::extract;
     use jsonwebtoken::{decode, Validation, DecodingKey};
 
-    let headers: HeaderMap = extract().await?;
+    let headers: HeaderMap = extract().await.map_err(|e| ServerFnError::new(format!("Extract error: {}", e)))?;
     let cookie_header = headers.get(axum::http::header::COOKIE)
         .and_then(|h| h.to_str().ok());
 
     if let Some(cookie_str) = cookie_header {
-        // Parse all cookies
         for c_str in cookie_str.split(';') {
             if let Ok(c) = cookie::Cookie::parse(c_str.trim()) {
                 if c.name() == "auth_token" {

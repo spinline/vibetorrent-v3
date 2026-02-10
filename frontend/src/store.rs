@@ -4,7 +4,7 @@ use leptos::prelude::*;
 use leptos::task::spawn_local;
 use shared::{AppEvent, GlobalStats, NotificationLevel, SystemNotification, Torrent};
 use std::collections::HashMap;
-use struct_patch::traits::Patchable;
+use struct_patch::traits::Patch;
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -137,8 +137,10 @@ pub fn provide_torrent_store() {
                                                     }
                                                     AppEvent::Update(patch) => {
                                                         torrents_for_sse.update(|map| {
-                                                            if let Some(t) = map.get_mut(&patch.hash) {
-                                                                t.apply(patch);
+                                                            if let Some(hash) = patch.hash.as_ref() {
+                                                                if let Some(t) = map.get_mut(hash) {
+                                                                    t.apply(patch);
+                                                                }
                                                             }
                                                         });
                                                     }

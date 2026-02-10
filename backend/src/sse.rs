@@ -8,6 +8,8 @@ use futures::stream::{self, Stream};
 use shared::{AppEvent, GlobalStats, Torrent, TorrentStatus};
 use std::convert::Infallible;
 use tokio_stream::StreamExt;
+use axum::response::IntoResponse;
+use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 
 // Field definitions to keep query and parser in sync
 mod fields {
@@ -191,22 +193,6 @@ pub async fn fetch_global_stats(client: &RtorrentClient) -> Result<GlobalStats, 
         free_space: None,
     })
 }
-
-use shared::xmlrpc::{
-    parse_i64_response, parse_multicall_response, RpcParam, RtorrentClient, XmlRpcError,
-};
-use crate::AppState;
-use axum::extract::State;
-use axum::response::sse::{Event, Sse};
-use futures::stream::{self, Stream};
-use shared::{AppEvent, GlobalStats, Torrent, TorrentStatus};
-use std::convert::Infallible;
-use tokio_stream::StreamExt;
-use axum::response::IntoResponse;
-use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
-
-
-// ... (fields and other helper functions remain the same)
 
 pub async fn sse_handler(
     State(state): State<AppState>,

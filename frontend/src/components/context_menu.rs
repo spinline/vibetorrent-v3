@@ -63,24 +63,35 @@ pub fn TorrentContextMenu(
 
         <Show when=move || open.get()>
             {
-                let (x, y) = position.get();
-                view! {
-                    <div
-                        class="fixed inset-0 z-[99]"
-                        on:click=move |e: MouseEvent| {
-                            e.stop_propagation();
-                            open.set(false);
-                        }
-                        on:contextmenu=move |e: MouseEvent| {
-                            e.prevent_default();
-                            e.stop_propagation();
-                            open.set(false);
-                        }
-                    />
-                    <div
-                        class="fixed z-[100] min-w-[12rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95"
-                        style=format!("left: {}px; top: {}px;", x, y)
-                        on:click=move |e: MouseEvent| e.stop_propagation()
+                    let (x, y) = position.get();
+                    // Menü yaklaşık boyutları
+                    let menu_width = 200;
+                    let menu_height = 220;
+                    let window = web_sys::window().unwrap();
+                    let vw = window.inner_width().unwrap().as_f64().unwrap() as i32;
+                    let vh = window.inner_height().unwrap().as_f64().unwrap() as i32;
+                    // Sağa taşarsa sola aç, alta taşarsa yukarı aç
+                    let final_x = if x + menu_width > vw { x - menu_width } else { x };
+                    let final_y = if y + menu_height > vh { y - menu_height } else { y };
+                    let final_x = final_x.max(0);
+                    let final_y = final_y.max(0);
+                    view! {
+                        <div
+                            class="fixed inset-0 z-[99]"
+                            on:click=move |e: MouseEvent| {
+                                e.stop_propagation();
+                                open.set(false);
+                            }
+                            on:contextmenu=move |e: MouseEvent| {
+                                e.prevent_default();
+                                e.stop_propagation();
+                                open.set(false);
+                            }
+                        />
+                        <div
+                            class="fixed z-[100] min-w-[12rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95"
+                            style=format!("left: {}px; top: {}px;", final_x, final_y)
+                            on:click=move |e: MouseEvent| e.stop_propagation()
                     >
                         // Start
                         <div

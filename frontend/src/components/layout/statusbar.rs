@@ -44,7 +44,7 @@ pub fn StatusBar() -> impl IntoView {
         if let Some(doc) = document().document_element() {
             let _ = doc.set_attribute("data-theme", &theme);
             // Also set class for Shadcn dark mode support
-            if theme == "dark" || theme == "dracula" || theme == "dim" || theme == "abyss" {
+            if theme == "dark" || theme == "dracula" || theme == "dim" || theme == "abyss" || theme == "sunset" || theme == "cyberpunk" || theme == "nord" || theme == "business" || theme == "night" || theme == "black" || theme == "luxury" || theme == "coffee" || theme == "forest" || theme == "halloween" || theme == "synthwave" {
                 let _ = doc.class_list().add_1("dark");
             } else {
                 let _ = doc.class_list().remove_1("dark");

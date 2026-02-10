@@ -1,101 +1,102 @@
 <!doctype html>
 <html>
-    <head>
-        <meta charset="utf-8" />
-        <meta
-            name="viewport"
-            content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
-        />
-        <title>VibeTorrent</title>
 
-        <!-- PWA & Mobile Capable -->
-        <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <meta name="apple-mobile-web-app-title" content="VibeTorrent" />
-        <meta name="theme-color" content="#111827" />
-        <link rel="manifest" href="manifest.json" />
-        <link rel="icon" type="image/png" href="icon-192.png" />
-        <link rel="apple-touch-icon" href="icon-192.png" />
-        <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png" />
-        <link rel="apple-touch-icon" sizes="512x512" href="icon-512.png" />
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>VibeTorrent</title>
 
-        <!-- Trunk Assets -->
-        <link data-trunk rel="rust" href="Cargo.toml" data-wasm-opt="0" />
-        <link data-trunk rel="css" href="public/tailwind.css" />
-        <link data-trunk rel="copy-file" href="manifest.json" />
-        <link data-trunk rel="copy-file" href="icon-192.png" />
-        <link data-trunk rel="copy-file" href="icon-512.png" />
-        <link data-trunk rel="copy-file" href="sw.js" />
-        <script>
-            (function () {
-                var localTheme = localStorage.getItem("vibetorrent_theme");
-                var t = localTheme || "dark";
-                if (t === "Amoled") t = "black";
-                if (t === "Light") t = "light";
-                if (t === "Dark" || t === "Midnight") t = "dark";
+    <!-- PWA & Mobile Capable -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="VibeTorrent" />
+    <meta name="theme-color" content="#111827" />
+    <link rel="manifest" href="manifest.json" />
+    <link rel="icon" type="image/png" href="icon-192.png" />
+    <link rel="apple-touch-icon" href="icon-192.png" />
+    <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png" />
+    <link rel="apple-touch-icon" sizes="512x512" href="icon-512.png" />
 
-                var theme = t.toLowerCase();
-                document.documentElement.setAttribute("data-theme", theme);
-                if (!localTheme) {
-                    localStorage.setItem("vibetorrent_theme", "dark");
-                }
+    <!-- Trunk Assets -->
+    <link data-trunk rel="rust" href="Cargo.toml" data-wasm-opt="0" />
+    <link data-trunk rel="css" href="public/tailwind.css" />
+    <link data-trunk rel="copy-file" href="manifest.json" />
+    <link data-trunk rel="copy-file" href="icon-192.png" />
+    <link data-trunk rel="copy-file" href="icon-512.png" />
+    <link data-trunk rel="copy-file" href="sw.js" />
+    <script>
+        (function () {
+            var localTheme = localStorage.getItem("vibetorrent_theme");
+            var t = localTheme || "dark";
+            if (t === "Amoled") t = "black";
+            if (t === "Light") t = "light";
+            if (t === "Dark" || t === "Midnight") t = "dark";
 
-                var meta = document.querySelector('meta[name="theme-color"]');
-                if (meta) {
-                    var colorMap = {
-                        light: "#ffffff",
-                        cupcake: "#faf7f5",
-                        bumblebee: "#ffffff",
-                        emerald: "#ffffff",
-                        corporate: "#ffffff",
-                        synthwave: "#2d1b69",
-                        retro: "#ece3ca",
-                        cyberpunk: "#ffee00",
-                        valentine: "#f0d6e8",
-                        halloween: "#212121",
-                        garden: "#e9e7e7",
-                        forest: "#171212",
-                        aqua: "#345da7",
-                        lofi: "#ffffff",
-                        pastel: "#ffffff",
-                        fantasy: "#ffffff",
-                        wireframe: "#ffffff",
-                        black: "#000000",
-                        luxury: "#09090b",
-                        dracula: "#282a36",
-                        cmyk: "#ffffff",
-                        autumn: "#8C0327",
-                        business: "#202020",
-                        acid: "#fafafa",
-                        lemonade: "#F1F8E8",
-                        night: "#0f1729",
-                        coffee: "#20161f",
-                        winter: "#ffffff",
-                        dark: "#1d232a",
-                    };
-                    var color = colorMap[theme] || "#1d232a";
-                    meta.setAttribute("content", color);
-                }
-            })();
-        </script>
-    </head>
+            var theme = t.toLowerCase();
+            document.documentElement.setAttribute("data-theme", theme);
+            // Shadcn dark mode CSS değişkenleri .dark class ile çalışıyor
+            var darkThemes = ["dark", "black", "night", "coffee", "luxury", "business", "dracula", "halloween", "forest", "synthwave", "dim", "nord", "sunset", "cyberpunk", "abyss"];
+            if (darkThemes.indexOf(theme) !== -1) {
+                document.documentElement.classList.add("dark");
+            } else {
+                document.documentElement.classList.remove("dark");
+            }
+            if (!localTheme) {
+                localStorage.setItem("vibetorrent_theme", "dark");
+            }
 
-    <body style="cursor: pointer;">
-        <div
-            id="app-loading"
-            style="
+            var meta = document.querySelector('meta[name="theme-color"]');
+            if (meta) {
+                var colorMap = {
+                    light: "#ffffff",
+                    cupcake: "#faf7f5",
+                    bumblebee: "#ffffff",
+                    emerald: "#ffffff",
+                    corporate: "#ffffff",
+                    synthwave: "#2d1b69",
+                    retro: "#ece3ca",
+                    cyberpunk: "#ffee00",
+                    valentine: "#f0d6e8",
+                    halloween: "#212121",
+                    garden: "#e9e7e7",
+                    forest: "#171212",
+                    aqua: "#345da7",
+                    lofi: "#ffffff",
+                    pastel: "#ffffff",
+                    fantasy: "#ffffff",
+                    wireframe: "#ffffff",
+                    black: "#000000",
+                    luxury: "#09090b",
+                    dracula: "#282a36",
+                    cmyk: "#ffffff",
+                    autumn: "#8C0327",
+                    business: "#202020",
+                    acid: "#fafafa",
+                    lemonade: "#F1F8E8",
+                    night: "#0f1729",
+                    coffee: "#20161f",
+                    winter: "#ffffff",
+                    dark: "#1d232a",
+                };
+                var color = colorMap[theme] || "#1d232a";
+                meta.setAttribute("content", color);
+            }
+        })();
+    </script>
+</head>
+
+<body style="cursor: pointer;">
+    <div id="app-loading" style="
                 display: flex;
                 flex-direction: column;
                 justify-content: center;
                 align-items: center;
                 height: 100vh;
                 font-family: sans-serif;
-            "
-        >
-            <div
-                id="app-loading-spinner"
-                style="
+            ">
+        <div id="app-loading-spinner" style="
                     width: 40px;
                     height: 40px;
                     border: 3px solid currentColor;
@@ -103,21 +104,15 @@
                     border-radius: 50%;
                     animation: spin 0.8s linear infinite;
                     opacity: 0.5;
-                "
-            ></div>
-            <div
-                id="app-loading-error"
-                style="display: none; text-align: center; margin-top: 20px; padding: 0 20px"
-            >
-                <p style="color: #ef4444; font-weight: bold; margin-bottom: 8px">
-                    Uygulama yüklenemedi
-                </p>
-                <p style="font-size: 14px; opacity: 0.7">
-                    Bağlantınız yavaş olabilir veya bir sistem hatası oluşmuş olabilir.
-                </p>
-                <button
-                    onclick="location.reload()"
-                    style="
+                "></div>
+        <div id="app-loading-error" style="display: none; text-align: center; margin-top: 20px; padding: 0 20px">
+            <p style="color: #ef4444; font-weight: bold; margin-bottom: 8px">
+                Uygulama yüklenemedi
+            </p>
+            <p style="font-size: 14px; opacity: 0.7">
+                Bağlantınız yavaş olabilir veya bir sistem hatası oluşmuş olabilir.
+            </p>
+            <button onclick="location.reload()" style="
                         margin-top: 16px;
                         padding: 8px 16px;
                         background: #3b82f6;
@@ -126,104 +121,105 @@
                         border-radius: 6px;
                         cursor: pointer;
                         font-weight: 500;
-                    "
-                >
-                    Sayfayı Yenile
-                </button>
-            </div>
+                    ">
+                Sayfayı Yenile
+            </button>
         </div>
-        <style>
-            @keyframes spin {
-                to {
-                    transform: rotate(360deg);
+    </div>
+    <style>
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        body.app-loaded #app-loading {
+            display: none !important;
+        }
+
+        /* iOS Safari Click Fixes */
+        body {
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        summary {
+            list-style: none;
+        }
+
+        summary::-webkit-details-marker {
+            display: none;
+        }
+    </style>
+
+    <script>
+        // App loading timeout handler
+        (function () {
+            var timeout = setTimeout(function () {
+                if (!document.body.classList.contains("app-loaded")) {
+                    var spinner = document.getElementById("app-loading-spinner");
+                    var error = document.getElementById("app-loading-error");
+                    if (spinner) spinner.style.display = "none";
+                    if (error) error.style.display = "block";
                 }
-            }
+            }, 15000); // 15 seconds timeout
 
-            body.app-loaded #app-loading {
-                display: none !important;
-            }
-
-            /* iOS Safari Click Fixes */
-            body {
-                cursor: pointer;
-                -webkit-tap-highlight-color: transparent;
-            }
-
-            summary {
-                list-style: none;
-            }
-            summary::-webkit-details-marker {
-                display: none;
-            }
-        </style>
-
-        <script>
-            // App loading timeout handler
-            (function () {
-                var timeout = setTimeout(function () {
-                    if (!document.body.classList.contains("app-loaded")) {
-                        var spinner = document.getElementById("app-loading-spinner");
-                        var error = document.getElementById("app-loading-error");
-                        if (spinner) spinner.style.display = "none";
-                        if (error) error.style.display = "block";
-                    }
-                }, 15000); // 15 seconds timeout
-
-                // Clean up timeout if app loads
-                var observer = new MutationObserver(function (mutations) {
-                    mutations.forEach(function (mutation) {
-                        if (
-                            mutation.attributeName === "class" &&
-                            document.body.classList.contains("app-loaded")
-                        ) {
-                            clearTimeout(timeout);
-                            observer.disconnect();
-                        }
-                    });
-                });
-                observer.observe(document.body, { attributes: true });
-            })();
-        </script>
-        
-        <!-- Service Worker Registration & PWA Setup -->
-        <script>
-            // Global Dropdown Closer for iOS/Mobile
-            document.addEventListener('click', function(event) {
-                const details = document.querySelectorAll('details[open]');
-                details.forEach(detail => {
-                    // Eğer tıklanan yer bu details'in içinde değilse kapat
-                    if (!detail.contains(event.target)) {
-                        detail.removeAttribute('open');
+            // Clean up timeout if app loads
+            var observer = new MutationObserver(function (mutations) {
+                mutations.forEach(function (mutation) {
+                    if (
+                        mutation.attributeName === "class" &&
+                        document.body.classList.contains("app-loaded")
+                    ) {
+                        clearTimeout(timeout);
+                        observer.disconnect();
                     }
                 });
-            }, true); // Use capture phase for better mobile support
+            });
+            observer.observe(document.body, { attributes: true });
+        })();
+    </script>
 
-            if ("serviceWorker" in navigator) {
-                window.addEventListener("load", () => {
-                    navigator.serviceWorker
-                        .register("/sw.js")
-                        .then((registration) => {
-                            console.log("✅ Service Worker registered:", registration);
-                            
-                            // Request notification permission after a delay (better UX)
-                            setTimeout(() => {
-                                if ("Notification" in window && Notification.permission === "default") {
-                                    // Only request if user hasn't decided yet
-                                    const shouldRequest = localStorage.getItem("vibetorrent_notification_prompt_shown");
-                                    if (!shouldRequest) {
-                                        Notification.requestPermission().then((permission) => {
-                                            console.log("Notification permission:", permission);
-                                            localStorage.setItem("vibetorrent_notification_prompt_shown", "true");
-                                        });
-                                    }
+    <!-- Service Worker Registration & PWA Setup -->
+    <script>
+        // Global Dropdown Closer for iOS/Mobile
+        document.addEventListener('click', function (event) {
+            const details = document.querySelectorAll('details[open]');
+            details.forEach(detail => {
+                // Eğer tıklanan yer bu details'in içinde değilse kapat
+                if (!detail.contains(event.target)) {
+                    detail.removeAttribute('open');
+                }
+            });
+        }, true); // Use capture phase for better mobile support
+
+        if ("serviceWorker" in navigator) {
+            window.addEventListener("load", () => {
+                navigator.serviceWorker
+                    .register("/sw.js")
+                    .then((registration) => {
+                        console.log("✅ Service Worker registered:", registration);
+
+                        // Request notification permission after a delay (better UX)
+                        setTimeout(() => {
+                            if ("Notification" in window && Notification.permission === "default") {
+                                // Only request if user hasn't decided yet
+                                const shouldRequest = localStorage.getItem("vibetorrent_notification_prompt_shown");
+                                if (!shouldRequest) {
+                                    Notification.requestPermission().then((permission) => {
+                                        console.log("Notification permission:", permission);
+                                        localStorage.setItem("vibetorrent_notification_prompt_shown", "true");
+                                    });
                                 }
-                            }, 3000); // Wait 3 seconds before asking
-                        })
-                        .catch((error) => {
-                            console.warn("⚠️ Service Worker registration failed:", error);
-                        });
-                });
-            }
-        </script>
-    </body>
+                            }
+                        }, 3000); // Wait 3 seconds before asking
+                    })
+                    .catch((error) => {
+                        console.warn("⚠️ Service Worker registration failed:", error);
+                    });
+            });
+        }
+    </script>
+</body>
+
 </html>

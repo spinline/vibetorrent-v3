@@ -124,7 +124,7 @@ pub fn provide_torrent_store() {
                                         match rmp_serde::from_slice::<AppEvent>(&bytes) {
                                             Ok(event) => {
                                                 match event {
-                                                    AppEvent::FullList { torrents: list, .. } => {
+                                                    AppEvent::FullList(list, _) => {
                                                         log::info!("SSE: Received FullList with {} torrents", list.len());
                                                         torrents_for_sse.update(|map| {
                                                             let new_hashes: std::collections::HashSet<String> = list.iter().map(|t| t.hash.clone()).collect();
@@ -136,13 +136,14 @@ pub fn provide_torrent_store() {
                                                         log::debug!("SSE: torrents map now has {} entries", torrents_for_sse.with(|m| m.len()));
                                                     }
                                                     AppEvent::Update(patch) => {
-                                                        torrents_for_sse.update(|map| {
-                                                            if let Some(hash) = patch.hash.as_ref() {
-                                                                if let Some(t) = map.get_mut(hash) {
+                                                        let hash_opt = patch.hash.clone();
+                                                        if let Some(hash) = hash_opt {
+                                                            torrents_for_sse.update(|map| {
+                                                                if let Some(t) = map.get_mut(&hash) {
                                                                     t.apply(patch);
                                                                 }
-                                                            }
-                                                        });
+                                                            });
+                                                        }
                                                     }
                                                     AppEvent::Stats(stats) => { global_stats_for_sse.set(stats); }
                                                     AppEvent::Notification(n) => {

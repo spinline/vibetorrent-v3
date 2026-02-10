@@ -1,11 +1,10 @@
 use leptos::prelude::*;
-use leptos::wasm_bindgen::JsCast;
 use leptos::task::spawn_local;
-use crate::api;
 
 #[component]
 pub fn Sidebar() -> impl IntoView {
     let store = use_context::<crate::store::TorrentStore>().expect("store not provided");
+    let is_mobile_menu_open = use_context::<RwSignal<bool>>().expect("mobile menu state not provided");
 
     let total_count = move || store.torrents.with(|map| map.len());
     let downloading_count = move || {
@@ -50,16 +49,9 @@ pub fn Sidebar() -> impl IntoView {
         })
     };
 
-    let close_drawer = move || {
-        // With Shadcn Sheet, this logic might change, but for now we keep DOM manipulation minimal or handled by parent
-        if let Some(element) = document().get_element_by_id("mobile-sheet-trigger") {
-            // Logic to close sheet if open (simulated click or state change)
-        }
-    };
-
     let set_filter = move |f: crate::store::FilterStatus| {
         store.filter.set(f);
-        close_drawer();
+        is_mobile_menu_open.set(false);
     };
 
     let filter_class = move |f: crate::store::FilterStatus| {
@@ -73,7 +65,7 @@ pub fn Sidebar() -> impl IntoView {
 
     let handle_logout = move |_| {
         spawn_local(async move {
-            if api::auth::logout().await.is_ok() {
+            if shared::server_fns::auth::logout().await.is_ok() {
                 let window = web_sys::window().expect("window should exist");
                 let _ = window.location().set_href("/login");
             }
@@ -89,7 +81,7 @@ pub fn Sidebar() -> impl IntoView {
     };
 
     view! {
-        <div class="w-64 min-h-[100dvh] flex flex-col bg-card border-r border-border pb-8" style="padding-top: env(safe-area-inset-top);">
+        <div class="w-full h-full flex flex-col bg-card" style="padding-top: env(safe-area-inset-top);">
             <div class="p-4 flex-1 overflow-y-auto">
                 <div class="mb-4 px-2 text-lg font-semibold tracking-tight text-foreground">
                     "VibeTorrent"

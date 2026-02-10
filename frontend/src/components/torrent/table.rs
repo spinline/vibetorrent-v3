@@ -1,10 +1,10 @@
 use leptos::prelude::*;
-use leptos::html;
 use leptos::task::spawn_local;
-use leptos_use::{use_timeout_fn, UseTimeoutFnReturn};
 use crate::store::{get_action_messages, show_toast_with_signal};
 use crate::api;
 use shared::NotificationLevel;
+use crate::components::context_menu::TorrentContextMenu;
+use leptos_shadcn_card::{Card, CardHeader, CardTitle, CardContent};
 
 fn format_bytes(bytes: i64) -> String {
     const UNITS: [&str; 6] = ["B", "KB", "MB", "GB", "TB", "PB"];
@@ -50,7 +50,7 @@ pub fn TorrentTable() -> impl IntoView {
     let sort_col = signal(SortColumn::AddedDate);
     let sort_dir = signal(SortDirection::Descending);
 
-    let filtered_hashes = move || {
+    let filtered_hashes = Memo::new(move |_| {
         let torrents_map = store.torrents.get();
         let filter = store.filter.get();
         let search = store.search_query.get();
@@ -90,7 +90,7 @@ pub fn TorrentTable() -> impl IntoView {
             if dir == SortDirection::Descending { cmp.reverse() } else { cmp }
         });
         torrents.into_iter().map(|t| t.hash.clone()).collect::<Vec<String>>()
-    };
+    });
 
     let handle_sort = move |col: SortColumn| {
         if sort_col.0.get() == col {
@@ -103,8 +103,6 @@ pub fn TorrentTable() -> impl IntoView {
         }
     };
 
-    let sort_details_ref = NodeRef::<html::Details>::new();
-
     let sort_arrow = move |col: SortColumn| {
         if sort_col.0.get() == col {
             match sort_dir.0.get() {
@@ -114,18 +112,7 @@ pub fn TorrentTable() -> impl IntoView {
         } else { view! { <span class="ml-1 text-xs opacity-0 group-hover:opacity-50">"▲"</span> }.into_any() }
     };
 
-    let selected_hash = signal(Option::<String>::None);
-    let menu_visible = signal(false);
-    let menu_position = signal((0, 0));
-
-    let handle_context_menu = move |e: web_sys::MouseEvent, hash: String| {
-        e.prevent_default();
-        menu_position.1.set((e.client_x(), e.client_y()));
-        selected_hash.1.set(Some(hash));
-        menu_visible.1.set(true);
-    };
-
-    let on_action = move |(action, hash): (String, String)| {
+    let on_action = Callback::new(move |(action, hash): (String, String)| {
         let (success_msg_str, error_msg_str): (&'static str, &'static str) = get_action_messages(&action);
         let success_msg = success_msg_str.to_string();
         let error_msg = error_msg_str.to_string();
@@ -143,10 +130,10 @@ pub fn TorrentTable() -> impl IntoView {
                 Err(e) => show_toast_with_signal(notifications, NotificationLevel::Error, format!("{}: {:?}", error_msg, e)),
             }
         });
-    };
+    });
 
     view! {
-        <div class="h-full bg-background relative flex flex-col">
+        <div class="h-full bg-background relative flex flex-col overflow-hidden">
             // --- DESKTOP VIEW ---
             <div class="hidden md:flex flex-col h-full overflow-hidden">
                 // Header
@@ -177,18 +164,16 @@ pub fn TorrentTable() -> impl IntoView {
                     </div>
                 </div>
 
-                // Regular List (Standard For loop)
+                // Regular List
                 <div class="flex-1 overflow-y-auto min-h-0">
-                    <For each=filtered_hashes key=|hash| hash.clone() children={
-                        let handle_context_menu = handle_context_menu.clone();
+                    <For each=move || filtered_hashes.get() key=|hash| hash.clone() children={
+                        let on_action = on_action.clone();
                         move |hash| {
+                            let h = hash.clone();
                             view! { 
-                                <TorrentRow 
-                                    hash=hash.clone() 
-                                    selected_hash=selected_hash.0 
-                                    set_selected_hash=selected_hash.1 
-                                    on_context_menu=handle_context_menu.clone() 
-                                /> 
+                                <TorrentContextMenu torrent_hash=h on_action=on_action.clone()>
+                                    <TorrentRow hash=hash.clone() /> 
+                                </TorrentContextMenu>
                             }
                         }
                     } />
@@ -197,61 +182,22 @@ pub fn TorrentTable() -> impl IntoView {
 
             // --- MOBILE VIEW ---
             <div class="md:hidden flex flex-col h-full bg-muted/10 relative overflow-hidden">
-                 <div class="px-3 py-2 border-b border-border flex justify-between items-center bg-background/95 backdrop-blur z-10 shrink-0">
-                    <span class="text-xs font-bold opacity-50 uppercase tracking-wider text-muted-foreground">"Torrents"</span>
-                    <details class="dropdown dropdown-end" node_ref=sort_details_ref>
-                        <summary class="btn btn-ghost btn-xs gap-1 opacity-70 font-normal list-none [&::-webkit-details-marker]:hidden cursor-pointer hover:bg-accent hover:text-accent-foreground rounded-sm px-2 py-1 flex items-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 pointer-events-none"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7.5L7.5 3m0 0L12 7.5M7.5 3v13.5m13.5 0L16.5 21m0 0L12 16.5m4.5 4.5V7.5" /></svg>
-                            <span class="pointer-events-none">"Sort"</span>
-                        </summary>
-                        <div class="dropdown-content z-[100] absolute right-0 top-full mt-1 min-w-[10rem] overflow-hidden rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md">
-                            <div class="px-2 py-1.5 text-xs font-semibold text-muted-foreground">"Sort By"</div>
-                             <ul class="w-full">
-                                {
-                                    let columns = vec![(SortColumn::Name, "Name"), (SortColumn::Size, "Size"), (SortColumn::Progress, "Progress"), (SortColumn::Status, "Status"), (SortColumn::DownSpeed, "DL Speed"), (SortColumn::UpSpeed, "Up Speed"), (SortColumn::ETA, "ETA"), (SortColumn::AddedDate, "Date")];
-                                    columns.into_iter().map(|(col, label)| {
-                                        let is_active = move || sort_col.0.get() == col;
-                                        view! {
-                                            <li>
-                                                <button type="button" class=move || if is_active() { "bg-accent text-accent-foreground font-medium flex w-full cursor-default select-none items-center rounded-sm py-1.5 px-2 text-xs outline-none" } else { "flex w-full cursor-default select-none items-center rounded-sm py-1.5 px-2 text-xs outline-none hover:bg-accent hover:text-accent-foreground" } on:click=move |_| { handle_sort(col); if let Some(el) = sort_details_ref.get() { el.set_open(false); } }>
-                                                    {label}
-                                                    <Show when=is_active fallback=|| ()><span class="ml-auto opacity-70 text-[10px]">{move || match sort_dir.0.get() { SortDirection::Ascending => "▲", SortDirection::Descending => "▼" }}</span></Show>
-                                                </button>
-                                            </li>
-                                        }
-                                    }).collect::<Vec<_>>()
-                                }
-                            </ul>
-                        </div>
-                    </details>
-                </div>
-                
                 <div class="flex-1 overflow-y-auto p-3 min-h-0">
-                    <For each=filtered_hashes key=|hash| hash.clone() children={
-                        let handle_context_menu = handle_context_menu.clone();
-                        let menu_pos_setter = menu_position.1.clone();
-                        let menu_vis_setter = menu_visible.1.clone();
+                    <For each=move || filtered_hashes.get() key=|hash| hash.clone() children={
+                        let on_action = on_action.clone();
                         move |hash| {
+                            let h = hash.clone();
                             view! { 
                                  <div class="pb-3">
-                                    <TorrentCard 
-                                        hash=hash.clone() 
-                                        selected_hash=selected_hash.0 
-                                        set_selected_hash=selected_hash.1 
-                                        set_menu_position=menu_pos_setter 
-                                        set_menu_visible=menu_vis_setter 
-                                        on_context_menu=handle_context_menu.clone() 
-                                    /> 
+                                    <TorrentContextMenu torrent_hash=h on_action=on_action.clone()>
+                                        <TorrentCard hash=hash.clone() /> 
+                                    </TorrentContextMenu>
                                 </div>
                             }
                         }
                     } />
                 </div>
             </div>
-
-            <Show when=move || menu_visible.0.get() fallback=|| ()>
-                <crate::components::context_menu::ContextMenu position=menu_position.0.get() torrent_hash=selected_hash.0.get().unwrap_or_default() on_close=Callback::new(move |()| menu_visible.1.set(false)) on_action=Callback::new(move |args| on_action(args)) />
-            </Show>
         </div>
     }
 }
@@ -259,9 +205,6 @@ pub fn TorrentTable() -> impl IntoView {
 #[component]
 fn TorrentRow(
     hash: String,
-    selected_hash: ReadSignal<Option<String>>,
-    set_selected_hash: WriteSignal<Option<String>>,
-    on_context_menu: impl Fn(web_sys::MouseEvent, String) + 'static + Clone + Send + Sync,
 ) -> impl IntoView {
     let store = use_context::<crate::store::TorrentStore>().expect("store not provided");
     let h = hash.clone();
@@ -270,34 +213,13 @@ fn TorrentRow(
     view! {
         <Show when=move || torrent.get().is_some() fallback=|| ()>
             {
-                let on_context_menu = on_context_menu.clone();
-                let hash = hash.clone();
                 move || {
                     let t = torrent.get().unwrap();
-                    let t_hash = hash.clone();
                     let t_name = t.name.clone();
                     let status_color = match t.status { shared::TorrentStatus::Seeding => "text-green-500", shared::TorrentStatus::Downloading => "text-blue-500", shared::TorrentStatus::Paused => "text-yellow-500", shared::TorrentStatus::Error => "text-red-500", _ => "text-muted-foreground" };
                     
-                    let selected_hash_clone = selected_hash.clone();
-                    let t_hash_row = t_hash.clone();
-
                     view! {
-                        <div
-                            class=move || {
-                                let base = "flex items-center text-sm hover:bg-muted/50 border-b border-border h-[48px] px-2 select-none cursor-pointer";
-                                if selected_hash_clone.get() == Some(t_hash_row.clone()) { format!("{} bg-muted", base) } else { base.to_string() }
-                            }
-                            on:contextmenu={
-                                let t_hash = t_hash.clone();
-                                let on_context_menu = on_context_menu.clone();
-                                move |e: web_sys::MouseEvent| on_context_menu(e, t_hash.clone())
-                            }
-                            on:click={
-                                let t_hash = t_hash.clone();
-                                let set_selected_hash = set_selected_hash.clone();
-                                move |_| set_selected_hash.set(Some(t_hash.clone()))
-                            }
-                        >
+                        <div class="flex items-center text-sm hover:bg-muted/50 border-b border-border h-[48px] px-2 select-none cursor-pointer transition-colors w-full">
                             <div class="flex-1 min-w-0 px-2 font-medium truncate" title=t_name.clone()>{t_name.clone()}</div>
                             <div class="w-24 px-2 font-mono text-xs text-muted-foreground">{format_bytes(t.size)}</div>
                             <div class="w-48 px-2">
@@ -324,11 +246,6 @@ fn TorrentRow(
 #[component]
 fn TorrentCard(
     hash: String,
-    selected_hash: ReadSignal<Option<String>>,
-    set_selected_hash: WriteSignal<Option<String>>,
-    set_menu_position: WriteSignal<(i32, i32)>,
-    set_menu_visible: WriteSignal<bool>,
-    on_context_menu: impl Fn(web_sys::MouseEvent, String) + 'static + Clone + Send + Sync,
 ) -> impl IntoView {
     let store = use_context::<crate::store::TorrentStore>().expect("store not provided");
     let h = hash.clone();
@@ -337,57 +254,20 @@ fn TorrentCard(
     view! {
         <Show when=move || torrent.get().is_some() fallback=|| ()>
             {
-                let hash = hash.clone();
-                let on_context_menu = on_context_menu.clone();
                 move || {
                     let t = torrent.get().unwrap();
-                    let t_hash = hash.clone();
                     let t_name = t.name.clone();
                     let status_badge_class = match t.status { shared::TorrentStatus::Seeding => "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800", shared::TorrentStatus::Downloading => "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200 dark:border-blue-800", shared::TorrentStatus::Paused => "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800", shared::TorrentStatus::Error => "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800", _ => "bg-muted text-muted-foreground" };
 
-                    let t_hash_long = t_hash.clone();
-                    let set_menu_position = set_menu_position.clone();
-                    let set_selected_hash = set_selected_hash.clone();
-                    let set_menu_visible = set_menu_visible.clone();
-                    let UseTimeoutFnReturn { start, .. } = use_timeout_fn(
-                        move |pos: (i32, i32)| {
-                            set_menu_position.set(pos);
-                            set_selected_hash.set(Some(t_hash_long.clone()));
-                            set_menu_visible.set(true);
-                            let _ = window().navigator().vibrate_with_duration(50);
-                        },
-                        600.0,
-                    );
-
-                    let selected_hash_clone = selected_hash.clone();
-                    let t_hash_card = t_hash.clone();
-
                     view! {
-                        <div
-                            class=move || {
-                                let base = "bg-card text-card-foreground rounded-lg border border-border shadow-sm select-none cursor-pointer h-full";
-                                if selected_hash_clone.get() == Some(t_hash_card.clone()) { format!("{} ring-2 ring-primary ring-inset", base) } else { base.to_string() }
-                            }
-                            on:contextmenu={
-                                let t_hash = t_hash.clone();
-                                let on_context_menu = on_context_menu.clone();
-                                move |e: web_sys::MouseEvent| on_context_menu(e, t_hash.clone())
-                            }
-                            on:click={
-                                let t_hash = t_hash.clone();
-                                let set_selected_hash = set_selected_hash.clone();
-                                move |_| set_selected_hash.set(Some(t_hash.clone()))
-                            }
-                            on:touchstart={
-                                let start = start.clone();
-                                move |e: web_sys::TouchEvent| if let Some(touch) = e.touches().get(0) { start((touch.client_x(), touch.client_y())); }
-                            }
-                        >
-                            <div class="p-3 gap-3 flex flex-col h-full justify-between">
+                        <Card class="h-full select-none cursor-pointer hover:border-primary transition-colors">
+                            <CardHeader class="p-3 pb-0">
                                 <div class="flex justify-between items-start gap-2">
-                                    <h3 class="font-medium text-sm line-clamp-2 leading-tight">{t_name.clone()}</h3>
+                                    <CardTitle class="text-sm font-medium leading-tight line-clamp-2">{t_name.clone()}</CardTitle>
                                     <div class={format!("inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 {}", status_badge_class)}>{format!("{:?}", t.status)}</div>
                                 </div>
+                            </CardHeader>
+                            <CardContent class="p-3 pt-2 gap-3 flex flex-col">
                                 <div class="flex flex-col gap-1">
                                     <div class="flex justify-between text-[10px] text-muted-foreground">
                                         <span>{format_bytes(t.size)}</span>
@@ -403,8 +283,8 @@ fn TorrentCard(
                                     <div class="flex flex-col"><span>"ETA"</span><span>{format_duration(t.eta)}</span></div>
                                     <div class="flex flex-col text-right"><span>"DATE"</span><span>{format_date(t.added_date)}</span></div>
                                 </div>
-                            </div>
-                        </div>
+                            </CardContent>
+                        </Card>
                     }
                 }
             }

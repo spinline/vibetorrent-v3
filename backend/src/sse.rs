@@ -210,10 +210,7 @@ pub async fn sse_handler(
             .unwrap()
             .as_secs();
 
-        let event_data = AppEvent::FullList {
-            torrents: initial_torrents,
-            timestamp,
-        };
+        let event_data = AppEvent::FullList(initial_torrents, timestamp);
 
         match rmp_serde::to_vec(&event_data) {
             Ok(bytes) => Event::default().data(BASE64.encode(bytes)),
@@ -250,7 +247,7 @@ pub async fn sse_handler(
         .keep_alive(axum::response::sse::KeepAlive::default());
 
     (
-        [("content-type", "application/x-msgpack")],
+        [("content-type", "text/event-stream")],
         sse
     )
 }

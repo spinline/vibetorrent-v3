@@ -53,20 +53,10 @@ pub enum TorrentStatus {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
-#[serde(tag = "t", content = "d")]
 pub enum AppEvent {
-    #[serde(rename = "f")]
-    FullList {
-        #[serde(rename = "t")]
-        torrents: Vec<Torrent>,
-        #[serde(rename = "ts")]
-        timestamp: u64,
-    },
-    #[serde(rename = "u")]
+    FullList(Vec<Torrent>, u64),
     Update(TorrentUpdate),
-    #[serde(rename = "s")]
     Stats(GlobalStats),
-    #[serde(rename = "n")]
     Notification(SystemNotification),
 }
 

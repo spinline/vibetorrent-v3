@@ -16,17 +16,13 @@ pub fn Login() -> impl IntoView {
         let user = username.0.get();
         let pass = password.0.get();
 
-        log::info!("Attempting login for user: {}", user);
-
         spawn_local(async move {
             match shared::server_fns::auth::login(user, pass).await {
                 Ok(_) => {
-                    log::info!("Login successful, redirecting...");
                     let window = web_sys::window().expect("window should exist");
                     let _ = window.location().set_href("/");
                 }
-                Err(e) => {
-                    log::error!("Login failed: {:?}", e);
+                Err(_) => {
                     error.1.set(Some("Geçersiz kullanıcı adı veya şifre".to_string()));
                     loading.1.set(false);
                 }
@@ -35,7 +31,7 @@ pub fn Login() -> impl IntoView {
     };
 
     view! {
-        <div class="flex items-center justify-center min-h-screen bg-muted/40">
+        <div class="flex items-center justify-center min-h-screen bg-muted/40 px-4">
             <div class="w-full max-w-sm rounded-xl border border-border bg-card text-card-foreground shadow-lg">
                 <div class="flex flex-col space-y-1.5 p-6 pb-2 items-center">
                     <div class="w-12 h-12 bg-primary rounded-xl flex items-center justify-center text-primary-foreground shadow-sm mb-4">
@@ -51,13 +47,11 @@ pub fn Login() -> impl IntoView {
                 <div class="p-6 pt-4">
                     <form on:submit=handle_login class="space-y-4">
                         <div class="space-y-2">
-                            <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                "Kullanıcı Adı"
-                            </label>
+                            <label class="text-sm font-medium leading-none">"Kullanıcı Adı"</label>
                             <input 
                                 type="text" 
                                 placeholder="Kullanıcı adınız" 
-                                class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50" 
+                                class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50" 
                                 prop:value=move || username.0.get()
                                 on:input=move |ev| username.1.set(event_target_value(&ev))
                                 disabled=move || loading.0.get()
@@ -65,13 +59,11 @@ pub fn Login() -> impl IntoView {
                             />
                         </div>
                         <div class="space-y-2">
-                            <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                "Şifre"
-                            </label>
+                            <label class="text-sm font-medium leading-none">"Şifre"</label>
                             <input 
                                 type="password" 
                                 placeholder="******" 
-                                class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50" 
+                                class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50" 
                                 prop:value=move || password.0.get()
                                 on:input=move |ev| password.1.set(event_target_value(&ev))
                                 disabled=move || loading.0.get()
@@ -79,9 +71,9 @@ pub fn Login() -> impl IntoView {
                             />
                         </div>
 
-                        <Show when=move || error.0.get().is_some() fallback=|| ()>
-                            <div class="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive dark:border-destructive dark:bg-destructive/50 dark:text-destructive-foreground">
-                                <span>{move || error.0.get().unwrap_or_default()}</span>
+                        <Show when=move || error.0.get().is_some()>
+                            <div class="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+                                {move || error.0.get().unwrap_or_default()}
                             </div>
                         </Show>
 

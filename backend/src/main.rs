@@ -346,10 +346,7 @@ async fn main() {
 
                     match diff::diff_torrents(&previous_torrents, &new_torrents) {
                         diff::DiffResult::FullUpdate => {
-                            let _ = event_bus_tx.send(AppEvent::FullList {
-                                torrents: new_torrents.clone(),
-                                timestamp: now,
-                            });
+                            let _ = event_bus_tx.send(AppEvent::FullList(new_torrents.clone(), now));
                         }
                         diff::DiffResult::Partial(updates) => {
                             for update in updates {

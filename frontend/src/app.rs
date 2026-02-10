@@ -3,7 +3,6 @@ use crate::components::toast::ToastContainer;
 use crate::components::torrent::table::TorrentTable;
 use crate::components::auth::login::Login;
 use crate::components::auth::setup::Setup;
-use crate::api;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use leptos_router::components::{Router, Routes, Route};
@@ -122,14 +121,14 @@ pub fn App() -> impl IntoView {
                                         <p class="text-sm text-muted-foreground">"Yükleniyor..."</p>
                                     </div>
                                 </div>
-                            }>
+                            }.into_any()>
                                 <Show when=move || is_authenticated.0.get() fallback=|| ()>
                                     <Protected>
                                         <TorrentTable />
                                     </Protected>
                                 </Show>
                             </Show>
-                        }
+                        }.into_any()
                     }/>
 
                     <Route path=leptos_router::path!("/settings") view=move || {

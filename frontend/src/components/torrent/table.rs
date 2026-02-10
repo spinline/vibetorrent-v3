@@ -1,6 +1,6 @@
 use leptos::prelude::*;
 use leptos::task::spawn_local;
-use crate::store::{get_action_messages, show_toast_with_signal};
+use crate::store::{get_action_messages, show_toast};
 use crate::api;
 use shared::NotificationLevel;
 use crate::components::context_menu::TorrentContextMenu;
@@ -116,7 +116,6 @@ pub fn TorrentTable() -> impl IntoView {
         let (success_msg_str, error_msg_str): (&'static str, &'static str) = get_action_messages(&action);
         let success_msg = success_msg_str.to_string();
         let error_msg = error_msg_str.to_string();
-        let notifications = store.notifications;
         spawn_local(async move {
             let result = match action.as_str() {
                 "delete" => api::torrent::delete(&hash).await,
@@ -126,8 +125,8 @@ pub fn TorrentTable() -> impl IntoView {
                 _ => api::torrent::action(&hash, &action).await,
             };
             match result {
-                Ok(_) => show_toast_with_signal(notifications, NotificationLevel::Success, success_msg),
-                Err(e) => show_toast_with_signal(notifications, NotificationLevel::Error, format!("{}: {:?}", error_msg, e)),
+                Ok(_) => show_toast(NotificationLevel::Success, success_msg),
+                Err(e) => show_toast(NotificationLevel::Error, format!("{}: {:?}", error_msg, e)),
             }
         });
     });

@@ -11,7 +11,6 @@ pub fn AddTorrentDialog(
     on_close: Callback<()>,
 ) -> impl IntoView {
     let store = use_context::<TorrentStore>().expect("TorrentStore not provided");
-    let notifications = store.notifications;
 
     let uri = signal(String::new());
     let is_loading = signal(false);
@@ -34,11 +33,7 @@ pub fn AddTorrentDialog(
             match api::torrent::add(&uri_val).await {
                 Ok(_) => {
                     log::info!("Torrent added successfully");
-                    crate::store::show_toast_with_signal(
-                        notifications, 
-                        shared::NotificationLevel::Success, 
-                        "Torrent başarıyla eklendi"
-                    );
+                    crate::store::toast_success("Torrent başarıyla eklendi");
                     on_close.run(());
                 }
                 Err(e) => {

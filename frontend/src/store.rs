@@ -7,39 +7,17 @@ use std::collections::HashMap;
 use struct_patch::traits::Patch;
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct NotificationItem {
-    pub id: u64,
-    pub notification: SystemNotification,
-}
-
-pub fn show_toast_with_signal(
-    notifications: RwSignal<Vec<NotificationItem>>,
-    level: NotificationLevel,
-    message: impl Into<String>,
-) {
-    let id = js_sys::Date::now() as u64;
-    let notification = SystemNotification {
-        level,
-        message: message.into(),
-    };
-    let item = NotificationItem { id, notification };
-
-    notifications.update(|list| list.push(item));
-
-    leptos::prelude::set_timeout(
-        move || {
-            notifications.update(|list| list.retain(|i| i.id != id));
-        },
-        std::time::Duration::from_secs(5),
-    );
-}
-
 pub fn show_toast(level: NotificationLevel, message: impl Into<String>) {
-    if let Some(store) = use_context::<TorrentStore>() {
-        show_toast_with_signal(store.notifications, level, message);
+    let msg = message.into();
+    match level {
+        NotificationLevel::Info => { leptos_shadcn_toast::toast::info(&msg).show(); },
+        NotificationLevel::Success => { leptos_shadcn_toast::toast::success(&msg).show(); },
+        NotificationLevel::Warning => { leptos_shadcn_toast::toast::warning(&msg).show(); },
+        NotificationLevel::Error => { leptos_shadcn_toast::toast::error(&msg).show(); },
     }
 }
+
+
 
 pub fn toast_success(message: impl Into<String>) { show_toast(NotificationLevel::Success, message); }
 pub fn toast_error(message: impl Into<String>) { show_toast(NotificationLevel::Error, message); }
@@ -67,7 +45,6 @@ pub struct TorrentStore {
     pub filter: RwSignal<FilterStatus>,
     pub search_query: RwSignal<String>,
     pub global_stats: RwSignal<GlobalStats>,
-    pub notifications: RwSignal<Vec<NotificationItem>>,
     pub user: RwSignal<Option<String>>,
     pub selected_torrent: RwSignal<Option<String>>,
 }
@@ -77,16 +54,14 @@ pub fn provide_torrent_store() {
     let filter = RwSignal::new(FilterStatus::All);
     let search_query = RwSignal::new(String::new());
     let global_stats = RwSignal::new(GlobalStats::default());
-    let notifications = RwSignal::new(Vec::<NotificationItem>::new());
     let user = RwSignal::new(Option::<String>::None);
     let selected_torrent = RwSignal::new(Option::<String>::None);
 
     let show_browser_notification = crate::utils::notification::use_app_notification();
 
-    let store = TorrentStore { torrents, filter, search_query, global_stats, notifications, user, selected_torrent };
+    let store = TorrentStore { torrents, filter, search_query, global_stats, user, selected_torrent };
     provide_context(store);
 
-    let notifications_for_sse = notifications;
     let global_stats_for_sse = global_stats;
     let torrents_for_sse = torrents;
     let show_browser_notification = show_browser_notification.clone();
@@ -112,7 +87,7 @@ pub fn provide_torrent_store() {
                                 got_first_message = true;
                                 backoff_ms = 1000;
                                 if was_connected && disconnect_notified {
-                                    show_toast_with_signal(notifications_for_sse, NotificationLevel::Success, "Sunucu bağlantısı yeniden kuruldu");
+                                    show_toast(NotificationLevel::Success, "Sunucu bağlantısı yeniden kuruldu");
                                     disconnect_notified = false;
                                 }
                                 was_connected = true;
@@ -149,7 +124,7 @@ pub fn provide_torrent_store() {
                                                     }
                                                     AppEvent::Stats(stats) => { global_stats_for_sse.set(stats); }
                                                     AppEvent::Notification(n) => {
-                                                        show_toast_with_signal(notifications_for_sse, n.level.clone(), n.message.clone());
+                                                        show_toast(n.level.clone(), n.message.clone());
                                                         if n.message.contains("tamamlandı") || n.level == shared::NotificationLevel::Error {
                                                             show_browser_notification("VibeTorrent", &n.message);
                                                         }
@@ -164,14 +139,14 @@ pub fn provide_torrent_store() {
                             }
                         }
                         if was_connected && !disconnect_notified {
-                            show_toast_with_signal(notifications_for_sse, NotificationLevel::Warning, "Sunucu bağlantısı kesildi, yeniden bağlanılıyor...");
+                            show_toast(NotificationLevel::Warning, "Sunucu bağlantısı kesildi, yeniden bağlanılıyor...");
                             disconnect_notified = true;
                         }
                     }
                 }
                 Err(_) => {
                     if was_connected && !disconnect_notified {
-                        show_toast_with_signal(notifications_for_sse, NotificationLevel::Warning, "Sunucu bağlantısı kurulamıyor...");
+                        show_toast(NotificationLevel::Warning, "Sunucu bağlantısı kurulamıyor...");
                         disconnect_notified = true;
                     }
                 }

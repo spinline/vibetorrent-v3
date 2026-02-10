@@ -43,7 +43,7 @@ pub fn Toolbar() -> impl IntoView {
                             <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
                         </svg>
                         <Input
-                            input_type="search"
+                            input_type="text"
                             placeholder="Search..."
                             value=MaybeProp::derive(move || Some(store.search_query.get()))
                             on_change=Callback::new(move |val: String| store.search_query.set(val))

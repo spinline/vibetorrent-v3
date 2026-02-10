@@ -11,6 +11,8 @@ pub mod xmlrpc;
 #[cfg(feature = "ssr")]
 pub mod db;
 
+pub mod codec;
+
 pub mod server_fns;
 
 #[derive(Clone, Debug)]

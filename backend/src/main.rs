@@ -55,10 +55,9 @@ async fn auth_middleware(
 ) -> Result<Response, StatusCode> {
     // Skip auth for public paths
     let path = request.uri().path();
-    if path.starts_with("/api/auth/login")
-       || path.starts_with("/api/auth/check") // Used by frontend to decide where to go
-       || path.starts_with("/api/setup")
-       || path.starts_with("/api/server_fns")
+    if path.starts_with("/api/server_fns/Login") // Login server fn
+       || path.starts_with("/api/server_fns/GetSetupStatus")
+       || path.starts_with("/api/server_fns/Setup")
        || path.starts_with("/swagger-ui")
        || path.starts_with("/api-docs")
        || !path.starts_with("/api/") // Allow static files (frontend)
@@ -68,9 +67,19 @@ async fn auth_middleware(
 
     // Check token
     if let Some(token) = jar.get("auth_token") {
-        match state.db.get_session_user(token.value()).await {
-            Ok(Some(_)) => return Ok(next.run(request).await),
-            _ => {} // Invalid
+        use jsonwebtoken::{decode, Validation, DecodingKey};
+        use shared::server_fns::auth::Claims;
+
+        let secret = std::env::var("JWT_SECRET").unwrap_or_else(|_| "secret".to_string());
+        let validation = Validation::default();
+        
+        match decode::<Claims>(
+            token.value(),
+            &DecodingKey::from_secret(secret.as_bytes()),
+            &validation,
+        ) {
+            Ok(_) => return Ok(next.run(request).await),
+            Err(_) => {} // Invalid token
         }
     }
 
@@ -433,14 +442,6 @@ async fn main() {
     let app = app
         .route("/api/setup/status", get(handlers::setup::get_setup_status_handler))
         .route("/api/setup", post(handlers::setup::setup_handler))
-        .route(
-            "/api/auth/login",
-            post(handlers::auth::login_handler).layer(GovernorLayer::new(Arc::new(
-                rate_limit::get_login_rate_limit_config(),
-            ))),
-        )
-        .route("/api/auth/logout", post(handlers::auth::logout_handler))
-        .route("/api/auth/check", get(handlers::auth::check_auth_handler))
         .route("/api/events", get(sse::sse_handler))
         .route("/api/server_fns/{*fn_name}", post({
             let scgi_path = scgi_path_for_ctx.clone();

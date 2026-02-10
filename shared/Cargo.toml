@@ -38,3 +38,25 @@ quick-xml = { version = "0.31", features = ["serde", "serialize"], optional = tr
 # Database
 sqlx = { version = "0.8", features = ["runtime-tokio", "sqlite"], optional = true }
 anyhow = { version = "1.0", optional = true }
+
+# Auth (SSR)
+jsonwebtoken = { version = "9", optional = true }
+cookie = { version = "0.18", features = ["percent-encode"], optional = true }
+bcrypt = { version = "0.17", optional = true }
+
+[features]
+default = []
+ssr = [
+    "dep:tokio",
+    "dep:bytes",
+    "dep:thiserror",
+    "dep:quick-xml",
+    "dep:leptos_axum",
+    "dep:sqlx",
+    "dep:anyhow",
+    "dep:jsonwebtoken",
+    "dep:cookie",
+    "dep:bcrypt",
+    "leptos/ssr",
+    "leptos_router/ssr",
+]

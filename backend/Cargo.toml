@@ -46,3 +46,4 @@ governor = "0.10.4"
 # Leptos
 leptos = { version = "0.8.15", features = ["nightly"] }
 leptos_axum = { version = "0.8.7" }
+jsonwebtoken = "9"

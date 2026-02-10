@@ -8,6 +8,7 @@ use leptos::prelude::*;
 use leptos::task::spawn_local;
 use leptos_router::components::{Router, Routes, Route};
 use leptos_router::hooks::use_navigate;
+use leptos_shadcn_skeleton::Skeleton;
 
 #[component]
 pub fn App() -> impl IntoView {
@@ -116,10 +117,40 @@ pub fn App() -> impl IntoView {
                         
                         view! {
                             <Show when=move || !is_loading.0.get() fallback=|| view! {
-                                <div class="flex items-center justify-center h-screen bg-background">
-                                    <div class="flex flex-col items-center gap-4">
-                                        <div class="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
-                                        <p class="text-sm text-muted-foreground">"Yükleniyor..."</p>
+                                <div class="flex h-screen bg-background">
+                                    // Sidebar skeleton
+                                    <div class="w-56 border-r border-border p-4 space-y-4">
+                                        <Skeleton class="h-8 w-3/4" />
+                                        <div class="space-y-2">
+                                            <Skeleton class="h-6 w-full" />
+                                            <Skeleton class="h-6 w-full" />
+                                            <Skeleton class="h-6 w-4/5" />
+                                            <Skeleton class="h-6 w-full" />
+                                            <Skeleton class="h-6 w-3/5" />
+                                            <Skeleton class="h-6 w-full" />
+                                        </div>
+                                    </div>
+                                    // Main content skeleton
+                                    <div class="flex-1 flex flex-col">
+                                        // Header skeleton
+                                        <div class="border-b border-border p-4 flex items-center gap-4">
+                                            <Skeleton class="h-8 w-48" />
+                                            <Skeleton class="h-8 w-64" />
+                                            <div class="ml-auto"><Skeleton class="h-8 w-24" /></div>
+                                        </div>
+                                        // Table skeleton rows
+                                        <div class="flex-1 p-4 space-y-3">
+                                            <Skeleton class="h-10 w-full" />
+                                            <Skeleton class="h-10 w-full" />
+                                            <Skeleton class="h-10 w-full" />
+                                            <Skeleton class="h-10 w-full" />
+                                            <Skeleton class="h-10 w-full" />
+                                            <Skeleton class="h-10 w-3/4" />
+                                        </div>
+                                        // Status bar skeleton
+                                        <div class="border-t border-border p-3">
+                                            <Skeleton class="h-5 w-96" />
+                                        </div>
                                     </div>
                                 </div>
                             }.into_any()>

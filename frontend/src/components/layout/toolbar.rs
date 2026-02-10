@@ -43,20 +43,12 @@ pub fn Toolbar() -> impl IntoView {
                             <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
                         </svg>
                         <Input
-                            input_type="text"
+                            input_type="search"
                             placeholder="Search..."
                             value=MaybeProp::derive(move || Some(store.search_query.get()))
                             on_change=Callback::new(move |val: String| store.search_query.set(val))
                             class="pl-8 h-9"
                         />
-                        <Show when=move || !store.search_query.get().is_empty()>
-                            <button 
-                                class="absolute right-2 top-1/2 -translate-y-1/2 inline-flex items-center justify-center rounded-full text-xs font-medium hover:bg-muted h-5 w-5 opacity-50 hover:opacity-100 transition-opacity"
-                                on:click=move |_| store.search_query.set(String::new())
-                            >
-                                "×"
-                            </button>
-                        </Show>
                     </div>
                 </div>
             </div>

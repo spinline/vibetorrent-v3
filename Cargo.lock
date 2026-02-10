@@ -1267,8 +1267,10 @@ dependencies = [
  "leptos-shadcn-context-menu",
  "leptos-shadcn-input",
  "leptos-shadcn-progress",
+ "leptos-shadcn-scroll-area",
  "leptos-shadcn-separator",
  "leptos-shadcn-sheet",
+ "leptos-shadcn-tabs",
  "leptos-use",
  "leptos_router",
  "log",
@@ -2264,6 +2266,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "leptos-shadcn-scroll-area"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ef3d7bdcae4919ad495529ec2a5974036fb0b959580df310f36b2fd33f90860c"
+dependencies = [
+ "leptos",
+ "leptos-node-ref",
+ "leptos-shadcn-signal-management",
+ "leptos-struct-component",
+ "leptos-style",
+ "tailwind_fuse",
+ "web-sys",
+]
+
+[[package]]
 name = "leptos-shadcn-separator"
 version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2305,6 +2322,21 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror 1.0.69",
+]
+
+[[package]]
+name = "leptos-shadcn-tabs"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "39f817c834e70a8359933b7b274564313be64105370611af96f05508541b661b"
+dependencies = [
+ "leptos",
+ "leptos-node-ref",
+ "leptos-shadcn-signal-management",
+ "leptos-struct-component",
+ "leptos-style",
+ "tailwind_fuse",
+ "web-sys",
 ]
 
 [[package]]

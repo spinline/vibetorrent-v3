@@ -210,6 +210,8 @@ fn TorrentRow(
     let h = hash.clone();
     let torrent = Memo::new(move |_| store.torrents.with(|map| map.get(&h).cloned()));
 
+    let stored_hash = StoredValue::new(hash.clone());
+
     view! {
         <Show when=move || torrent.get().is_some() fallback=|| ()>
             {
@@ -219,7 +221,18 @@ fn TorrentRow(
                     let status_color = match t.status { shared::TorrentStatus::Seeding => "text-green-500", shared::TorrentStatus::Downloading => "text-blue-500", shared::TorrentStatus::Paused => "text-yellow-500", shared::TorrentStatus::Error => "text-red-500", _ => "text-muted-foreground" };
                     
                     view! {
-                        <div class="flex items-center text-sm hover:bg-muted/50 border-b border-border h-[48px] px-2 select-none cursor-pointer transition-colors w-full">
+                        <div 
+                            class=move || {
+                                let selected = store.selected_torrent.get();
+                                let is_selected = selected.as_deref() == Some(stored_hash.get_value().as_str());
+                                if is_selected {
+                                    "flex items-center text-sm bg-primary/10 border-b border-border h-[48px] px-2 select-none cursor-pointer transition-colors w-full"
+                                } else {
+                                    "flex items-center text-sm hover:bg-muted/50 border-b border-border h-[48px] px-2 select-none cursor-pointer transition-colors w-full"
+                                }
+                            }
+                            on:click=move |_| store.selected_torrent.set(Some(stored_hash.get_value()))
+                        >
                             <div class="flex-1 min-w-0 px-2 font-medium truncate" title=t_name.clone()>{t_name.clone()}</div>
                             <div class="w-24 px-2 font-mono text-xs text-muted-foreground">{format_bytes(t.size)}</div>
                             <div class="w-48 px-2">
@@ -251,6 +264,8 @@ fn TorrentCard(
     let h = hash.clone();
     let torrent = Memo::new(move |_| store.torrents.with(|map| map.get(&h).cloned()));
 
+    let stored_hash = StoredValue::new(hash.clone());
+
     view! {
         <Show when=move || torrent.get().is_some() fallback=|| ()>
             {
@@ -260,6 +275,18 @@ fn TorrentCard(
                     let status_badge_class = match t.status { shared::TorrentStatus::Seeding => "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800", shared::TorrentStatus::Downloading => "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200 dark:border-blue-800", shared::TorrentStatus::Paused => "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800", shared::TorrentStatus::Error => "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800", _ => "bg-muted text-muted-foreground" };
 
                     view! {
+                        <div
+                            class=move || {
+                                let selected = store.selected_torrent.get();
+                                let is_selected = selected.as_deref() == Some(stored_hash.get_value().as_str());
+                                if is_selected {
+                                    "ring-2 ring-primary rounded-lg transition-all"
+                                } else {
+                                    "transition-all"
+                                }
+                            }
+                            on:click=move |_| store.selected_torrent.set(Some(stored_hash.get_value()))
+                        >
                         <Card class="h-full select-none cursor-pointer hover:border-primary transition-colors">
                             <CardHeader class="p-3 pb-0">
                                 <div class="flex justify-between items-start gap-2">
@@ -285,6 +312,7 @@ fn TorrentCard(
                                 </div>
                             </CardContent>
                         </Card>
+                        </div>
                     }
                 }
             }

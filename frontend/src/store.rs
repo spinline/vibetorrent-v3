@@ -69,6 +69,7 @@ pub struct TorrentStore {
     pub global_stats: RwSignal<GlobalStats>,
     pub notifications: RwSignal<Vec<NotificationItem>>,
     pub user: RwSignal<Option<String>>,
+    pub selected_torrent: RwSignal<Option<String>>,
 }
 
 pub fn provide_torrent_store() {
@@ -78,10 +79,11 @@ pub fn provide_torrent_store() {
     let global_stats = RwSignal::new(GlobalStats::default());
     let notifications = RwSignal::new(Vec::<NotificationItem>::new());
     let user = RwSignal::new(Option::<String>::None);
+    let selected_torrent = RwSignal::new(Option::<String>::None);
 
     let show_browser_notification = crate::utils::notification::use_app_notification();
 
-    let store = TorrentStore { torrents, filter, search_query, global_stats, notifications, user };
+    let store = TorrentStore { torrents, filter, search_query, global_stats, notifications, user, selected_torrent };
     provide_context(store);
 
     let notifications_for_sse = notifications;

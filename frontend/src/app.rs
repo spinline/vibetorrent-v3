@@ -1,6 +1,7 @@
 use crate::components::layout::protected::Protected;
 use crate::components::toast::ToastContainer;
 use crate::components::torrent::table::TorrentTable;
+use crate::components::torrent::detail::TorrentDetail;
 use crate::components::auth::login::Login;
 use crate::components::auth::setup::Setup;
 use leptos::prelude::*;
@@ -124,7 +125,12 @@ pub fn App() -> impl IntoView {
                             }.into_any()>
                                 <Show when=move || is_authenticated.0.get() fallback=|| ()>
                                     <Protected>
-                                        <TorrentTable />
+                                        <div class="flex flex-col h-full overflow-hidden">
+                                            <div class="flex-1 overflow-hidden">
+                                                <TorrentTable />
+                                            </div>
+                                            <TorrentDetail />
+                                        </div>
                                     </Protected>
                                 </Show>
                             </Show>

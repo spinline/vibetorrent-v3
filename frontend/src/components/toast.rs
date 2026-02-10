@@ -1,30 +1,22 @@
 use leptos::prelude::*;
 use shared::NotificationLevel;
+use leptos_shadcn_alert::{Alert, AlertVariant};
 
 // ============================================================================
-// Toast Components - Shadcn Style
+// Toast Components - Using ShadCN Alert
 // ============================================================================
 
-/// Returns the Shadcn class for the notification level
-fn get_toast_class(level: &NotificationLevel) -> &'static str {
+fn level_to_variant(level: &NotificationLevel) -> AlertVariant {
     match level {
-        NotificationLevel::Info => "group pointer-events-auto relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-md border p-4 shadow-lg transition-all bg-background text-foreground border-border",
-        NotificationLevel::Success => "group pointer-events-auto relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-md border p-4 shadow-lg transition-all bg-background text-foreground border-primary/50 text-primary",
-        NotificationLevel::Warning => "group pointer-events-auto relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-md border p-4 shadow-lg transition-all bg-yellow-50 dark:bg-yellow-900/20 text-yellow-600 dark:text-yellow-500 border-yellow-200 dark:border-yellow-900",
-        NotificationLevel::Error => "group pointer-events-auto relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-md border p-4 shadow-lg transition-all destructive group border-destructive bg-destructive text-destructive-foreground",
+        NotificationLevel::Info => AlertVariant::Default,
+        NotificationLevel::Success => AlertVariant::Success,
+        NotificationLevel::Warning => AlertVariant::Warning,
+        NotificationLevel::Error => AlertVariant::Destructive,
     }
 }
 
-/// Individual toast item component
-#[component]
-fn ToastItem(
-    level: NotificationLevel,
-    message: String,
-) -> impl IntoView {
-    let toast_class = get_toast_class(&level);
-    
-    // Icons
-    let icon_svg = match level {
+fn level_icon(level: &NotificationLevel) -> impl IntoView {
+    match level {
         NotificationLevel::Info => view! {
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 opacity-90">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
@@ -45,15 +37,25 @@ fn ToastItem(
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
             </svg>
         }.into_any(),
-    };
+    }
+}
+
+/// Individual toast item component
+#[component]
+fn ToastItem(
+    level: NotificationLevel,
+    message: String,
+) -> impl IntoView {
+    let variant = level_to_variant(&level);
+    let icon = level_icon(&level);
     
     view! {
-        <div class=toast_class>
+        <Alert variant=variant class="pointer-events-auto shadow-lg">
             <div class="flex items-center gap-3">
-                {icon_svg}
+                {icon}
                 <div class="text-sm font-medium">{message}</div>
             </div>
-        </div>
+        </Alert>
     }
 }
 

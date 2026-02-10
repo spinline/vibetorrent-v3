@@ -1,6 +1,9 @@
 use leptos::prelude::*;
-use leptos::html;
 use leptos::task::spawn_local;
+use leptos_shadcn_dialog::{Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter};
+use leptos_shadcn_input::Input;
+use leptos_shadcn_button::{Button, ButtonVariant};
+use leptos_shadcn_alert::{Alert, AlertDescription, AlertVariant};
 use crate::store::TorrentStore;
 use crate::api;
 
@@ -11,16 +14,10 @@ pub fn AddTorrentDialog(
     let store = use_context::<TorrentStore>().expect("TorrentStore not provided");
     let notifications = store.notifications;
 
-    let dialog_ref = NodeRef::<html::Dialog>::new();
     let uri = signal(String::new());
     let is_loading = signal(false);
     let error_msg = signal(Option::<String>::None);
-
-    Effect::new(move |_| {
-        if let Some(dialog) = dialog_ref.get() {
-            let _ = dialog.show_modal();
-        }
-    });
+    let is_open = signal(true);
 
     let handle_submit = move |ev: web_sys::SubmitEvent| {
         ev.prevent_default();
@@ -44,9 +41,7 @@ pub fn AddTorrentDialog(
                         shared::NotificationLevel::Success, 
                         "Torrent başarıyla eklendi"
                     );
-                    if let Some(dialog) = dialog_ref.get() {
-                        dialog.close();
-                    }
+                    is_open.1.set(false);
                     on_close.run(());
                 }
                 Err(e) => {
@@ -58,51 +53,58 @@ pub fn AddTorrentDialog(
         });
     };
 
-    let handle_cancel = move |_| {
-        if let Some(dialog) = dialog_ref.get() {
-            dialog.close();
-        }
-        on_close.run(());
-    };
 
     view! {
-        <dialog node_ref=dialog_ref class="modal modal-bottom sm:modal-middle">
-            <div class="modal-box">
-                <h3 class="font-bold text-lg">"Add Torrent"</h3>
-                <p class="py-4 text-sm opacity-70">"Enter a Magnet link or a .torrent file URL."</p>
+        <Dialog
+            open=Signal::derive(move || is_open.0.get())
+            on_open_change=Callback::new(move |open: bool| {
+                is_open.1.set(open);
+                if !open {
+                    on_close.run(());
+                }
+            })
+        >
+            <DialogContent class="sm:max-w-[425px]">
+                <DialogHeader>
+                    <DialogTitle>"Add Torrent"</DialogTitle>
+                    <DialogDescription>"Enter a Magnet link or a .torrent file URL."</DialogDescription>
+                </DialogHeader>
                 
-                <form on:submit=handle_submit>
-                    <div class="form-control w-full">
-                        <input 
-                            type="text" 
-                            placeholder="magnet:?xt=urn:btih:..." 
-                            class="input input-bordered w-full" 
-                            prop:value=move || uri.0.get()
-                            on:input=move |ev| uri.1.set(event_target_value(&ev))
-                            disabled=move || is_loading.0.get()
-                            autofocus
-                        />
-                    </div>
+                <form on:submit=handle_submit class="space-y-4">
+                    <Input
+                        input_type="text"
+                        placeholder="magnet:?xt=urn:btih:..."
+                        value=MaybeProp::derive(move || Some(uri.0.get()))
+                        on_change=Callback::new(move |val: String| uri.1.set(val))
+                        disabled=Signal::derive(move || is_loading.0.get())
+                    />
                     
-                    <div class="modal-action">
-                        <button type="button" class="btn btn-ghost" on:click=handle_cancel>"Cancel"</button>
-                        <button type="submit" class="btn btn-primary" disabled=move || is_loading.0.get()>
+                    {move || error_msg.0.get().map(|msg| view! {
+                        <Alert variant=AlertVariant::Destructive>
+                            <AlertDescription>{msg}</AlertDescription>
+                        </Alert>
+                    })}
+
+                    <DialogFooter>
+                        <Button
+                            variant=ButtonVariant::Ghost
+                            on_click=Callback::new(move |()| {
+                                is_open.1.set(false);
+                                on_close.run(());
+                            })
+                        >
+                            "Cancel"
+                        </Button>
+                        <Button disabled=Signal::derive(move || is_loading.0.get())>
                             {move || if is_loading.0.get() {
                                 leptos::either::Either::Left(view! { <span class="loading loading-spinner"></span> "Adding..." })
                             } else {
                                 leptos::either::Either::Right(view! { "Add" })
                             }}
-                        </button>
-                    </div>
+                        </Button>
+                    </DialogFooter>
                 </form>
-
-                {move || error_msg.0.get().map(|msg| view! {
-                    <div class="text-error text-sm mt-2">{msg}</div>
-                })}
-            </div>
-            <form method="dialog" class="modal-backdrop">
-                <button on:click=handle_cancel>"close"</button>
-            </form>
-        </dialog>
+            </DialogContent>
+        </Dialog>
     }
 }

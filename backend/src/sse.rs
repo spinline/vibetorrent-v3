@@ -192,9 +192,25 @@ pub async fn fetch_global_stats(client: &RtorrentClient) -> Result<GlobalStats, 
     })
 }
 
+use shared::xmlrpc::{
+    parse_i64_response, parse_multicall_response, RpcParam, RtorrentClient, XmlRpcError,
+};
+use crate::AppState;
+use axum::extract::State;
+use axum::response::sse::{Event, Sse};
+use futures::stream::{self, Stream};
+use shared::{AppEvent, GlobalStats, Torrent, TorrentStatus};
+use std::convert::Infallible;
+use tokio_stream::StreamExt;
+use axum::response::IntoResponse;
+use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
+
+
+// ... (fields and other helper functions remain the same)
+
 pub async fn sse_handler(
     State(state): State<AppState>,
-) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
+) -> impl IntoResponse {
     // Notify background worker to wake up and poll immediately
     state.notify_poll.notify_one();
 
@@ -213,8 +229,8 @@ pub async fn sse_handler(
             timestamp,
         };
 
-        match serde_json::to_string(&event_data) {
-            Ok(json) => Event::default().data(json),
+        match rmp_serde::to_vec(&event_data) {
+            Ok(bytes) => Event::default().data(BASE64.encode(bytes)),
             Err(_) => Event::default().comment("init_error"),
         }
     };
@@ -226,10 +242,10 @@ pub async fn sse_handler(
     let rx = state.event_bus.subscribe();
     let update_stream = stream::unfold(rx, |mut rx| async move {
         match rx.recv().await {
-            Ok(event) => match serde_json::to_string(&event) {
-                Ok(json) => Some((Ok::<Event, Infallible>(Event::default().data(json)), rx)),
+            Ok(event) => match rmp_serde::to_vec(&event) {
+                Ok(bytes) => Some((Ok::<Event, Infallible>(Event::default().data(BASE64.encode(bytes))), rx)),
                 Err(e) => {
-                    tracing::warn!("Failed to serialize SSE event: {}", e);
+                    tracing::warn!("Failed to serialize SSE event (MessagePack): {}", e);
                     Some((
                         Ok::<Event, Infallible>(Event::default().comment("error")),
                         rx,
@@ -244,6 +260,11 @@ pub async fn sse_handler(
         }
     });
 
-    Sse::new(initial_stream.chain(update_stream))
-        .keep_alive(axum::response::sse::KeepAlive::default())
+    let sse = Sse::new(initial_stream.chain(update_stream))
+        .keep_alive(axum::response::sse::KeepAlive::default());
+
+    (
+        [("content-type", "application/x-msgpack")],
+        sse
+    )
 }

@@ -1,6 +1,7 @@
 use leptos::prelude::*;
 use leptos::html;
 use leptos::task::spawn_local;
+use leptos_use::{use_virtual_list, UseVirtualListOptions, UseVirtualListReturn};
 use leptos_use::use_timeout_fn;
 use crate::store::{get_action_messages, show_toast_with_signal};
 use crate::api;
@@ -52,8 +53,6 @@ pub fn TorrentTable() -> impl IntoView {
 
     let filtered_hashes = move || {
         let torrents_map = store.torrents.get();
-        log::debug!("TorrentTable: store.torrents has {} entries", torrents_map.len());
-        
         let filter = store.filter.get();
         let search = store.search_query.get();
         let search_lower = search.to_lowercase();
@@ -71,8 +70,6 @@ pub fn TorrentTable() -> impl IntoView {
             let matches_search = if search_lower.is_empty() { true } else { t.name.to_lowercase().contains(&search_lower) };
             matches_filter && matches_search
         }).collect();
-
-        log::debug!("TorrentTable: {} torrents after filtering", torrents.len());
 
         torrents.sort_by(|a, b| {
             let col = sort_col.0.get();
@@ -149,79 +146,137 @@ pub fn TorrentTable() -> impl IntoView {
         });
     };
 
+    // --- Virtual List Setup ---
+    let UseVirtualListReturn {
+        list: desktop_list,
+        container_el: desktop_container_el,
+        wrapper_style: desktop_wrapper_style,
+        ..
+    } = use_virtual_list(
+        filtered_hashes,
+        UseVirtualListOptions::default().item_height(49.0), // Compact row height + border
+    );
+
+    let UseVirtualListReturn {
+        list: mobile_list,
+        container_el: mobile_container_el,
+        wrapper_style: mobile_wrapper_style,
+        ..
+    } = use_virtual_list(
+        filtered_hashes,
+        UseVirtualListOptions::default().item_height(140.0), // Card height + gap
+    );
+
     view! {
-        <div class="overflow-x-auto h-full bg-base-100 relative">
-            <div class="hidden md:block h-full overflow-x-auto">
-                <table class="table table-sm table-pin-rows w-full max-w-full whitespace-nowrap">
-                    <thead>
-                        <tr class="text-xs uppercase text-base-content/60 border-b border-base-200">
-                            <th class="cursor-pointer hover:bg-base-300 group select-none" on:click=move |_| handle_sort(SortColumn::Name)>
-                                <div class="flex items-center">"Name" {move || sort_arrow(SortColumn::Name)}</div>
-                            </th>
-                            <th class="w-24 cursor-pointer hover:bg-base-300 group select-none" on:click=move |_| handle_sort(SortColumn::Size)>
-                                 <div class="flex items-center">"Size" {move || sort_arrow(SortColumn::Size)}</div>
-                            </th>
-                            <th class="w-48 cursor-pointer hover:bg-base-300 group select-none" on:click=move |_| handle_sort(SortColumn::Progress)>
-                                 <div class="flex items-center">"Progress" {move || sort_arrow(SortColumn::Progress)}</div>
-                            </th>
-                            <th class="w-24 cursor-pointer hover:bg-base-300 group select-none" on:click=move |_| handle_sort(SortColumn::Status)>
-                                 <div class="flex items-center">"Status" {move || sort_arrow(SortColumn::Status)}</div>
-                            </th>
-                            <th class="w-24 cursor-pointer hover:bg-base-300 group select-none" on:click=move |_| handle_sort(SortColumn::DownSpeed)>
-                                 <div class="flex items-center">"DL Speed" {move || sort_arrow(SortColumn::DownSpeed)}</div>
-                            </th>
-                            <th class="w-24 cursor-pointer hover:bg-base-300 group select-none" on:click=move |_| handle_sort(SortColumn::UpSpeed)>
-                                 <div class="flex items-center">"Up Speed" {move || sort_arrow(SortColumn::UpSpeed)}</div>
-                            </th>
-                            <th class="w-24 cursor-pointer hover:bg-base-300 group select-none" on:click=move |_| handle_sort(SortColumn::ETA)>
-                                 <div class="flex items-center">"ETA" {move || sort_arrow(SortColumn::ETA)}</div>
-                            </th>
-                            <th class="w-32 cursor-pointer hover:bg-base-300 group select-none" on:click=move |_| handle_sort(SortColumn::AddedDate)>
-                                 <div class="flex items-center">"Date" {move || sort_arrow(SortColumn::AddedDate)}</div>
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <For each=move || filtered_hashes() key=|hash| hash.clone() children={
+        <div class="h-full bg-background relative flex flex-col">
+            // --- DESKTOP VIEW ---
+            <div class="hidden md:flex flex-col h-full overflow-hidden">
+                // Header
+                <div class="flex items-center text-xs uppercase text-muted-foreground border-b border-border bg-muted/50 h-9 shrink-0 px-2 font-medium">
+                    <div class="flex-1 px-2 cursor-pointer hover:text-foreground group select-none flex items-center" on:click=move |_| handle_sort(SortColumn::Name)>
+                        "Name" {move || sort_arrow(SortColumn::Name)}
+                    </div>
+                    <div class="w-24 px-2 cursor-pointer hover:text-foreground group select-none flex items-center" on:click=move |_| handle_sort(SortColumn::Size)>
+                        "Size" {move || sort_arrow(SortColumn::Size)}
+                    </div>
+                    <div class="w-48 px-2 cursor-pointer hover:text-foreground group select-none flex items-center" on:click=move |_| handle_sort(SortColumn::Progress)>
+                        "Progress" {move || sort_arrow(SortColumn::Progress)}
+                    </div>
+                    <div class="w-24 px-2 cursor-pointer hover:text-foreground group select-none flex items-center" on:click=move |_| handle_sort(SortColumn::Status)>
+                        "Status" {move || sort_arrow(SortColumn::Status)}
+                    </div>
+                    <div class="w-24 px-2 cursor-pointer hover:text-foreground group select-none flex items-center" on:click=move |_| handle_sort(SortColumn::DownSpeed)>
+                        "DL Speed" {move || sort_arrow(SortColumn::DownSpeed)}
+                    </div>
+                    <div class="w-24 px-2 cursor-pointer hover:text-foreground group select-none flex items-center" on:click=move |_| handle_sort(SortColumn::UpSpeed)>
+                        "Up Speed" {move || sort_arrow(SortColumn::UpSpeed)}
+                    </div>
+                    <div class="w-24 px-2 cursor-pointer hover:text-foreground group select-none flex items-center" on:click=move |_| handle_sort(SortColumn::ETA)>
+                        "ETA" {move || sort_arrow(SortColumn::ETA)}
+                    </div>
+                    <div class="w-32 px-2 cursor-pointer hover:text-foreground group select-none flex items-center" on:click=move |_| handle_sort(SortColumn::AddedDate)>
+                        "Date" {move || sort_arrow(SortColumn::AddedDate)}
+                    </div>
+                </div>
+
+                // Virtual List Container
+                <div class="flex-1 overflow-y-auto" node_ref=desktop_container_el>
+                    <div style=desktop_wrapper_style class="relative">
+                        // We use Flex/Div rows instead of Table for virtualization simplicity
+                        <For each=desktop_list key=|hash| hash.data.clone() children={
                             let handle_context_menu = handle_context_menu.clone();
-                            move |hash| view! { <TorrentRow hash=hash.clone() selected_hash=selected_hash.0 set_selected_hash=selected_hash.1 on_context_menu=handle_context_menu.clone() /> }
+                            move |item| {
+                                let top_offset = format!("{}px", item.index * 49); // Manual offset based on index
+                                view! { 
+                                    <div style=format!("position: absolute; top: {}; left: 0; right: 0; height: 49px;", top_offset)>
+                                        <TorrentRow 
+                                            hash=item.data.clone() 
+                                            selected_hash=selected_hash.0 
+                                            set_selected_hash=selected_hash.1 
+                                            on_context_menu=handle_context_menu.clone() 
+                                        /> 
+                                    </div>
+                                }
+                            }
                         } />
-                    </tbody>
-                </table>
+                    </div>
+                </div>
             </div>
 
-            <div class="md:hidden flex flex-col h-full bg-base-200 relative cursor-pointer">
-                <div class="px-3 py-2 border-b border-base-200 flex justify-between items-center bg-base-100/95 backdrop-blur z-10 shrink-0 cursor-default">
-                    <span class="text-xs font-bold opacity-50 uppercase tracking-wider">"Torrents"</span>
+            // --- MOBILE VIEW ---
+            <div class="md:hidden flex flex-col h-full bg-muted/10 relative">
+                 <div class="px-3 py-2 border-b border-border flex justify-between items-center bg-background/95 backdrop-blur z-10 shrink-0">
+                    <span class="text-xs font-bold opacity-50 uppercase tracking-wider text-muted-foreground">"Torrents"</span>
                     <details class="dropdown dropdown-end" node_ref=sort_details_ref>
-                        <summary class="btn btn-ghost btn-xs gap-1 opacity-70 font-normal list-none [&::-webkit-details-marker]:hidden cursor-pointer">
+                        <summary class="btn btn-ghost btn-xs gap-1 opacity-70 font-normal list-none [&::-webkit-details-marker]:hidden cursor-pointer hover:bg-accent hover:text-accent-foreground rounded-sm px-2 py-1 flex items-center">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 pointer-events-none"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7.5L7.5 3m0 0L12 7.5M7.5 3v13.5m13.5 0L16.5 21m0 0L12 16.5m4.5 4.5V7.5" /></svg>
                             <span class="pointer-events-none">"Sort"</span>
                         </summary>
-                        <ul class="dropdown-content z-[100] menu p-2 shadow bg-base-100 rounded-box w-48 mt-1 border border-base-200 text-xs cursor-default">
-                                <li class="menu-title px-2 py-1 opacity-50 text-[10px] uppercase font-bold">"Sort By"</li>
+                        <div class="dropdown-content z-[100] absolute right-0 top-full mt-1 min-w-[10rem] overflow-hidden rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md">
+                            <div class="px-2 py-1.5 text-xs font-semibold text-muted-foreground">"Sort By"</div>
+                             <ul class="w-full">
                                 {
                                     let columns = vec![(SortColumn::Name, "Name"), (SortColumn::Size, "Size"), (SortColumn::Progress, "Progress"), (SortColumn::Status, "Status"), (SortColumn::DownSpeed, "DL Speed"), (SortColumn::UpSpeed, "Up Speed"), (SortColumn::ETA, "ETA"), (SortColumn::AddedDate, "Date")];
                                     columns.into_iter().map(|(col, label)| {
                                         let is_active = move || sort_col.0.get() == col;
                                         view! {
                                             <li>
-                                                <button type="button" class=move || if is_active() { "bg-primary/10 text-primary font-bold flex justify-between" } else { "flex justify-between" } on:click=move |_| { handle_sort(col); if let Some(el) = sort_details_ref.get() { el.set_open(false); } }>
+                                                <button type="button" class=move || if is_active() { "bg-accent text-accent-foreground font-medium flex w-full cursor-default select-none items-center rounded-sm py-1.5 px-2 text-xs outline-none" } else { "flex w-full cursor-default select-none items-center rounded-sm py-1.5 px-2 text-xs outline-none hover:bg-accent hover:text-accent-foreground" } on:click=move |_| { handle_sort(col); if let Some(el) = sort_details_ref.get() { el.set_open(false); } }>
                                                     {label}
-                                                    <Show when=is_active fallback=|| ()><span class="opacity-70 text-[10px]">{move || match sort_dir.0.get() { SortDirection::Ascending => "▲", SortDirection::Descending => "▼" }}</span></Show>
+                                                    <Show when=is_active fallback=|| ()><span class="ml-auto opacity-70 text-[10px]">{move || match sort_dir.0.get() { SortDirection::Ascending => "▲", SortDirection::Descending => "▼" }}</span></Show>
                                                 </button>
                                             </li>
                                         }
                                     }).collect::<Vec<_>>()
                                 }
-                        </ul>
+                            </ul>
+                        </div>
                     </details>
                 </div>
-                <div class="overflow-y-auto p-3 pb-20 flex-1 grid grid-cols-1 content-start gap-3 cursor-pointer">
-                    <For each=move || filtered_hashes() key=|hash| hash.clone() children={
-                        let handle_context_menu = handle_context_menu.clone();
-                        move |hash| view! { <TorrentCard hash=hash.clone() selected_hash=selected_hash.0 set_selected_hash=selected_hash.1 set_menu_position=menu_position.1 set_menu_visible=menu_visible.1 on_context_menu=handle_context_menu.clone() /> }
-                    } />
+                
+                <div class="flex-1 overflow-y-auto p-3" node_ref=mobile_container_el>
+                    <div style=mobile_wrapper_style class="relative">
+                         <For each=mobile_list key=|hash| hash.data.clone() children={
+                            let handle_context_menu = handle_context_menu.clone();
+                            let menu_pos_setter = menu_position.1.clone();
+                            let menu_vis_setter = menu_visible.1.clone();
+                            move |item| {
+                                let top_offset = format!("{}px", item.index * 140); 
+                                view! { 
+                                     <div style=format!("position: absolute; top: {}; left: 0; right: 0; height: 140px; padding-bottom: 0.75rem;", top_offset)>
+                                        <TorrentCard 
+                                            hash=item.data.clone() 
+                                            selected_hash=selected_hash.0 
+                                            set_selected_hash=selected_hash.1 
+                                            set_menu_position=menu_pos_setter 
+                                            set_menu_visible=menu_vis_setter 
+                                            on_context_menu=handle_context_menu.clone() 
+                                        /> 
+                                    </div>
+                                }
+                            }
+                        } />
+                    </div>
                 </div>
             </div>
 
@@ -252,17 +307,16 @@ fn TorrentRow(
                     let t = torrent.get().unwrap();
                     let t_hash = hash.clone();
                     let t_name = t.name.clone();
-                    let status_class = match t.status { shared::TorrentStatus::Seeding => "text-success", shared::TorrentStatus::Downloading => "text-primary", shared::TorrentStatus::Paused => "text-warning", shared::TorrentStatus::Error => "text-error", _ => "text-base-content/50" };
-                    let progress_class = if t.percent_complete >= 100.0 { "progress-success" } else { "progress-primary" };
-
+                    let status_color = match t.status { shared::TorrentStatus::Seeding => "text-green-500", shared::TorrentStatus::Downloading => "text-blue-500", shared::TorrentStatus::Paused => "text-yellow-500", shared::TorrentStatus::Error => "text-red-500", _ => "text-muted-foreground" };
+                    
                     let selected_hash_clone = selected_hash.clone();
                     let t_hash_row = t_hash.clone();
 
                     view! {
-                        <tr
+                        <div
                             class=move || {
-                                let base = "hover border-b border-base-200 select-none";
-                                if selected_hash_clone.get() == Some(t_hash_row.clone()) { format!("{} bg-primary/10", base) } else { base.to_string() }
+                                let base = "flex items-center text-sm hover:bg-muted/50 border-b border-border h-[48px] px-2 select-none cursor-pointer";
+                                if selected_hash_clone.get() == Some(t_hash_row.clone()) { format!("{} bg-muted", base) } else { base.to_string() }
                             }
                             on:contextmenu={
                                 let t_hash = t_hash.clone();
@@ -275,20 +329,22 @@ fn TorrentRow(
                                 move |_| set_selected_hash.set(Some(t_hash.clone()))
                             }
                         >
-                            <td class="font-medium truncate max-w-xs" title=t_name.clone()>{t_name.clone()}</td>
-                            <td class="opacity-80 font-mono text-[11px]">{format_bytes(t.size)}</td>
-                            <td>
+                            <div class="flex-1 min-w-0 px-2 font-medium truncate" title=t_name.clone()>{t_name.clone()}</div>
+                            <div class="w-24 px-2 font-mono text-xs text-muted-foreground">{format_bytes(t.size)}</div>
+                            <div class="w-48 px-2">
                                 <div class="flex items-center gap-2">
-                                    <progress class={format!("progress w-24 {}", progress_class)} value={t.percent_complete} max="100"></progress>
-                                    <span class="text-[10px] opacity-70">{format!("{:.1}%", t.percent_complete)}</span>
+                                    <div class="h-2 w-full bg-secondary rounded-full overflow-hidden">
+                                        <div class="h-full bg-primary transition-all duration-500" style=format!("width: {}%", t.percent_complete)></div>
+                                    </div>
+                                    <span class="text-[10px] text-muted-foreground w-10 text-right">{format!("{:.1}%", t.percent_complete)}</span>
                                 </div>
-                            </td>
-                            <td class={format!("text-[11px] font-medium {}", status_class)}>{format!("{:?}", t.status)}</td>
-                            <td class="text-right font-mono text-[11px] opacity-80 text-success">{format_speed(t.down_rate)}</td>
-                            <td class="text-right font-mono text-[11px] opacity-80 text-primary">{format_speed(t.up_rate)}</td>
-                            <td class="text-right font-mono text-[11px] opacity-80">{format_duration(t.eta)}</td>
-                            <td class="text-right font-mono text-[11px] opacity-80 whitespace-nowrap">{format_date(t.added_date)}</td>
-                        </tr>
+                            </div>
+                            <div class={format!("w-24 px-2 text-xs font-medium {}", status_color)}>{format!("{:?}", t.status)}</div>
+                            <div class="w-24 px-2 text-right font-mono text-xs text-green-600 dark:text-green-500">{format_speed(t.down_rate)}</div>
+                            <div class="w-24 px-2 text-right font-mono text-xs text-blue-600 dark:text-blue-500">{format_speed(t.up_rate)}</div>
+                            <div class="w-24 px-2 text-right font-mono text-xs text-muted-foreground">{format_duration(t.eta)}</div>
+                            <div class="w-32 px-2 text-right font-mono text-xs text-muted-foreground">{format_date(t.added_date)}</div>
+                        </div>
                     }
                 }
             }
@@ -318,7 +374,7 @@ fn TorrentCard(
                     let t = torrent.get().unwrap();
                     let t_hash = hash.clone();
                     let t_name = t.name.clone();
-                    let status_badge_class = match t.status { shared::TorrentStatus::Seeding => "badge-success badge-soft", shared::TorrentStatus::Downloading => "badge-primary badge-soft", shared::TorrentStatus::Paused => "badge-warning badge-soft", shared::TorrentStatus::Error => "badge-error badge-soft", _ => "badge-ghost" };
+                    let status_badge_class = match t.status { shared::TorrentStatus::Seeding => "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800", shared::TorrentStatus::Downloading => "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200 dark:border-blue-800", shared::TorrentStatus::Paused => "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800", shared::TorrentStatus::Error => "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800", _ => "bg-muted text-muted-foreground" };
 
                     let t_hash_long = t_hash.clone();
                     let set_menu_position = set_menu_position.clone();
@@ -340,7 +396,7 @@ fn TorrentCard(
                     view! {
                         <div
                             class=move || {
-                                let base = "card card-compact bg-base-100 shadow-sm border border-base-200 select-none cursor-pointer";
+                                let base = "bg-card text-card-foreground rounded-lg border border-border shadow-sm select-none cursor-pointer h-full";
                                 if selected_hash_clone.get() == Some(t_hash_card.clone()) { format!("{} ring-2 ring-primary ring-inset", base) } else { base.to_string() }
                             }
                             on:contextmenu={
@@ -358,21 +414,23 @@ fn TorrentCard(
                                 move |e: web_sys::TouchEvent| if let Some(touch) = e.touches().get(0) { start((touch.client_x(), touch.client_y())); }
                             }
                         >
-                            <div class="card-body gap-3">
+                            <div class="p-3 gap-3 flex flex-col h-full justify-between">
                                 <div class="flex justify-between items-start gap-2">
                                     <h3 class="font-medium text-sm line-clamp-2 leading-tight">{t_name.clone()}</h3>
-                                    <div class={format!("badge badge-xs text-[10px] whitespace-nowrap {}", status_badge_class)}>{format!("{:?}", t.status)}</div>
+                                    <div class={format!("inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 {}", status_badge_class)}>{format!("{:?}", t.status)}</div>
                                 </div>
                                 <div class="flex flex-col gap-1">
-                                    <div class="flex justify-between text-[10px] opacity-70">
+                                    <div class="flex justify-between text-[10px] text-muted-foreground">
                                         <span>{format_bytes(t.size)}</span>
                                         <span>{format!("{:.1}%", t.percent_complete)}</span>
                                     </div>
-                                    <progress class="progress w-full h-1.5" value={t.percent_complete} max="100"></progress>
+                                    <div class="h-1.5 w-full bg-secondary rounded-full overflow-hidden">
+                                        <div class="h-full bg-primary transition-all duration-500" style=format!("width: {}%", t.percent_complete)></div>
+                                    </div>
                                 </div>
-                                <div class="grid grid-cols-4 gap-2 text-[10px] font-mono opacity-80 pt-1 border-t border-base-200/50">
-                                    <div class="flex flex-col text-success"><span>"DL"</span><span>{format_speed(t.down_rate)}</span></div>
-                                    <div class="flex flex-col text-primary"><span>"UP"</span><span>{format_speed(t.up_rate)}</span></div>
+                                <div class="grid grid-cols-4 gap-2 text-[10px] font-mono text-muted-foreground pt-1 border-t border-border/50">
+                                    <div class="flex flex-col text-blue-600 dark:text-blue-500"><span>"DL"</span><span>{format_speed(t.down_rate)}</span></div>
+                                    <div class="flex flex-col text-green-600 dark:text-green-500"><span>"UP"</span><span>{format_speed(t.up_rate)}</span></div>
                                     <div class="flex flex-col"><span>"ETA"</span><span>{format_duration(t.eta)}</span></div>
                                     <div class="flex flex-col text-right"><span>"DATE"</span><span>{format_date(t.added_date)}</span></div>
                                 </div>

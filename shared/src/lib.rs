@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use struct_patch::Patch;
 use utoipa::ToSchema;
 
 #[cfg(feature = "ssr")]
@@ -23,7 +24,8 @@ pub struct DbContext {
     pub db: db::Db,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, ToSchema)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, ToSchema, Patch)]
+#[patch_derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Torrent {
     pub hash: String,
     pub name: String,
@@ -50,14 +52,20 @@ pub enum TorrentStatus {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
-#[serde(tag = "type", content = "data")]
+#[serde(tag = "t", content = "d")]
 pub enum AppEvent {
+    #[serde(rename = "f")]
     FullList {
+        #[serde(rename = "t")]
         torrents: Vec<Torrent>,
+        #[serde(rename = "ts")]
         timestamp: u64,
     },
+    #[serde(rename = "u")]
     Update(TorrentUpdate),
+    #[serde(rename = "s")]
     Stats(GlobalStats),
+    #[serde(rename = "n")]
     Notification(SystemNotification),
 }
 

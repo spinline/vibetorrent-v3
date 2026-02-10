@@ -4,7 +4,8 @@ use leptos::prelude::*;
 use leptos::task::spawn_local;
 use shared::{AppEvent, GlobalStats, NotificationLevel, SystemNotification, Torrent};
 use std::collections::HashMap;
-use serde::{Serialize, Deserialize};
+use struct_patch::traits::Patchable;
+use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct NotificationItem {
@@ -116,44 +117,44 @@ pub fn provide_torrent_store() {
                             }
 
                             if let Some(data_str) = msg.data().as_string() {
-                                log::debug!("SSE: Parsing JSON: {}", data_str);
-                                if let Ok(event) = serde_json::from_str::<AppEvent>(&data_str) {
-                                    match event {
-                                        AppEvent::FullList { torrents: list, .. } => {
-                                            log::info!("SSE: Received FullList with {} torrents", list.len());
-                                            torrents_for_sse.update(|map| {
-                                                let new_hashes: std::collections::HashSet<String> = list.iter().map(|t| t.hash.clone()).collect();
-                                                map.retain(|hash, _| new_hashes.contains(hash));
-                                                for new_torrent in list {
-                                                    map.insert(new_torrent.hash.clone(), new_torrent);
+                                // Decode Base64
+                                match BASE64.decode(&data_str) {
+                                    Ok(bytes) => {
+                                        // Deserialize MessagePack
+                                        match rmp_serde::from_slice::<AppEvent>(&bytes) {
+                                            Ok(event) => {
+                                                match event {
+                                                    AppEvent::FullList { torrents: list, .. } => {
+                                                        log::info!("SSE: Received FullList with {} torrents", list.len());
+                                                        torrents_for_sse.update(|map| {
+                                                            let new_hashes: std::collections::HashSet<String> = list.iter().map(|t| t.hash.clone()).collect();
+                                                            map.retain(|hash, _| new_hashes.contains(hash));
+                                                            for new_torrent in list {
+                                                                map.insert(new_torrent.hash.clone(), new_torrent);
+                                                            }
+                                                        });
+                                                        log::debug!("SSE: torrents map now has {} entries", torrents_for_sse.with(|m| m.len()));
+                                                    }
+                                                    AppEvent::Update(patch) => {
+                                                        torrents_for_sse.update(|map| {
+                                                            if let Some(t) = map.get_mut(&patch.hash) {
+                                                                t.apply(patch);
+                                                            }
+                                                        });
+                                                    }
+                                                    AppEvent::Stats(stats) => { global_stats_for_sse.set(stats); }
+                                                    AppEvent::Notification(n) => {
+                                                        show_toast_with_signal(notifications_for_sse, n.level.clone(), n.message.clone());
+                                                        if n.message.contains("tamamlandı") || n.level == shared::NotificationLevel::Error {
+                                                            show_browser_notification("VibeTorrent", &n.message);
+                                                        }
+                                                    }
                                                 }
-                                            });
-                                            log::debug!("SSE: torrents map now has {} entries", torrents_for_sse.with(|m| m.len()));
-                                        }
-                                        AppEvent::Update(update) => {
-                                            torrents_for_sse.update(|map| {
-                                                if let Some(t) = map.get_mut(&update.hash) {
-                                                    if let Some(v) = update.name { t.name = v; }
-                                                    if let Some(v) = update.size { t.size = v; }
-                                                    if let Some(v) = update.down_rate { t.down_rate = v; }
-                                                    if let Some(v) = update.up_rate { t.up_rate = v; }
-                                                    if let Some(v) = update.percent_complete { t.percent_complete = v; }
-                                                    if let Some(v) = update.completed { t.completed = v; }
-                                                    if let Some(v) = update.eta { t.eta = v; }
-                                                    if let Some(v) = update.status { t.status = v; }
-                                                    if let Some(v) = update.error_message { t.error_message = v; }
-                                                    if let Some(v) = update.label { t.label = Some(v); }
-                                                }
-                                            });
-                                        }
-                                        AppEvent::Stats(stats) => { global_stats_for_sse.set(stats); }
-                                        AppEvent::Notification(n) => {
-                                            show_toast_with_signal(notifications_for_sse, n.level.clone(), n.message.clone());
-                                            if n.message.contains("tamamlandı") || n.level == shared::NotificationLevel::Error {
-                                                show_browser_notification("VibeTorrent", &n.message);
                                             }
+                                            Err(e) => log::error!("SSE: Failed to deserialize MessagePack: {}", e),
                                         }
                                     }
+                                    Err(e) => log::error!("SSE: Failed to decode Base64: {}", e),
                                 }
                             }
                         }

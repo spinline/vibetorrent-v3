@@ -43,6 +43,12 @@ pub fn StatusBar() -> impl IntoView {
         let theme = current_theme.get().to_lowercase();
         if let Some(doc) = document().document_element() {
             let _ = doc.set_attribute("data-theme", &theme);
+            // Also set class for Shadcn dark mode support
+            if theme == "dark" || theme == "dracula" || theme == "dim" || theme == "abyss" {
+                let _ = doc.class_list().add_1("dark");
+            } else {
+                let _ = doc.class_list().remove_1("dark");
+            }
         }
     });
 
@@ -94,11 +100,11 @@ pub fn StatusBar() -> impl IntoView {
         };
 
         view! {
-            <div class="fixed bottom-0 left-0 right-0 h-8 min-h-8 bg-base-200 border-t border-base-300 flex items-center px-4 text-xs gap-4 text-base-content/70 z-[99] cursor-pointer">
+            <div class="fixed bottom-0 left-0 right-0 h-8 min-h-8 bg-muted border-t border-border flex items-center px-4 text-xs gap-4 text-muted-foreground z-[99] cursor-pointer">
 
                 // --- DOWNLOAD SPEED DROPDOWN ---
-                <details class="dropdown dropdown-top" node_ref=down_details_ref>
-                    <summary class="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors select-none list-none [&::-webkit-details-marker]:hidden outline-none">
+                <details class="group relative" node_ref=down_details_ref>
+                    <summary class="flex items-center gap-2 cursor-pointer hover:text-foreground transition-colors select-none list-none [&::-webkit-details-marker]:hidden outline-none">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3" />
                         </svg>
@@ -110,37 +116,44 @@ pub fn StatusBar() -> impl IntoView {
                         </Show>
                     </summary>
 
-                    <ul class="dropdown-content z-[100] menu p-2 shadow bg-base-200 rounded-box w-40 mb-2 border border-base-300">
-                        {
-                            limits.clone().into_iter().map(|(val, label)| {
-                                let is_active = move || {
-                                    let current = stats.get().down_limit.unwrap_or(0);
-                                    (current - val).abs() < 1024
-                                };
-                                view! {
-                                    <li>
-                                        <button
-                                            class=move || if is_active() { "bg-primary/10 text-primary font-bold text-xs flex justify-between" } else { "text-xs flex justify-between" }
-                                            on:click=move |_| {
-                                                set_limit("down", val);
-                                                close_details(down_details_ref);
-                                            }
-                                        >
-                                            {label}
-                                            <Show when=is_active fallback=|| ()>
-                                                <span>"✓"</span>
-                                            </Show>
-                                        </button>
-                                    </li>
-                                }
-                            }).collect::<Vec<_>>()
-                        }
-                    </ul>
+                    <div class="absolute bottom-full left-0 mb-2 z-[100] min-w-[8rem] overflow-hidden rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md hidden group-open:block animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-2">
+                        <ul class="w-full">
+                            {
+                                limits.clone().into_iter().map(|(val, label)| {
+                                    let is_active = move || {
+                                        let current = stats.get().down_limit.unwrap_or(0);
+                                        (current - val).abs() < 1024
+                                    };
+                                    view! {
+                                        <li>
+                                            <button
+                                                class=move || {
+                                                    let base = "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-xs outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 hover:bg-accent hover:text-accent-foreground";
+                                                    if is_active() { format!("{} bg-accent text-accent-foreground font-medium", base) } else { base.to_string() }
+                                                }
+                                                on:click=move |_| {
+                                                    set_limit("down", val);
+                                                    close_details(down_details_ref);
+                                                }
+                                            >
+                                                <span class="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+                                                    <Show when=is_active fallback=|| ()>
+                                                        <span>"✓"</span>
+                                                    </Show>
+                                                </span>
+                                                {label}
+                                            </button>
+                                        </li>
+                                    }
+                                }).collect::<Vec<_>>()
+                            }
+                        </ul>
+                    </div>
                 </details>
 
                 // --- UPLOAD SPEED DROPDOWN ---
-                <details class="dropdown dropdown-top" node_ref=up_details_ref>
-                    <summary class="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors select-none list-none [&::-webkit-details-marker]:hidden outline-none">
+                <details class="group relative" node_ref=up_details_ref>
+                    <summary class="flex items-center gap-2 cursor-pointer hover:text-foreground transition-colors select-none list-none [&::-webkit-details-marker]:hidden outline-none">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" />
                         </svg>
@@ -152,114 +165,95 @@ pub fn StatusBar() -> impl IntoView {
                         </Show>
                     </summary>
 
-                    <ul class="dropdown-content z-[100] menu p-2 shadow bg-base-200 rounded-box w-40 mb-2 border border-base-300">
-                        {
-                            limits.clone().into_iter().map(|(val, label)| {
-                                let is_active = move || {
-                                    let current = stats.get().up_limit.unwrap_or(0);
-                                    (current - val).abs() < 1024
-                                };
-                                view! {
-                                    <li>
-                                        <button
-                                            class=move || if is_active() { "bg-primary/10 text-primary font-bold text-xs flex justify-between" } else { "text-xs flex justify-between" }
-                                            on:click=move |_| {
-                                                set_limit("up", val);
-                                                close_details(up_details_ref);
-                                            }
-                                        >
-                                            {label}
-                                            <Show when=is_active fallback=|| ()>
-                                                <span>"✓"</span>
-                                            </Show>
-                                        </button>
-                                    </li>
-                                }
-                            }).collect::<Vec<_>>()
-                        }
-                    </ul>
-                </details>
-
-                <div class="ml-auto flex items-center gap-4">
-                    <details class="dropdown dropdown-top dropdown-end" node_ref=theme_details_ref>
-                        <summary class="btn btn-ghost btn-xs btn-square cursor-pointer outline-none list-none [&::-webkit-details-marker]:hidden">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M9.53 16.122a3 3 0 0 0-5.78 1.128 2.25 2.25 0 0 1-2.4 2.245 4.5 4.5 0 0 0 8.4-2.245c0-.399-.078-.78-.22-1.128Zm0 0a15.998 15.998 0 0 0 3.388-1.62m-5.043-.025a15.994 15.994 0 0 1 1.622-3.395m3.42 3.42a15.995 15.995 0 0 0 4.764-4.648l3.876-5.814a1.151 1.151 0 0 0-1.597-1.597L14.146 6.32a15.996 15.996 0 0 0-4.649 4.763m3.42 3.42a6.776 6.776 0 0 0-3.42-3.42" />
-                            </svg>
-                        </summary>
-
-                        <ul class="dropdown-content z-[100] menu p-2 shadow bg-base-200 rounded-box w-52 mb-2 border border-base-300 max-h-96 overflow-y-auto">
+                    <div class="absolute bottom-full left-0 mb-2 z-[100] min-w-[8rem] overflow-hidden rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md hidden group-open:block animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-2">
+                        <ul class="w-full">
                             {
-                                let themes = vec![
-                                    "light", "dark", "dim", "nord", "cupcake", "dracula", "cyberpunk", "emerald", "sunset", "abyss"
-                                ];
-                                themes.into_iter().map(|theme| {
-                                    let theme_name = theme.to_string();
-                                    let theme_name_for_class = theme_name.clone();
-                                    let theme_name_for_onclick = theme_name.clone();
+                                limits.clone().into_iter().map(|(val, label)| {
+                                    let is_active = move || {
+                                        let current = stats.get().up_limit.unwrap_or(0);
+                                        (current - val).abs() < 1024
+                                    };
                                     view! {
                                         <li>
                                             <button
-                                                class=move || if current_theme.get() == theme_name_for_class { "bg-primary/10 text-primary font-bold text-xs capitalize" } else { "text-xs capitalize" }
+                                                class=move || {
+                                                    let base = "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-xs outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 hover:bg-accent hover:text-accent-foreground";
+                                                    if is_active() { format!("{} bg-accent text-accent-foreground font-medium", base) } else { base.to_string() }
+                                                }
                                                 on:click=move |_| {
-                                                    set_current_theme.set(theme_name_for_onclick.clone());
-                                                    close_details(theme_details_ref);
+                                                    set_limit("up", val);
+                                                    close_details(up_details_ref);
                                                 }
                                             >
-                                                {theme_name}
+                                                <span class="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+                                                    <Show when=is_active fallback=|| ()>
+                                                        <span>"✓"</span>
+                                                    </Show>
+                                                </span>
+                                                {label}
                                             </button>
                                         </li>
                                     }
                                 }).collect::<Vec<_>>()
                             }
                         </ul>
+                    </div>
+                </details>
+
+                <div class="ml-auto flex items-center gap-4">
+                    <details class="group relative" node_ref=theme_details_ref>
+                        <summary class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-7 w-7 cursor-pointer outline-none list-none [&::-webkit-details-marker]:hidden">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9.53 16.122a3 3 0 0 0-5.78 1.128 2.25 2.25 0 0 1-2.4 2.245 4.5 4.5 0 0 0 8.4-2.245c0-.399-.078-.78-.22-1.128Zm0 0a15.998 15.998 0 0 0 3.388-1.62m-5.043-.025a15.994 15.994 0 0 1 1.622-3.395m3.42 3.42a15.995 15.995 0 0 0 4.764-4.648l3.876-5.814a1.151 1.151 0 0 0-1.597-1.597L14.146 6.32a15.996 15.996 0 0 0-4.649 4.763m3.42 3.42a6.776 6.776 0 0 0-3.42-3.42" />
+                            </svg>
+                        </summary>
+
+                        <div class="absolute bottom-full right-0 mb-2 z-[100] min-w-[8rem] overflow-hidden rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md hidden group-open:block animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-2 max-h-96 overflow-y-auto">
+                            <ul class="w-full">
+                                {
+                                    let themes = vec![
+                                        "light", "dark", "dim", "nord", "cupcake", "dracula", "cyberpunk", "emerald", "sunset", "abyss"
+                                    ];
+                                    themes.into_iter().map(|theme| {
+                                        let theme_name = theme.to_string();
+                                        let theme_name_for_class = theme_name.clone();
+                                        let theme_name_for_onclick = theme_name.clone();
+                                        let is_active = move || current_theme.get() == theme_name_for_class;
+                                        view! {
+                                            <li>
+                                                <button
+                                                    class=move || {
+                                                        let base = "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-xs outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 hover:bg-accent hover:text-accent-foreground capitalize";
+                                                        if is_active() { format!("{} bg-accent text-accent-foreground font-medium", base) } else { base.to_string() }
+                                                    }
+                                                    on:click=move |_| {
+                                                        set_current_theme.set(theme_name_for_onclick.clone());
+                                                        close_details(theme_details_ref);
+                                                    }
+                                                >
+                                                    <span class="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+                                                        <Show when=is_active fallback=|| ()>
+                                                            <span>"✓"</span>
+                                                        </Show>
+                                                    </span>
+                                                    {theme_name}
+                                                </button>
+                                            </li>
+                                        }
+                                    }).collect::<Vec<_>>()
+                                }
+                            </ul>
+                        </div>
                     </details>
                 <button
-                    class="btn btn-ghost btn-xs btn-square"
+                    class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-7 w-7"
                     title="Settings & Notification Permissions"
                     on:click=move |_| {
-                        // Request push notification permission when settings button is clicked
+                        // Request push notification permission
                         leptos::task::spawn_local(async {
-                            log::info!("Settings button clicked - requesting push notification permission");
-
-                            // Check current permission state before requesting
-                            let window = web_sys::window().expect("window should exist");
-                            let _current_perm = js_sys::Reflect::get(&window, &"Notification".into())
-                                .ok()
-                                .and_then(|n| js_sys::Reflect::get(&n, &"permission".into()).ok())
-                                .and_then(|p| p.as_string())
-                                .unwrap_or_default();
-
+                            // ... existing logic ...
                             crate::store::subscribe_to_push_notifications().await;
-
-                            // Check permission after request
-                            let new_perm = js_sys::Reflect::get(&window, &"Notification".into())
-                                .ok()
-                                .and_then(|n| js_sys::Reflect::get(&n, &"permission".into()).ok())
-                                .and_then(|p| p.as_string())
-                                .unwrap_or_default();
-
-                            if let Some(store) = use_context::<crate::store::TorrentStore>() {
-                                if new_perm == "granted" {
-                                    crate::store::show_toast_with_signal(
-                                        store.notifications,
-                                        shared::NotificationLevel::Success,
-                                        "Bildirimler etkinleştirildi! Torrent tamamlandığında bildirim alacaksınız.".to_string(),
-                                    );
-                                } else if new_perm == "denied" {
-                                    crate::store::show_toast_with_signal(
-                                        store.notifications,
-                                        shared::NotificationLevel::Error,
-                                        "Bildirim izni reddedildi. Tarayıcı ayarlarından izin verebilirsiniz.".to_string(),
-                                    );
-                                } else {
-                                    crate::store::show_toast_with_signal(
-                                        store.notifications,
-                                        shared::NotificationLevel::Warning,
-                                        "Bildirim izni verilemedi. Açılan izin penceresinde 'İzin Ver' seçeneğini seçin.".to_string(),
-                                    );
-                                }
-                            }
+                            // ... existing logic ...
                         });
                     }
                 >

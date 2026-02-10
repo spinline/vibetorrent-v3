@@ -26,7 +26,7 @@ jobs:
       run: |
         cd frontend
         npm install
-        npx @tailwindcss/cli -i input.css -o public/tailwind.css
+        npx @tailwindcss/cli -i input.css -o public/tailwind.css --minify --content './src/**/*.rs'
         # Trunk'ın optimizasyonunu kapalı (0) tutuyoruz çünkü Cargo.toml'daki opt-level='z' zaten o işi yapıyor.
         trunk build --release
 

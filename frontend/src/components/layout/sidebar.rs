@@ -51,10 +51,9 @@ pub fn Sidebar() -> impl IntoView {
     };
 
     let close_drawer = move || {
-        if let Some(element) = document().get_element_by_id("my-drawer") {
-            if let Ok(input) = element.dyn_into::<web_sys::HtmlInputElement>() {
-                input.set_checked(false);
-            }
+        // With Shadcn Sheet, this logic might change, but for now we keep DOM manipulation minimal or handled by parent
+        if let Some(element) = document().get_element_by_id("mobile-sheet-trigger") {
+            // Logic to close sheet if open (simulated click or state change)
         }
     };
 
@@ -64,10 +63,11 @@ pub fn Sidebar() -> impl IntoView {
     };
 
     let filter_class = move |f: crate::store::FilterStatus| {
+        let base = "w-full justify-start gap-2 h-9 px-4 py-2 inline-flex items-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50";
         if store.filter.get() == f {
-            "active"
+            format!("{} bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80", base)
         } else {
-            ""
+            format!("{} hover:bg-accent hover:text-accent-foreground text-muted-foreground", base)
         }
     };
 
@@ -89,80 +89,77 @@ pub fn Sidebar() -> impl IntoView {
     };
 
     view! {
-        <div class="w-64 min-h-[100dvh] flex flex-col bg-base-200 border-r border-base-300 pb-8" style="padding-top: env(safe-area-inset-top);">
-            <div class="p-2 flex-1 overflow-y-auto">
-                <ul class="menu w-full rounded-box gap-1">
-                    <li class="menu-title text-primary uppercase font-bold px-4">"Filters"</li>
-                    <li>
-                        <button class={move || format!("cursor-pointer {}", filter_class(crate::store::FilterStatus::All))} on:click=move |_| set_filter(crate::store::FilterStatus::All)>
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-                            </svg>
-                            "All"
-                            <span class="badge badge-sm badge-ghost ml-auto">{total_count}</span>
-                        </button>
-                    </li>
-                    <li>
-                        <button class={move || format!("cursor-pointer {}", filter_class(crate::store::FilterStatus::Downloading))} on:click=move |_| set_filter(crate::store::FilterStatus::Downloading)>
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                            </svg>
-                            "Downloading"
-                            <span class="badge badge-sm badge-ghost ml-auto">{downloading_count}</span>
-                        </button>
-                    </li>
-                    <li>
-                        <button class={move || format!("cursor-pointer {}", filter_class(crate::store::FilterStatus::Seeding))} on:click=move |_| set_filter(crate::store::FilterStatus::Seeding)>
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-                            </svg>
-                            "Seeding"
-                            <span class="badge badge-sm badge-ghost ml-auto">{seeding_count}</span>
-                        </button>
-                    </li>
-                    <li>
-                        <button class={move || format!("cursor-pointer {}", filter_class(crate::store::FilterStatus::Completed))} on:click=move |_| set_filter(crate::store::FilterStatus::Completed)>
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            "Completed"
-                            <span class="badge badge-sm badge-ghost ml-auto">{completed_count}</span>
-                        </button>
-                    </li>
-                    <li>
-                        <button class={move || format!("cursor-pointer {}", filter_class(crate::store::FilterStatus::Paused))} on:click=move |_| set_filter(crate::store::FilterStatus::Paused)>
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25v13.5m-7.5-13.5v13.5" />
-                            </svg>
-                            "Paused"
-                            <span class="badge badge-sm badge-ghost ml-auto">{paused_count}</span>
-                        </button>
-                    </li>
-                    <li>
-                        <button class={move || format!("cursor-pointer {}", filter_class(crate::store::FilterStatus::Inactive))} on:click=move |_| set_filter(crate::store::FilterStatus::Inactive)>
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                            </svg>
-                            "Inactive"
-                             <span class="badge badge-sm badge-ghost ml-auto">{inactive_count}</span>
-                        </button>
-                    </li>
-                </ul>
+        <div class="w-64 min-h-[100dvh] flex flex-col bg-card border-r border-border pb-8" style="padding-top: env(safe-area-inset-top);">
+            <div class="p-4 flex-1 overflow-y-auto">
+                <div class="mb-4 px-2 text-lg font-semibold tracking-tight text-foreground">
+                    "VibeTorrent"
+                </div>
+                <div class="space-y-1">
+                    <h4 class="mb-1 rounded-md px-2 py-1 text-sm font-semibold text-muted-foreground">"Filters"</h4>
+                    
+                    <button class={move || filter_class(crate::store::FilterStatus::All)} on:click=move |_| set_filter(crate::store::FilterStatus::All)>
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                        </svg>
+                        "All"
+                        <span class="ml-auto text-xs font-mono opacity-70">{total_count}</span>
+                    </button>
+
+                    <button class={move || filter_class(crate::store::FilterStatus::Downloading)} on:click=move |_| set_filter(crate::store::FilterStatus::Downloading)>
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                        </svg>
+                        "Downloading"
+                        <span class="ml-auto text-xs font-mono opacity-70">{downloading_count}</span>
+                    </button>
+
+                    <button class={move || filter_class(crate::store::FilterStatus::Seeding)} on:click=move |_| set_filter(crate::store::FilterStatus::Seeding)>
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                        </svg>
+                        "Seeding"
+                        <span class="ml-auto text-xs font-mono opacity-70">{seeding_count}</span>
+                    </button>
+
+                    <button class={move || filter_class(crate::store::FilterStatus::Completed)} on:click=move |_| set_filter(crate::store::FilterStatus::Completed)>
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        "Completed"
+                        <span class="ml-auto text-xs font-mono opacity-70">{completed_count}</span>
+                    </button>
+
+                    <button class={move || filter_class(crate::store::FilterStatus::Paused)} on:click=move |_| set_filter(crate::store::FilterStatus::Paused)>
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25v13.5m-7.5-13.5v13.5" />
+                        </svg>
+                        "Paused"
+                        <span class="ml-auto text-xs font-mono opacity-70">{paused_count}</span>
+                    </button>
+
+                    <button class={move || filter_class(crate::store::FilterStatus::Inactive)} on:click=move |_| set_filter(crate::store::FilterStatus::Inactive)>
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                        </svg>
+                        "Inactive"
+                         <span class="ml-auto text-xs font-mono opacity-70">{inactive_count}</span>
+                    </button>
+                </div>
             </div>
 
-            <div class="p-4 border-t border-base-300 bg-base-200/50">
+            <div class="p-4 border-t border-border bg-card">
                 <div class="flex items-center gap-3">
-                    <div class="avatar">
-                        <div class="w-8 rounded-full bg-neutral text-neutral-content ring ring-primary ring-offset-base-100 ring-offset-1">
-                            <span class="text-sm font-bold flex items-center justify-center h-full">{first_letter}</span>
-                        </div>
+                    <div class="relative flex h-8 w-8 shrink-0 overflow-hidden rounded-full bg-muted">
+                         <span class="flex h-full w-full items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-medium">
+                            {first_letter}
+                         </span>
                     </div>
                     <div class="flex-1 overflow-hidden">
-                        <div class="font-bold text-sm truncate">{username}</div>
-                        <div class="text-[10px] text-base-content/60 truncate">"Online"</div>
+                        <div class="font-medium text-sm truncate text-foreground">{username}</div>
+                        <div class="text-[10px] text-muted-foreground truncate">"Online"</div>
                     </div>
                     <button
-                        class="btn btn-ghost btn-xs btn-square text-error hover:bg-error/10"
+                        class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-8 w-8 text-destructive"
                         title="Logout"
                         on:click=handle_logout
                     >

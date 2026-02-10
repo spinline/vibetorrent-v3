@@ -1,5 +1,7 @@
 @import "tailwindcss";
 @config "./tailwind.config.js";
+@source "../src/**/*.rs";
+@source "/Users/bilal/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/leptos-shadcn-*/src/**/*.rs";
 
 @theme {
     /* Shadcn Colors */
@@ -41,14 +43,17 @@
         from {
             height: 0;
         }
+
         to {
             height: var(--radix-accordion-content-height);
         }
     }
+
     @keyframes accordion-up {
         from {
             height: var(--radix-accordion-content-height);
         }
+
         to {
             height: 0;
         }
@@ -123,17 +128,35 @@
     * {
         @apply border-border;
     }
+
     body {
         @apply bg-background text-foreground;
     }
-    
+
     /* Ensure Shadcn Utilities are always available */
-    .bg-popover { background-color: hsl(var(--popover)); }
-    .text-popover-foreground { color: hsl(var(--popover-foreground)); }
-    .border-border { border-color: hsl(var(--border)); }
-    .shadow-md { box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); }
-    .z-50 { z-index: 50; }
-    .z-100 { z-index: 100; }
+    .bg-popover {
+        background-color: hsl(var(--popover));
+    }
+
+    .text-popover-foreground {
+        color: hsl(var(--popover-foreground));
+    }
+
+    .border-border {
+        border-color: hsl(var(--border));
+    }
+
+    .shadow-md {
+        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    }
+
+    .z-50 {
+        z-index: 50;
+    }
+
+    .z-100 {
+        z-index: 100;
+    }
 }
 
 /* Fix for iOS click/blur events */

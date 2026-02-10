@@ -3,7 +3,7 @@ use leptos::task::spawn_local;
 use leptos_shadcn_button::{Button, ButtonVariant, ButtonSize};
 use leptos_shadcn_avatar::{Avatar, AvatarFallback};
 use leptos_shadcn_separator::Separator;
-use leptos::html;
+
 use leptos_use::storage::use_local_storage;
 use ::codee::string::FromToStringCodec;
 
@@ -93,11 +93,11 @@ pub fn Sidebar() -> impl IntoView {
         }
     });
 
-    let theme_details_ref = NodeRef::<html::Details>::new();
-    let close_details = move |node_ref: NodeRef<html::Details>| {
-        if let Some(el) = node_ref.get_untracked() {
-            el.set_open(false);
-        }
+
+
+    let toggle_theme = move |_| {
+        let new_theme = if current_theme.get() == "dark" { "light" } else { "dark" };
+        set_current_theme.set(new_theme.to_string());
     };
     // --- THEME LOGIC END ---
 
@@ -192,7 +192,7 @@ pub fn Sidebar() -> impl IntoView {
 
             <Separator />
 
-            <div class="p-4 bg-card">
+            <div class="p-4 bg-card" style="padding-bottom: calc(1rem + env(safe-area-inset-bottom));">
                 <div class="flex items-center gap-3">
                     <Avatar class="h-8 w-8">
                         <AvatarFallback class="bg-primary text-primary-foreground text-xs font-medium">
@@ -205,50 +205,25 @@ pub fn Sidebar() -> impl IntoView {
                     </div>
 
                     // --- THEME BUTTON ---
-                    <details class="group relative" node_ref=theme_details_ref>
-                        <summary class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-8 w-8 cursor-pointer outline-none list-none [&::-webkit-details-marker]:hidden">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M9.53 16.122a3 3 0 0 0-5.78 1.128 2.25 2.25 0 0 1-2.4 2.245 4.5 4.5 0 0 0 8.4-2.245c0-.399-.078-.78-.22-1.128Zm0 0a15.998 15.998 0 0 0 3.388-1.62m-5.043-.025a15.994 15.994 0 0 1 1.622-3.395m3.42 3.42a15.995 15.995 0 0 0 4.764-4.648l3.876-5.814a1.151 1.151 0 0 0-1.597-1.597L14.146 6.32a15.996 15.996 0 0 0-4.649 4.763m3.42 3.42a6.776 6.776 0 0 0-3.42-3.42" />
+                    <Button
+                        variant=ButtonVariant::Ghost
+                        size=ButtonSize::Icon
+                        class="h-8 w-8 text-muted-foreground hover:text-foreground"
+                        on_click=Callback::new(toggle_theme)
+                    >
+                        // Sun icon for dark mode (to switch to light), Moon for light (to switch to dark)
+                        // Actually show current state or action? Usually action.
+                        // If dark, show Sun. If light, show Moon.
+                        <Show when=move || current_theme.get() == "dark" fallback=|| view! {
+                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
                             </svg>
-                        </summary>
-
-                        <div class="absolute bottom-full left-0 mb-2 z-[100] min-w-[8rem] overflow-hidden rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md hidden group-open:block animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-2 max-h-64 overflow-y-auto">
-                            <ul class="w-full">
-                                {
-                                    let themes = vec![
-                                        "light", "dark", "dim", "nord", "cupcake", "dracula", "cyberpunk", "emerald", "sunset", "abyss"
-                                    ];
-                                    themes.into_iter().map(|theme| {
-                                        let theme_name = theme.to_string();
-                                        let theme_name_for_class = theme_name.clone();
-                                        let theme_name_for_onclick = theme_name.clone();
-                                        let is_active = move || current_theme.get() == theme_name_for_class;
-                                        view! {
-                                            <li>
-                                                <button
-                                                    class=move || {
-                                                        let base = "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-xs outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 hover:bg-accent hover:text-accent-foreground capitalize";
-                                                        if is_active() { format!("{} bg-accent text-accent-foreground font-medium", base) } else { base.to_string() }
-                                                    }
-                                                    on:click=move |_| {
-                                                        set_current_theme.set(theme_name_for_onclick.clone());
-                                                        close_details(theme_details_ref);
-                                                    }
-                                                >
-                                                    <span class="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
-                                                        <Show when=is_active.clone() fallback=|| ()>
-                                                            <span>"✓"</span>
-                                                        </Show>
-                                                    </span>
-                                                    {theme_name}
-                                                </button>
-                                            </li>
-                                        }
-                                    }).collect::<Vec<_>>()
-                                }
-                            </ul>
-                        </div>
-                    </details>
+                        }>
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
+                            </svg>
+                        </Show>
+                    </Button>
                     <Button
                         variant=ButtonVariant::Ghost
                         size=ButtonSize::Icon

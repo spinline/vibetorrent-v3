@@ -1,10 +1,12 @@
 use wasm_bindgen::prelude::*;
 use web_sys::{Notification, NotificationOptions};
 use leptos::prelude::*;
-use leptos_use::{use_web_notification, UseWebNotificationReturn, NotificationPermission};
 
 /// Request browser notification permission from user
 pub async fn request_notification_permission() -> bool {
+    if !is_notification_supported() {
+        return false;
+    }
     if let Ok(promise) = Notification::request_permission() {
         if let Ok(result) = wasm_bindgen_futures::JsFuture::from(promise).await {
             return result.as_string().unwrap_or_default() == "granted";
@@ -21,6 +23,9 @@ pub fn is_notification_supported() -> bool {
 
 /// Get current notification permission status
 pub fn get_notification_permission() -> String {
+    if !is_notification_supported() {
+        return "denied".to_string();
+    }
     match Notification::permission() {
         web_sys::NotificationPermission::Granted => "granted".to_string(),
         web_sys::NotificationPermission::Denied => "denied".to_string(),
@@ -32,8 +37,6 @@ pub fn get_notification_permission() -> String {
 /// Hook for using browser notifications within Leptos components or effects.
 /// This uses leptos-use for reactive permission tracking.
 pub fn use_app_notification() -> impl Fn(&str, &str) + Clone {
-    let UseWebNotificationReturn { permission, .. } = use_web_notification();
-    
     move |title: &str, body: &str| {
         // Check user preference from localStorage
         let window = web_sys::window().expect("no global window");
@@ -42,8 +45,8 @@ pub fn use_app_notification() -> impl Fn(&str, &str) + Clone {
             .and_then(|s| s.get_item("vibetorrent_browser_notifications").ok().flatten())
             .unwrap_or_else(|| "true".to_string());
 
-        // Use the reactive permission signal from leptos-use
-        if enabled == "true" && permission.get() == NotificationPermission::Granted {
+        // Check platform support and permission
+        if enabled == "true" && is_notification_supported() && get_notification_permission() == "granted" {
             show_browser_notification(title, body);
         }
     }

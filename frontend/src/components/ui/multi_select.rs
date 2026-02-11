@@ -20,13 +20,6 @@ pub enum MultiSelectAlign {
     End,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Default)]
-pub enum MultiSelectPosition {
-    #[default]
-    Below,
-    Above,
-}
-
 /* ========================================================== */
 /*                     ✨ FUNCTIONS ✨                        */
 /* ========================================================== */
@@ -181,12 +174,13 @@ pub fn MultiSelectContent(children: Children, #[prop(optional, into)] class: Str
     );
 
     let target_id_for_script = multi_select_ctx.target_id.clone();
+    let target_id_for_script_2 = multi_select_ctx.target_id.clone();
 
     // Scroll indicator signals
     let (on_scroll, can_scroll_up_signal, can_scroll_down_signal) = use_can_scroll_vertical();
 
     view! {
-        <script src="/hooks/lock_scroll.js"></script>
+        <script src="/lock_scroll.js"></script>
 
         <div
             data-name="MultiSelectContent"
@@ -196,12 +190,13 @@ pub fn MultiSelectContent(children: Children, #[prop(optional, into)] class: Str
             data-state="closed"
             data-align=align_str
             style="pointer-events: none;"
-            on:scroll=on_scroll
+            on:scroll=move |ev| on_scroll.run(ev)
         >
             <div
                 data-scroll-up="true"
                 class=move || {
-                    if can_scroll_up_signal.get() {
+                    let is_up: bool = can_scroll_up_signal.get();
+                    if is_up {
                         "sticky -top-1 z-10 flex items-center justify-center py-1 bg-card"
                     } else {
                         "hidden"
@@ -214,7 +209,8 @@ pub fn MultiSelectContent(children: Children, #[prop(optional, into)] class: Str
             <div
                 data-scroll-down="true"
                 class=move || {
-                    if can_scroll_down_signal.get() {
+                    let is_down: bool = can_scroll_down_signal.get();
+                    if is_down {
                         "sticky -bottom-1 z-10 flex items-center justify-center py-1 bg-card"
                     } else {
                         "hidden"
@@ -247,21 +243,12 @@ pub fn MultiSelectContent(children: Children, #[prop(optional, into)] class: Str
 
                         const openMultiSelect = () => {{
                             isOpen = true;
-
-                            // Lock all scrollable elements
-                            window.ScrollLock.lock();
-
+                            if (window.ScrollLock) window.ScrollLock.lock();
                             multiSelect.setAttribute('data-state', 'open');
                             multiSelect.style.pointerEvents = 'auto';
-
-                            // Set min-width to match trigger
                             const triggerRect = trigger.getBoundingClientRect();
                             multiSelect.style.minWidth = `${{triggerRect.width}}px`;
-
-                            // Trigger scroll event to update indicators
                             multiSelect.dispatchEvent(new Event('scroll'));
-
-                            // Close on click outside
                             setTimeout(() => {{
                                 document.addEventListener('click', handleClickOutside);
                             }}, 0);
@@ -272,9 +259,7 @@ pub fn MultiSelectContent(children: Children, #[prop(optional, into)] class: Str
                             multiSelect.setAttribute('data-state', 'closed');
                             multiSelect.style.pointerEvents = 'none';
                             document.removeEventListener('click', handleClickOutside);
-
-                            // Unlock scroll after animation (200ms delay)
-                            window.ScrollLock.unlock(200);
+                            if (window.ScrollLock) window.ScrollLock.unlock(200);
                         }};
 
                         const handleClickOutside = (e) => {{
@@ -283,17 +268,11 @@ pub fn MultiSelectContent(children: Children, #[prop(optional, into)] class: Str
                             }}
                         }};
 
-                        // Toggle multi-select when trigger is clicked
                         trigger.addEventListener('click', (e) => {{
                             e.stopPropagation();
-                            if (isOpen) {{
-                                closeMultiSelect();
-                            }} else {{
-                                openMultiSelect();
-                            }}
+                            if (isOpen) closeMultiSelect(); else openMultiSelect();
                         }});
 
-                        // Handle ESC key to close
                         document.addEventListener('keydown', (e) => {{
                             if (e.key === 'Escape' && isOpen) {{
                                 e.preventDefault();
@@ -310,8 +289,8 @@ pub fn MultiSelectContent(children: Children, #[prop(optional, into)] class: Str
                 }})();
                 "#,
                 target_id_for_script,
-                target_id_for_script,
+                target_id_for_script_2,
             )}
         </script>
-    }
+    }.into_any()
 }

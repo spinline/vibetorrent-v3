@@ -166,6 +166,7 @@ pub fn SelectContent(
     );
 
     let target_id_for_script = ctx.target_id.clone();
+    let target_id_for_script_2 = ctx.target_id.clone();
 
     // Scroll indicator signals
     let (on_scroll, can_scroll_up_signal, can_scroll_down_signal) = use_can_scroll_vertical();
@@ -176,7 +177,6 @@ pub fn SelectContent(
         <div
             data-name="SelectContent"
             class=merged_class
-            // Listen for custom 'selectclose' event dispatched by JS
             on:selectclose=move |_: web_sys::CustomEvent| {
                 if let Some(cb) = on_close {
                     cb.run(());
@@ -187,12 +187,13 @@ pub fn SelectContent(
             data-state="closed"
             data-position=position.to_string()
             style="pointer-events: none;"
-            on:scroll=on_scroll
+            on:scroll=move |ev| on_scroll.run(ev)
         >
             <div
                 data-scroll-up="true"
                 class=move || {
-                    if can_scroll_up_signal.get() {
+                    let is_up: bool = can_scroll_up_signal.get();
+                    if is_up {
                         "sticky -top-1 z-10 flex items-center justify-center py-1 bg-card"
                     } else {
                         "hidden"
@@ -205,7 +206,8 @@ pub fn SelectContent(
             <div
                 data-scroll-down="true"
                 class=move || {
-                    if can_scroll_down_signal.get() {
+                    let is_down: bool = can_scroll_down_signal.get();
+                    if is_down {
                         "sticky -bottom-1 z-10 flex items-center justify-center py-1 bg-card"
                     } else {
                         "hidden"
@@ -304,7 +306,7 @@ pub fn SelectContent(
                 }})();
                 "#,
                 target_id_for_script,
-                target_id_for_script,
+                target_id_for_script_2,
             )}
         </script>
     }.into_any()

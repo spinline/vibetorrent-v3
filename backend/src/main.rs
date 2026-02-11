@@ -25,7 +25,6 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::{broadcast, watch};
 use tower::ServiceBuilder;
-use tower_governor::GovernorLayer;
 use tower_http::{
     compression::{CompressionLayer, CompressionLevel},
     cors::CorsLayer,
@@ -48,7 +47,7 @@ pub struct AppState {
 }
 
 async fn auth_middleware(
-    state: axum::extract::State<AppState>,
+    _state: axum::extract::State<AppState>,
     jar: CookieJar,
     request: Request<Body>,
     next: Next,
@@ -113,13 +112,6 @@ struct Args {
 #[cfg(feature = "swagger")]
 #[derive(OpenApi)]
 #[openapi(
-    paths(
-        handlers::auth::login_handler,
-        handlers::auth::logout_handler,
-        handlers::auth::check_auth_handler,
-        handlers::setup::setup_handler,
-        handlers::setup::get_setup_status_handler
-    ),
     components(
         schemas(
             shared::AddTorrentRequest,
@@ -132,10 +124,6 @@ struct Args {
             shared::SetFilePriorityRequest,
             shared::SetLabelRequest,
             shared::GlobalLimitRequest,
-            handlers::auth::LoginRequest,
-            handlers::setup::SetupRequest,
-            handlers::setup::SetupStatusResponse,
-            handlers::auth::UserResponse
         )
     ),
     tags(
@@ -143,6 +131,7 @@ struct Args {
     )
 )]
 struct ApiDoc;
+
 
 #[tokio::main]
 async fn main() {
@@ -423,6 +412,11 @@ async fn main() {
     #[cfg(feature = "swagger")]
     let app = app.merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()));
 
+    // Setup & Auth Routes (cookie-based, stay as REST)
+    let scgi_path_for_ctx = args.socket.clone();
+    let db_for_ctx = db.clone();
+    let app = app
+        .route("/api/events", get(sse::sse_handler))
     // Setup & Auth Routes (cookie-based, stay as REST)
     let scgi_path_for_ctx = args.socket.clone();
     let db_for_ctx = db.clone();

@@ -4,7 +4,7 @@ use shared::xmlrpc::{
 use crate::AppState;
 use axum::extract::State;
 use axum::response::sse::{Event, Sse};
-use futures::stream::{self, Stream};
+use futures::stream::{self};
 use shared::{AppEvent, GlobalStats, Torrent, TorrentStatus};
 use std::convert::Infallible;
 use tokio_stream::StreamExt;

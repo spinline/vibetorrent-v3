@@ -1,7 +1,7 @@
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use std::collections::HashSet;
-use icons::{ArrowUpDown};
+use icons::{ArrowUpDown, Inbox};
 use crate::store::{get_action_messages, show_toast};
 use crate::api;
 use shared::NotificationLevel;
@@ -10,6 +10,7 @@ use crate::components::ui::card::{Card, CardHeader, CardTitle, CardContent as Ca
 use crate::components::ui::data_table::*;
 use crate::components::ui::checkbox::Checkbox;
 use crate::components::ui::button::{Button, ButtonVariant};
+use crate::components::ui::empty::*;
 
 fn format_bytes(bytes: i64) -> String {
     const UNITS: [&str; 6] = ["B", "KB", "MB", "GB", "TB", "PB"];
@@ -220,29 +221,68 @@ pub fn TorrentTable() -> impl IntoView {
                                 </DataTableRow>
                             </DataTableHeader>
                             <DataTableBody>
-                                <For each=move || filtered_hashes.get() key=|hash| hash.clone() children={
-                                    let on_action = on_action.clone();
-                                    move |hash| {
-                                        let h = hash.clone();
-                                        let is_selected = Signal::derive(move || {
-                                            selected_hashes.with(|selected| selected.contains(&h))
-                                        });
-                                        let h_for_change = hash.clone();
-                                        view! { 
-                                            <TorrentRow 
-                                                hash=hash.clone() 
-                                                on_action=on_action.clone() 
-                                                is_selected=is_selected
-                                                on_select=Callback::new(move |checked| {
-                                                    selected_hashes.update(|selected| {
-                                                        if checked { selected.insert(h_for_change.clone()); }
-                                                        else { selected.remove(&h_for_change); }
-                                                    });
-                                                })
-                                            /> 
-                                        }
+                                <Show
+                                    when=move || !filtered_hashes.get().is_empty()
+                                    fallback=move || view! {
+                                        <DataTableRow class="hover:bg-transparent">
+                                            <DataTableCell attr:colspan="9" class="h-[400px]">
+                                                <Empty class="h-full">
+                                                    <EmptyHeader>
+                                                        <EmptyMedia variant=EmptyMediaVariant::Icon>
+                                                            <Inbox class="size-10" />
+                                                        </EmptyMedia>
+                                                        <EmptyTitle>"Torrent Bulunamadı"</EmptyTitle>
+                                                        <EmptyDescription>
+                                                            {move || {
+                                                                let query = store.search_query.get();
+                                                                if query.is_empty() {
+                                                                    "Henüz eklenmiş bir torrent bulunmuyor.".to_string()
+                                                                } else {
+                                                                    format!("'{}' araması için sonuç bulunamadı.", query)
+                                                                }
+                                                            }}
+                                                        </EmptyDescription>
+                                                    </EmptyHeader>
+                                                    <EmptyContent>
+                                                        <Button 
+                                                            variant=ButtonVariant::Outline 
+                                                            on:click=move |_| {
+                                                                store.search_query.set(String::new());
+                                                                store.filter.set(crate::store::FilterStatus::All);
+                                                            }
+                                                        >
+                                                            "Tümünü Göster"
+                                                        </Button>
+                                                    </EmptyContent>
+                                                </Empty>
+                                            </DataTableCell>
+                                        </DataTableRow>
                                     }
-                                } />
+                                >
+                                    <For each=move || filtered_hashes.get() key=|hash| hash.clone() children={
+                                        let on_action = on_action.clone();
+                                        move |hash| {
+                                            let h = hash.clone();
+                                            let is_selected = Signal::derive(move || {
+                                                selected_hashes.with(|selected| selected.contains(&h))
+                                            });
+                                            let h_for_change = hash.clone();
+                                            view! { 
+                                                <TorrentRow 
+                                                    hash=hash.clone() 
+                                                    on_action=on_action.clone() 
+                                                    is_selected=is_selected
+                                                    on_select=Callback::new(move |checked| {
+                                                        selected_hashes.update(|selected| {
+                                                            if checked { selected.insert(h_for_change.clone()); }
+                                                            else { selected.remove(&h_for_change); }
+                                                        });
+                                                    })
+                                                /> 
+                                            }
+                                        }
+                                    } />
+                                </Show>
                             </DataTableBody>
                         </DataTable>
                     </div>
@@ -259,16 +299,31 @@ pub fn TorrentTable() -> impl IntoView {
             // --- MOBILE VIEW ---
             <div class="md:hidden flex flex-col h-full bg-muted/10 relative overflow-hidden">
                 <div class="flex-1 overflow-y-auto p-3 min-h-0">
-                    <For each=move || filtered_hashes.get() key=|hash| hash.clone() children={
-                        let on_action = on_action.clone();
-                        move |hash| {
-                            view! { 
-                                 <div class="pb-3">
-                                    <TorrentCard hash=hash.clone() on_action=on_action.clone() /> 
-                                </div>
-                            }
+                    <Show
+                        when=move || !filtered_hashes.get().is_empty()
+                        fallback=move || view! {
+                            <Empty class="h-64 mt-10">
+                                <EmptyHeader>
+                                    <EmptyMedia variant=EmptyMediaVariant::Icon>
+                                        <Inbox class="size-10" />
+                                    </EmptyMedia>
+                                    <EmptyTitle>"Boş Görünüyor"</EmptyTitle>
+                                    <EmptyDescription>"Burada gösterilecek bir şey yok."</EmptyDescription>
+                                </EmptyHeader>
+                            </Empty>
                         }
-                    } />
+                    >
+                        <For each=move || filtered_hashes.get() key=|hash| hash.clone() children={
+                            let on_action = on_action.clone();
+                            move |hash| {
+                                view! { 
+                                     <div class="pb-3">
+                                        <TorrentCard hash=hash.clone() on_action=on_action.clone() /> 
+                                    </div>
+                                }
+                            }
+                        } />
+                    </Show>
                 </div>
             </div>
         </div>

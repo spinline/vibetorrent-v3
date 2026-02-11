@@ -1,9 +1,6 @@
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 
-use leptos_use::storage::use_local_storage;
-use ::codee::string::FromToStringCodec;
-
 #[component]
 pub fn Sidebar() -> impl IntoView {
     let store = use_context::<crate::store::TorrentStore>().expect("store not provided");
@@ -66,34 +63,6 @@ pub fn Sidebar() -> impl IntoView {
     let first_letter = move || {
         username().chars().next().unwrap_or('?').to_uppercase().to_string()
     };
-
-    // --- THEME LOGIC START ---
-    let (current_theme, set_current_theme, _) = use_local_storage::<String, FromToStringCodec>("vibetorrent_theme");
-
-    // Initialize with default if empty
-    let current_theme_val = current_theme.get();
-    if current_theme_val.is_empty() {
-        set_current_theme.set("dark".to_string());
-    }
-
-    // Automatically sync theme to document attribute
-    Effect::new(move |_| {
-        let theme = current_theme.get().to_lowercase();
-        if let Some(doc) = document().document_element() {
-            let _ = doc.set_attribute("data-theme", &theme);
-            if theme == "dark" || theme == "dracula" || theme == "dim" || theme == "abyss" || theme == "sunset" || theme == "cyberpunk" || theme == "nord" || theme == "business" || theme == "night" || theme == "black" || theme == "luxury" || theme == "coffee" || theme == "forest" || theme == "halloween" || theme == "synthwave" {
-                let _ = doc.class_list().add_1("dark");
-            } else {
-                let _ = doc.class_list().remove_1("dark");
-            }
-        }
-    });
-
-    let toggle_theme = move |_| {
-        let new_theme = if current_theme.get() == "dark" { "light" } else { "dark" };
-        set_current_theme.set(new_theme.to_string());
-    };
-    // --- THEME LOGIC END ---
 
     view! {
         <div class="w-full h-full flex flex-col bg-card" style="padding-top: env(safe-area-inset-top);">
@@ -164,20 +133,9 @@ pub fn Sidebar() -> impl IntoView {
                     </div>
 
                     // Theme toggle button
-                    <button
-                        class="inline-flex items-center justify-center size-8 rounded-md hover:bg-accent hover:text-accent-foreground text-muted-foreground hover:text-foreground transition-colors"
-                        on:click=toggle_theme
-                    >
-                        <Show when=move || current_theme.get() == "dark" fallback=|| view! {
-                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
-                            </svg>
-                        }>
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
-                            </svg>
-                        </Show>
-                    </button>
+                    <div class="inline-flex items-center justify-center size-8 rounded-md hover:bg-accent hover:text-accent-foreground text-muted-foreground hover:text-foreground transition-colors">
+                        <crate::components::ui::theme_toggle::ThemeToggle />
+                    </div>
                     // Logout button
                     <button
                         class="inline-flex items-center justify-center size-8 rounded-md hover:bg-accent text-destructive transition-colors"

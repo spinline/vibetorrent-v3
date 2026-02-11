@@ -7,10 +7,27 @@ use leptos::task::spawn_local;
 use leptos_router::components::{Router, Routes, Route};
 use leptos_router::hooks::use_navigate;
 use crate::components::ui::toast::Toaster;
+use crate::components::hooks::use_theme_mode::ThemeMode;
 
 #[component]
 pub fn App() -> impl IntoView {
     crate::components::ui::toast::provide_toaster();
+    let theme_mode = ThemeMode::init();
+
+    // Sync theme with document
+    Effect::new(move |_| {
+        let is_dark = theme_mode.get();
+        if let Some(doc) = document().document_element() {
+            if is_dark {
+                let _ = doc.class_list().add_1("dark");
+                let _ = doc.set_attribute("data-theme", "dark");
+            } else {
+                let _ = doc.class_list().remove_1("dark");
+                let _ = doc.set_attribute("data-theme", "light");
+            }
+        }
+    });
+
     view! {
         <Toaster />
         <InnerApp />

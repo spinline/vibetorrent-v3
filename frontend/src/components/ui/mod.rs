@@ -3,3 +3,5 @@ pub mod card;
 pub mod input;
 pub mod toast;
 pub mod context_menu;
+pub mod theme_toggle;
+pub mod svg_icon;

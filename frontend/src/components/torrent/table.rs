@@ -171,11 +171,8 @@ pub fn TorrentTable() -> impl IntoView {
                                 <For each=move || filtered_hashes.get() key=|hash| hash.clone() children={
                                     let on_action = on_action.clone();
                                     move |hash| {
-                                        let h = hash.clone();
                                         view! { 
-                                            <TorrentContextMenu torrent_hash=h on_action=on_action.clone()>
-                                                <TorrentRow hash=hash.clone() /> 
-                                            </TorrentContextMenu>
+                                            <TorrentRow hash=hash.clone() on_action=on_action.clone() /> 
                                         }
                                     }
                                 } />
@@ -191,12 +188,9 @@ pub fn TorrentTable() -> impl IntoView {
                     <For each=move || filtered_hashes.get() key=|hash| hash.clone() children={
                         let on_action = on_action.clone();
                         move |hash| {
-                            let h = hash.clone();
                             view! { 
                                  <div class="pb-3">
-                                    <TorrentContextMenu torrent_hash=h on_action=on_action.clone()>
-                                        <TorrentCard hash=hash.clone() /> 
-                                    </TorrentContextMenu>
+                                    <TorrentCard hash=hash.clone() on_action=on_action.clone() /> 
                                 </div>
                             }
                         }
@@ -210,6 +204,7 @@ pub fn TorrentTable() -> impl IntoView {
 #[component]
 fn TorrentRow(
     hash: String,
+    on_action: Callback<(String, String)>,
 ) -> impl IntoView {
     let store = use_context::<crate::store::TorrentStore>().expect("store not provided");
     let h = hash.clone();
@@ -220,6 +215,7 @@ fn TorrentRow(
     view! {
         <Show when=move || torrent.get().is_some() fallback=|| ()>
             {
+                let on_action = on_action.clone();
                 move || {
                     let t = torrent.get().unwrap();
                     let t_name = t.name.clone();
@@ -232,53 +228,57 @@ fn TorrentRow(
 
                     let t_name_for_title = t_name.clone();
                     let t_name_for_content = t_name.clone();
+                    let h_for_menu = stored_hash.get_value();
 
                     view! {
-                        <TableRow 
-                            class="cursor-pointer h-12"
-                            attr:data-state=move || if is_selected.get() { "selected" } else { "" }
-                            on:click=move |_| store.selected_torrent.set(Some(stored_hash.get_value()))
-                        >
-                            <TableCell class="font-medium truncate max-w-[200px] lg:max-w-md px-2 py-0 h-12 flex items-center border-0" attr:title=t_name_for_title>
-                                {t_name_for_content}
-                            </TableCell>
-                            <TableCell class="font-mono text-xs text-muted-foreground px-2">
-                                {format_bytes(t.size)}
-                            </TableCell>
-                            <TableCell class="px-2">
-                                <div class="flex items-center gap-2">
-                                    <div class="h-1.5 w-full bg-secondary rounded-full overflow-hidden">
-                                        <div class="h-full bg-primary transition-all duration-500" style=format!("width: {}%", t.percent_complete)></div>
+                        <TorrentContextMenu torrent_hash=h_for_menu on_action=on_action.clone()>
+                            <TableRow 
+                                class="cursor-pointer h-12"
+                                attr:data-state=move || if is_selected.get() { "selected" } else { "" }
+                                on:click=move |_| store.selected_torrent.set(Some(stored_hash.get_value()))
+                            >
+                                <TableCell class="font-medium truncate max-w-[200px] lg:max-w-md px-2 py-0 h-12 flex items-center border-0" attr:title=t_name_for_title>
+                                    {t_name_for_content}
+                                </TableCell>
+                                <TableCell class="font-mono text-xs text-muted-foreground px-2">
+                                    {format_bytes(t.size)}
+                                </TableCell>
+                                <TableCell class="px-2">
+                                    <div class="flex items-center gap-2">
+                                        <div class="h-1.5 w-full bg-secondary rounded-full overflow-hidden">
+                                            <div class="h-full bg-primary transition-all duration-500" style=format!("width: {}%", t.percent_complete)></div>
+                                        </div>
+                                        <span class="text-[10px] text-muted-foreground w-10 text-right">{format!("{:.1}%", t.percent_complete)}</span>
                                     </div>
-                                    <span class="text-[10px] text-muted-foreground w-10 text-right">{format!("{:.1}%", t.percent_complete)}</span>
-                                </div>
-                            </TableCell>
-                            <TableCell class={format!("px-2 text-xs font-semibold {}", status_color)}>
-                                {format!("{:?}", t.status)}
-                            </TableCell>
-                            <TableCell class="text-right font-mono text-xs text-green-600 dark:text-green-500 px-2 whitespace-nowrap">
-                                {format_speed(t.down_rate)}
-                            </TableCell>
-                            <TableCell class="text-right font-mono text-xs text-blue-600 dark:text-blue-500 px-2 whitespace-nowrap">
-                                {format_speed(t.up_rate)}
-                            </TableCell>
-                            <TableCell class="text-right font-mono text-xs text-muted-foreground px-2 whitespace-nowrap">
-                                {format_duration(t.eta)}
-                            </TableCell>
-                            <TableCell class="text-right font-mono text-xs text-muted-foreground px-2 whitespace-nowrap">
-                                {format_date(t.added_date)}
-                            </TableCell>
-                        </TableRow>
+                                </TableCell>
+                                <TableCell class={format!("px-2 text-xs font-semibold {}", status_color)}>
+                                    {format!("{:?}", t.status)}
+                                </TableCell>
+                                <TableCell class="text-right font-mono text-xs text-green-600 dark:text-green-500 px-2 whitespace-nowrap">
+                                    {format_speed(t.down_rate)}
+                                </TableCell>
+                                <TableCell class="text-right font-mono text-xs text-blue-600 dark:text-blue-500 px-2 whitespace-nowrap">
+                                    {format_speed(t.up_rate)}
+                                </TableCell>
+                                <TableCell class="text-right font-mono text-xs text-muted-foreground px-2 whitespace-nowrap">
+                                    {format_duration(t.eta)}
+                                </TableCell>
+                                <TableCell class="text-right font-mono text-xs text-muted-foreground px-2 whitespace-nowrap">
+                                    {format_date(t.added_date)}
+                                </TableCell>
+                            </TableRow>
+                        </TorrentContextMenu>
                     }.into_any()
                 }
             }
         </Show>
-    }
+    }.into_any()
 }
 
 #[component]
 fn TorrentCard(
     hash: String,
+    on_action: Callback<(String, String)>,
 ) -> impl IntoView {
     let store = use_context::<crate::store::TorrentStore>().expect("store not provided");
     let h = hash.clone();
@@ -289,53 +289,57 @@ fn TorrentCard(
     view! {
         <Show when=move || torrent.get().is_some() fallback=|| ()>
             {
+                let on_action = on_action.clone();
                 move || {
                     let t = torrent.get().unwrap();
                     let t_name = t.name.clone();
                     let status_badge_class = match t.status { shared::TorrentStatus::Seeding => "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800", shared::TorrentStatus::Downloading => "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200 dark:border-blue-800", shared::TorrentStatus::Paused => "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800", shared::TorrentStatus::Error => "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800", _ => "bg-muted text-muted-foreground" };
+                    let h_for_menu = stored_hash.get_value();
 
                     view! {
-                        <div
-                            class=move || {
-                                let selected = store.selected_torrent.get();
-                                let is_selected = selected.as_deref() == Some(stored_hash.get_value().as_str());
-                                if is_selected {
-                                    "ring-2 ring-primary rounded-lg transition-all"
-                                } else {
-                                    "transition-all"
+                        <TorrentContextMenu torrent_hash=h_for_menu on_action=on_action.clone()>
+                            <div
+                                class=move || {
+                                    let selected = store.selected_torrent.get();
+                                    let is_selected = selected.as_deref() == Some(stored_hash.get_value().as_str());
+                                    if is_selected {
+                                        "ring-2 ring-primary rounded-lg transition-all"
+                                    } else {
+                                        "transition-all"
+                                    }
                                 }
-                            }
-                            on:click=move |_| store.selected_torrent.set(Some(stored_hash.get_value()))
-                        >
-                        <Card class="h-full select-none cursor-pointer hover:border-primary transition-colors">
-                            <CardHeader class="p-3 pb-0">
-                                <div class="flex justify-between items-start gap-2">
-                                    <CardTitle class="text-sm font-medium leading-tight line-clamp-2">{t_name.clone()}</CardTitle>
-                                    <div class={format!("inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 {}", status_badge_class)}>{format!("{:?}", t.status)}</div>
-                                </div>
-                            </CardHeader>
-                            <CardBody class="p-3 pt-2 gap-3 flex flex-col">
-                                <div class="flex flex-col gap-1">
-                                    <div class="flex justify-between text-[10px] text-muted-foreground">
-                                        <span>{format_bytes(t.size)}</span>
-                                        <span>{format!("{:.1}%", t.percent_complete)}</span>
+                                on:click=move |_| store.selected_torrent.set(Some(stored_hash.get_value()))
+                            >
+                            <Card class="h-full select-none cursor-pointer hover:border-primary transition-colors">
+                                <CardHeader class="p-3 pb-0">
+                                    <div class="flex justify-between items-start gap-2">
+                                        <CardTitle class="text-sm font-medium leading-tight line-clamp-2">{t_name.clone()}</CardTitle>
+                                        <div class={format!("inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 {}", status_badge_class)}>{format!("{:?}", t.status)}</div>
                                     </div>
-                                    <div class="h-1.5 w-full bg-secondary rounded-full overflow-hidden">
-                                        <div class="h-full bg-primary transition-all duration-500" style=format!("width: {}%", t.percent_complete)></div>
+                                </CardHeader>
+                                <CardBody class="p-3 pt-2 gap-3 flex flex-col">
+                                    <div class="flex flex-col gap-1">
+                                        <div class="flex justify-between text-[10px] text-muted-foreground">
+                                            <span>{format_bytes(t.size)}</span>
+                                            <span>{format!("{:.1}%", t.percent_complete)}</span>
+                                        </div>
+                                        <div class="h-1.5 w-full bg-secondary rounded-full overflow-hidden">
+                                            <div class="h-full bg-primary transition-all duration-500" style=format!("width: {}%", t.percent_complete)></div>
+                                        </div>
                                     </div>
-                                </div>
-                                <div class="grid grid-cols-4 gap-2 text-[10px] font-mono text-muted-foreground pt-1 border-t border-border/50">
-                                    <div class="flex flex-col text-blue-600 dark:text-blue-500"><span>"DL"</span><span>{format_speed(t.down_rate)}</span></div>
-                                    <div class="flex flex-col text-green-600 dark:text-green-500"><span>"UP"</span><span>{format_speed(t.up_rate)}</span></div>
-                                    <div class="flex flex-col"><span>"ETA"</span><span>{format_duration(t.eta)}</span></div>
-                                    <div class="flex flex-col text-right"><span>"DATE"</span><span>{format_date(t.added_date)}</span></div>
-                                </div>
-                            </CardBody>
-                        </Card>
-                        </div>
-                    }
+                                    <div class="grid grid-cols-4 gap-2 text-[10px] font-mono text-muted-foreground pt-1 border-t border-border/50">
+                                        <div class="flex flex-col text-blue-600 dark:text-blue-500"><span>"DL"</span><span>{format_speed(t.down_rate)}</span></div>
+                                        <div class="flex flex-col text-green-600 dark:text-green-500"><span>"UP"</span><span>{format_speed(t.up_rate)}</span></div>
+                                        <div class="flex flex-col"><span>"ETA"</span><span>{format_duration(t.eta)}</span></div>
+                                        <div class="flex flex-col text-right"><span>"DATE"</span><span>{format_date(t.added_date)}</span></div>
+                                    </div>
+                                </CardBody>
+                            </Card>
+                            </div>
+                        </TorrentContextMenu>
+                    }.into_any()
                 }
             }
         </Show>
-    }
+    }.into_any()
 }

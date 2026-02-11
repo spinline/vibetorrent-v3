@@ -202,14 +202,14 @@ pub fn ContextMenuTrigger(
     #[prop(optional)] on_open: Option<Callback<()>>,
 ) -> impl IntoView {
     let ctx = expect_context::<ContextMenuContext>();
-    let trigger_class = tw_merge!("contents", class);
+    let trigger_class = tw_merge!("block w-full h-full", class);
 
     view! {
         <div
             class=trigger_class
             data-name="ContextMenuTrigger"
             data-context-trigger=ctx.target_id
-            on:contextmenu=move |_| {
+            on:contextmenu=move |e: web_sys::MouseEvent| {
                 if let Some(cb) = on_open {
                     cb.run(());
                 }
@@ -230,7 +230,7 @@ pub fn ContextMenuContent(
 ) -> impl IntoView {
     let ctx = expect_context::<ContextMenuContext>();
 
-    let base_classes = "z-50 min-w-[12rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md transition-all duration-200 data-[state=closed]:opacity-0 data-[state=closed]:scale-95 data-[state=open]:opacity-100 data-[state=open]:scale-100";
+    let base_classes = "fixed z-50 min-w-[12rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md transition-all duration-200 data-[state=closed]:opacity-0 data-[state=closed]:scale-95 data-[state=open]:opacity-100 data-[state=open]:scale-100";
 
     let class = tw_merge!(base_classes, class);
 

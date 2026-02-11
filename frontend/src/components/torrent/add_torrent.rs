@@ -4,6 +4,8 @@ use crate::components::ui::input::{Input, InputType};
 use crate::store::TorrentStore;
 use crate::api;
 
+use crate::components::ui::button::{Button, ButtonVariant};
+
 #[component]
 pub fn AddTorrentDialog(
     on_close: Callback<()>,
@@ -80,17 +82,16 @@ pub fn AddTorrentDialog(
                 })}
 
                 <div class="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2">
-                    <button
-                        type="button"
-                        class="inline-flex items-center justify-center h-9 px-4 py-2 rounded-md text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-colors"
+                    <Button
+                        variant=ButtonVariant::Ghost
+                        attr:r#type="button"
                         on:click=move |_| on_close.run(())
                     >
                         "Cancel"
-                    </button>
-                    <button
-                        type="submit"
-                        class="inline-flex items-center justify-center h-9 px-4 py-2 rounded-md text-sm font-medium bg-primary text-primary-foreground shadow-xs hover:bg-primary/90 transition-all disabled:pointer-events-none disabled:opacity-50"
-                        disabled=move || is_loading.0.get()
+                    </Button>
+                    <Button
+                        attr:r#type="submit"
+                        attr:disabled=move || is_loading.0.get()
                     >
                         {move || if is_loading.0.get() {
                             leptos::either::Either::Left(view! { 
@@ -100,13 +101,14 @@ pub fn AddTorrentDialog(
                         } else {
                             leptos::either::Either::Right(view! { "Add" })
                         }}
-                    </button>
+                    </Button>
                 </div>
             </form>
 
             // Close button (X)
-            <button 
-                class="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none"
+            <Button 
+                variant=ButtonVariant::Ghost
+                class="absolute right-2 top-2 size-8 p-0 opacity-70 hover:opacity-100"
                 on:click=move |_| on_close.run(())
             >
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4">
@@ -114,7 +116,7 @@ pub fn AddTorrentDialog(
                     <path d="m6 6 12 12"></path>
                 </svg>
                 <span class="sr-only">"Close"</span>
-            </button>
+            </Button>
         </div>
     }
 }

@@ -3,6 +3,8 @@ use leptos::task::spawn_local;
 use crate::components::ui::card::{Card, CardHeader, CardContent};
 use crate::components::ui::input::{Input, InputType};
 
+use crate::components::ui::button::Button;
+
 #[component]
 pub fn Login() -> impl IntoView {
     let username = RwSignal::new(String::new());
@@ -74,15 +76,16 @@ pub fn Login() -> impl IntoView {
                         </Show>
 
                         <div class="pt-2">
-                            <button
-                                class="inline-flex items-center justify-center w-full h-9 px-4 py-2 rounded-md text-sm font-medium bg-primary text-primary-foreground shadow-xs hover:bg-primary/90 transition-all disabled:pointer-events-none disabled:opacity-50"
-                                disabled=move || loading.0.get()
+                            <Button
+                                class="w-full"
+                                attr:r#type="submit"
+                                attr:disabled=move || loading.0.get()
                             >
-                                <Show when=move || loading.0.get() fallback=|| "Giriş Yap">
+                                <Show when=move || loading.0.get() fallback=|| view! { "Giriş Yap" }.into_any()>
                                     <span class="animate-spin mr-2 h-4 w-4 border-2 border-current border-t-transparent rounded-full"></span>
                                     "Giriş Yapılıyor..."
                                 </Show>
-                            </button>
+                            </Button>
                         </div>
                     </form>
                 </CardContent>

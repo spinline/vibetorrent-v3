@@ -1,5 +1,6 @@
 use leptos::prelude::*;
 use leptos::task::spawn_local;
+use crate::components::ui::button::{Button, ButtonVariant, ButtonSize};
 
 #[component]
 pub fn Sidebar() -> impl IntoView {
@@ -137,8 +138,11 @@ pub fn Sidebar() -> impl IntoView {
                         <crate::components::ui::theme_toggle::ThemeToggle />
                     </div>
                     // Logout button
-                    <button
-                        class="inline-flex items-center justify-center size-8 rounded-md hover:bg-accent text-destructive transition-colors"
+                    <Button
+                        variant=ButtonVariant::Ghost
+                        size=ButtonSize::Icon
+                        class="text-destructive hover:bg-destructive/10"
+                        attr:disabled=move || false
                         on:click=move |_| {
                             spawn_local(async move {
                                 if shared::server_fns::auth::logout().await.is_ok() {
@@ -151,7 +155,7 @@ pub fn Sidebar() -> impl IntoView {
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
                         </svg>
-                    </button>
+                    </Button>
                 </div>
             </div>
         </div>
@@ -166,13 +170,12 @@ fn SidebarButton(
     #[prop(into)] label: &'static str,
     count: Signal<usize>,
 ) -> impl IntoView {
+    let variant = move || if active.get() { ButtonVariant::Secondary } else { ButtonVariant::Ghost };
+    
     view! {
-        <button
-            class=move || if active.get() {
-                "inline-flex items-center justify-start gap-2 w-full h-8 rounded-md px-3 text-sm font-medium bg-secondary text-secondary-foreground transition-colors"
-            } else {
-                "inline-flex items-center justify-start gap-2 w-full h-8 rounded-md px-3 text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-colors"
-            }
+        <Button
+            variant=Signal::derive(variant)
+            class="justify-start gap-2 w-full h-8 px-3"
             on:click=on_click
         >
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
@@ -180,6 +183,6 @@ fn SidebarButton(
             </svg>
             {label}
             <span class="ml-auto text-xs font-mono opacity-70">{count}</span>
-        </button>
+        </Button>
     }
 }

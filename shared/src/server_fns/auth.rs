@@ -20,7 +20,7 @@ pub struct SetupStatus {
     pub completed: bool,
 }
 
-#[server(GetSetupStatus, "/api/server_fns/GetSetupStatus", encoding = MsgPack)]
+#[server(GetSetupStatus, "/api/server_fns/GetSetupStatus", input = MsgPack, output = MsgPack)]
 pub async fn get_setup_status() -> Result<SetupStatus, ServerFnError> {
     use crate::DbContext;
 
@@ -33,7 +33,7 @@ pub async fn get_setup_status() -> Result<SetupStatus, ServerFnError> {
     })
 }
 
-#[server(Setup, "/api/server_fns/Setup", encoding = MsgPack)]
+#[server(Setup, "/api/server_fns/Setup", input = MsgPack, output = MsgPack)]
 pub async fn setup(username: String, password: String) -> Result<(), ServerFnError> {
     use crate::DbContext;
 
@@ -55,7 +55,7 @@ pub async fn setup(username: String, password: String) -> Result<(), ServerFnErr
     Ok(())
 }
 
-#[server(Login, "/api/server_fns/Login", encoding = MsgPack)]
+#[server(Login, "/api/server_fns/Login", input = MsgPack, output = MsgPack)]
 pub async fn login(username: String, password: String) -> Result<UserResponse, ServerFnError> {
     use crate::DbContext;
     use leptos_axum::ResponseOptions;
@@ -111,7 +111,7 @@ pub async fn login(username: String, password: String) -> Result<UserResponse, S
     }
 }
 
-#[server(Logout, "/api/server_fns/Logout", encoding = MsgPack)]
+#[server(Logout, "/api/server_fns/Logout", input = MsgPack, output = MsgPack)]
 pub async fn logout() -> Result<(), ServerFnError> {
     use leptos_axum::ResponseOptions;
     use cookie::{Cookie, SameSite};
@@ -132,7 +132,7 @@ pub async fn logout() -> Result<(), ServerFnError> {
     Ok(())
 }
 
-#[server(GetUser, "/api/server_fns/GetUser", encoding = MsgPack)]
+#[server(GetUser, "/api/server_fns/GetUser", input = MsgPack, output = MsgPack)]
 pub async fn get_user() -> Result<Option<UserResponse>, ServerFnError> {
     use axum::http::HeaderMap;
     use leptos_axum::extract;

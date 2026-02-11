@@ -49,10 +49,6 @@ pub fn SelectValue(#[prop(optional, into)] placeholder: String) -> impl IntoView
     }
 }
 
-/* ========================================================== */
-/*                     ✨ FUNCTIONS ✨                        */
-/* ========================================================== */
-
 #[component]
 pub fn SelectOption(
     children: Children,
@@ -91,10 +87,6 @@ pub fn SelectOption(
         </li>
     }
 }
-
-/* ========================================================== */
-/*                     ✨ FUNCTIONS ✨                        */
-/* ========================================================== */
 
 #[derive(Clone)]
 struct SelectContext {
@@ -164,6 +156,7 @@ pub fn SelectContent(
     children: Children,
     #[prop(optional, into)] class: String,
     #[prop(default = SelectPosition::default())] position: SelectPosition,
+    #[prop(optional)] on_close: Option<Callback<()>>,
 ) -> impl IntoView {
     let ctx = expect_context::<SelectContext>();
 
@@ -178,11 +171,17 @@ pub fn SelectContent(
     let (on_scroll, can_scroll_up_signal, can_scroll_down_signal) = use_can_scroll_vertical();
 
     view! {
-        <script src="/hooks/lock_scroll.js"></script>
+        <script src="/lock_scroll.js"></script>
 
         <div
             data-name="SelectContent"
             class=merged_class
+            // Listen for custom 'selectclose' event dispatched by JS
+            on:selectclose=move |_: web_sys::CustomEvent| {
+                if let Some(cb) = on_close {
+                    cb.run(());
+                }
+            }
             id=ctx.target_id
             data-target="target__select"
             data-state="closed"
@@ -243,32 +242,22 @@ pub fn SelectContent(
                             const spaceBelow = viewportHeight - triggerRect.bottom;
                             const spaceAbove = triggerRect.top;
 
-                            // Determine if dropdown should go above or below
                             if (spaceBelow < 200 && spaceAbove > spaceBelow) {{
                                 select.setAttribute('data-position', 'Above');
                             }} else {{
                                 select.setAttribute('data-position', 'Below');
                             }}
 
-                            // Set min-width to match trigger
                             select.style.minWidth = `${{triggerRect.width}}px`;
                         }};
 
                         const openSelect = () => {{
                             isOpen = true;
-
-                            // Lock scrolling
-                            window.ScrollLock.lock();
-
-                            // Update position and open
+                            if (window.ScrollLock) window.ScrollLock.lock();
                             updatePosition();
                             select.setAttribute('data-state', 'open');
                             select.style.pointerEvents = 'auto';
-
-                            // Trigger scroll event to update indicators
                             select.dispatchEvent(new Event('scroll'));
-
-                            // Close on click outside
                             setTimeout(() => {{
                                 document.addEventListener('click', handleClickOutside);
                             }}, 0);
@@ -279,9 +268,8 @@ pub fn SelectContent(
                             select.setAttribute('data-state', 'closed');
                             select.style.pointerEvents = 'none';
                             document.removeEventListener('click', handleClickOutside);
-
-                            // Unlock scrolling after animation
-                            window.ScrollLock.unlock(200);
+                            select.dispatchEvent(new CustomEvent('selectclose', {{ bubbles: false }}));
+                            if (window.ScrollLock) window.ScrollLock.unlock(200);
                         }};
 
                         const handleClickOutside = (e) => {{
@@ -290,25 +278,16 @@ pub fn SelectContent(
                             }}
                         }};
 
-                        // Toggle select when trigger is clicked
                         trigger.addEventListener('click', (e) => {{
                             e.stopPropagation();
-                            if (isOpen) {{
-                                closeSelect();
-                            }} else {{
-                                openSelect();
-                            }}
+                            if (isOpen) closeSelect(); else openSelect();
                         }});
 
-                        // Close when option is selected
                         const options = select.querySelectorAll('[data-select-option]');
                         options.forEach(option => {{
-                            option.addEventListener('click', () => {{
-                                closeSelect();
-                            }});
+                            option.addEventListener('click', () => closeSelect());
                         }});
 
-                        // Handle ESC key to close
                         document.addEventListener('keydown', (e) => {{
                             if (e.key === 'Escape' && isOpen) {{
                                 e.preventDefault();
@@ -328,5 +307,5 @@ pub fn SelectContent(
                 target_id_for_script,
             )}
         </script>
-    }
+    }.into_any()
 }

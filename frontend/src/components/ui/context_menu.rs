@@ -145,7 +145,7 @@ pub fn ContextMenuHoldAction(
                 {children()}
             </span>
         </div>
-    }
+    }.into_any()
 }
 
 #[derive(Clone)]
@@ -237,7 +237,7 @@ pub fn ContextMenuContent(
     let target_id_for_script = ctx.target_id.clone();
 
     view! {
-        <script src="/hooks/lock_scroll.js"></script>
+        <script src="/lock_scroll.js"></script>
 
         <div
             data-name="ContextMenuContent"
@@ -399,7 +399,7 @@ pub fn ContextMenuContent(
                 target_id_for_script,
             )}
         </script>
-    }
+    }.into_any()
 }
 
 #[component]

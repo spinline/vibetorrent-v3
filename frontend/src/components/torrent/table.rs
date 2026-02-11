@@ -204,7 +204,7 @@ pub fn TorrentTable() -> impl IntoView {
                 </div>
             </div>
         </div>
-    }
+    }.into_any()
 }
 
 #[component]
@@ -269,7 +269,7 @@ fn TorrentRow(
                                 {format_date(t.added_date)}
                             </TableCell>
                         </TableRow>
-                    }
+                    }.into_any()
                 }
             }
         </Show>

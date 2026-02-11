@@ -1,19 +1,44 @@
 use leptos::prelude::*;
-use leptos_ui::clx;
+use tw_merge::tw_merge;
 
-mod components {
-    use super::*;
-    clx! {TableWrapper, div, "overflow-hidden rounded-md border"}
-    clx! {Table, table, "w-full max-w-7xl text-sm caption-bottom"}
-    clx! {TableCaption, caption, "mt-4 text-sm text-muted-foreground"}
-    clx! {TableHeader, thead, "[&_tr]:border-b"}
-    clx! {TableRow, tr, "border-b transition-colors data-[state=selected]:bg-muted hover:bg-muted/50"}
-    clx! {TableHead, th, "h-10 px-2 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"}
-    clx! {TableBody, tbody, "[&_tr:last-child]:border-0"}
-    clx! {TableCell, td, "p-4 align-middle [&:has([role=checkbox])]:pr-0  &:has([role=checkbox])]:pl-3"}
-    clx! {TableFooter, tfoot, "font-medium border border-t bg-muted/50 [&>tr]:last:border-b-0"}
-    clx! {CardContent, div, "pt-4"}
-    clx! {CardFooter, div, "mt-4", "flex items-center justify-end"}
+#[component]
+pub fn TableWrapper(children: Children, #[prop(optional, into)] class: String) -> impl IntoView {
+    let class = tw_merge!("overflow-hidden rounded-md border", class);
+    view! { <div class=class>{children()}</div> }
 }
 
-pub use components::*;
+#[component]
+pub fn Table(children: Children, #[prop(optional, into)] class: String) -> impl IntoView {
+    let class = tw_merge!("w-full text-sm caption-bottom", class);
+    view! { <table class=class>{children()}</table> }
+}
+
+#[component]
+pub fn TableHeader(children: Children, #[prop(optional, into)] class: String) -> impl IntoView {
+    let class = tw_merge!("[&_tr]:border-b", class);
+    view! { <thead class=class>{children()}</thead> }
+}
+
+#[component]
+pub fn TableRow(children: Children, #[prop(optional, into)] class: String) -> impl IntoView {
+    let class = tw_merge!("border-b transition-colors data-[state=selected]:bg-muted hover:bg-muted/50", class);
+    view! { <tr class=class>{children()}</tr> }
+}
+
+#[component]
+pub fn TableHead(children: Children, #[prop(optional, into)] class: String) -> impl IntoView {
+    let class = tw_merge!("h-10 px-2 text-left align-middle font-medium text-muted-foreground", class);
+    view! { <th class=class>{children()}</th> }
+}
+
+#[component]
+pub fn TableBody(children: Children, #[prop(optional, into)] class: String) -> impl IntoView {
+    let class = tw_merge!("[&_tr:last-child]:border-0", class);
+    view! { <tbody class=class>{children()}</tbody> }
+}
+
+#[component]
+pub fn TableCell(children: Children, #[prop(optional, into)] class: String) -> impl IntoView {
+    let class = tw_merge!("p-2 align-middle", class);
+    view! { <td class=class>{children()}</td> }
+}

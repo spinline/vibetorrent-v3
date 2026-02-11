@@ -52,17 +52,21 @@ async fn auth_middleware(
     request: Request<Body>,
     next: Next,
 ) -> Result<Response, StatusCode> {
-    // Skip auth for public paths
+    // Skip auth for public server functions
     let path = request.uri().path();
-    if path.starts_with("/api/server_fns/Login") // Login server fn
+    if path.starts_with("/api/server_fns/Login") 
+       || path.starts_with("/api/server_fns/login")
        || path.starts_with("/api/server_fns/GetSetupStatus")
+       || path.starts_with("/api/server_fns/get_setup_status")
        || path.starts_with("/api/server_fns/Setup")
+       || path.starts_with("/api/server_fns/setup")
        || path.starts_with("/swagger-ui")
        || path.starts_with("/api-docs")
-       || !path.starts_with("/api/") // Allow static files (frontend)
+       || !path.starts_with("/api/") 
     {
         return Ok(next.run(request).await);
     }
+
 
     // Check token
     if let Some(token) = jar.get("auth_token") {
@@ -220,6 +224,18 @@ async fn main() {
     tracing::info!("Starting VibeTorrent Backend...");
     tracing::info!("Socket: {}", args.socket);
     tracing::info!("Port: {}", args.port);
+
+    // Force linking of server functions from shared crate for registration on Mac
+    {
+        use shared::server_fns::auth::*;
+        let _ = get_setup_status;
+        let _ = setup;
+        let _ = login;
+        let _ = logout;
+        let _ = get_user;
+        tracing::info!("Server functions linked successfully.");
+    }
+
 
     // ... rest of the main function ...
     // Startup Health Check

@@ -1,11 +1,15 @@
 use leptos::prelude::*;
 use leptos::task::spawn_local;
+use std::collections::HashSet;
+use icons::{ArrowUpDown};
 use crate::store::{get_action_messages, show_toast};
 use crate::api;
 use shared::NotificationLevel;
 use crate::components::context_menu::TorrentContextMenu;
 use crate::components::ui::card::{Card, CardHeader, CardTitle, CardContent as CardBody};
 use crate::components::ui::data_table::*;
+use crate::components::ui::checkbox::Checkbox;
+use crate::components::ui::button::{Button, ButtonVariant};
 
 fn format_bytes(bytes: i64) -> String {
     const UNITS: [&str; 6] = ["B", "KB", "MB", "GB", "TB", "PB"];
@@ -50,8 +54,11 @@ pub fn TorrentTable() -> impl IntoView {
     let store = use_context::<crate::store::TorrentStore>().expect("store not provided");
     let sort_col = signal(SortColumn::AddedDate);
     let sort_dir = signal(SortDirection::Descending);
+    
+    // Multi-selection state
+    let selected_hashes = RwSignal::new(HashSet::<String>::new());
 
-    let filtered_hashes = Memo::new(move |_| {
+    let sorted_hashes_data = Memo::new(move |_| {
         let torrents_map = store.torrents.get();
         let filter = store.filter.get();
         let search = store.search_query.get();
@@ -90,7 +97,31 @@ pub fn TorrentTable() -> impl IntoView {
             };
             if dir == SortDirection::Descending { cmp.reverse() } else { cmp }
         });
-        torrents.into_iter().map(|t| t.hash.clone()).collect::<Vec<String>>()
+        torrents
+    });
+
+    let filtered_hashes = Memo::new(move |_| {
+        sorted_hashes_data.get().into_iter().map(|t| t.hash.clone()).collect::<Vec<String>>()
+    });
+
+    let selected_count = Signal::derive(move || {
+        let current_hashes: HashSet<String> = filtered_hashes.get().into_iter().collect();
+        selected_hashes.with(|selected| {
+            selected.iter().filter(|h| current_hashes.contains(*h)).count()
+        })
+    });
+
+    let handle_select_all = Callback::new(move |checked: bool| {
+        selected_hashes.update(|selected| {
+            let hashes = filtered_hashes.get_untracked();
+            for h in hashes {
+                if checked {
+                    selected.insert(h);
+                } else {
+                    selected.remove(&h);
+                }
+            }
+        });
     });
 
     let handle_sort = move |col: SortColumn| {
@@ -102,15 +133,6 @@ pub fn TorrentTable() -> impl IntoView {
             sort_col.1.set(col);
             sort_dir.1.set(SortDirection::Ascending);
         }
-    };
-
-    let sort_arrow = move |col: SortColumn| {
-        if sort_col.0.get() == col {
-            match sort_dir.0.get() {
-                SortDirection::Ascending => view! { <span class="ml-1 text-[10px]">"▲"</span> }.into_any(),
-                SortDirection::Descending => view! { <span class="ml-1 text-[10px]">"▼"</span> }.into_any(),
-            }
-        } else { view! { <span class="ml-1 text-[10px] opacity-0 group-hover:opacity-50 transition-opacity">"▲"</span> }.into_any() }
     };
 
     let on_action = Callback::new(move |(action, hash): (String, String)| {
@@ -141,38 +163,51 @@ pub fn TorrentTable() -> impl IntoView {
                         <DataTable>
                             <DataTableHeader class="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
                                 <DataTableRow class="hover:bg-transparent">
+                                    <DataTableHead class="w-12 px-4">
+                                        <Checkbox
+                                            checked=Signal::derive(move || {
+                                                let hashes = filtered_hashes.get();
+                                                !hashes.is_empty() && selected_count.get() == hashes.len()
+                                            })
+                                            on_checked_change=handle_select_all
+                                        />
+                                    </DataTableHead>
                                     <DataTableHead class="cursor-pointer group select-none" on:click=move |_| handle_sort(SortColumn::Name)>
-                                        <div class="flex items-center">"Name" {move || sort_arrow(SortColumn::Name)}</div>
+                                        <div class="flex items-center gap-2">
+                                            "Name" 
+                                            <ArrowUpDown class="size-3 opacity-50 group-hover:opacity-100 transition-opacity" />
+                                        </div>
                                     </DataTableHead>
-                                    <DataTableHead class="w-24 cursor-pointer group select-none" on:click=move |_| handle_sort(SortColumn::Size)>
-                                        <div class="flex items-center">"Size" {move || sort_arrow(SortColumn::Size)}</div>
-                                    </DataTableHead>
-                                    <DataTableHead class="w-48 cursor-pointer group select-none" on:click=move |_| handle_sort(SortColumn::Progress)>
-                                        <div class="flex items-center">"Progress" {move || sort_arrow(SortColumn::Progress)}</div>
-                                    </DataTableHead>
-                                    <DataTableHead class="w-24 cursor-pointer group select-none" on:click=move |_| handle_sort(SortColumn::Status)>
-                                        <div class="flex items-center">"Status" {move || sort_arrow(SortColumn::Status)}</div>
-                                    </DataTableHead>
-                                    <DataTableHead class="w-24 cursor-pointer group select-none" on:click=move |_| handle_sort(SortColumn::DownSpeed)>
-                                        <div class="flex items-center">"DL Speed" {move || sort_arrow(SortColumn::DownSpeed)}</div>
-                                    </DataTableHead>
-                                    <DataTableHead class="w-24 cursor-pointer group select-none" on:click=move |_| handle_sort(SortColumn::UpSpeed)>
-                                        <div class="flex items-center">"Up Speed" {move || sort_arrow(SortColumn::UpSpeed)}</div>
-                                    </DataTableHead>
-                                    <DataTableHead class="w-24 cursor-pointer group select-none" on:click=move |_| handle_sort(SortColumn::ETA)>
-                                        <div class="flex items-center">"ETA" {move || sort_arrow(SortColumn::ETA)}</div>
-                                    </DataTableHead>
-                                    <DataTableHead class="w-32 cursor-pointer group select-none" on:click=move |_| handle_sort(SortColumn::AddedDate)>
-                                        <div class="flex items-center">"Date" {move || sort_arrow(SortColumn::AddedDate)}</div>
-                                    </DataTableHead>
+                                    <DataTableHead class="w-24">"Size"</DataTableHead>
+                                    <DataTableHead class="w-48">"Progress"</DataTableHead>
+                                    <DataTableHead class="w-24">"Status"</DataTableHead>
+                                    <DataTableHead class="w-24 text-right">"DL Speed"</DataTableHead>
+                                    <DataTableHead class="w-24 text-right">"UP Speed"</DataTableHead>
+                                    <DataTableHead class="w-24 text-right">"ETA"</DataTableHead>
+                                    <DataTableHead class="w-32 text-right">"Date"</DataTableHead>
                                 </DataTableRow>
                             </DataTableHeader>
                             <DataTableBody>
                                 <For each=move || filtered_hashes.get() key=|hash| hash.clone() children={
                                     let on_action = on_action.clone();
                                     move |hash| {
+                                        let h = hash.clone();
+                                        let is_selected = Signal::derive(move || {
+                                            selected_hashes.with(|selected| selected.contains(&h))
+                                        });
+                                        let h_for_change = hash.clone();
                                         view! { 
-                                            <TorrentRow hash=hash.clone() on_action=on_action.clone() /> 
+                                            <TorrentRow 
+                                                hash=hash.clone() 
+                                                on_action=on_action.clone() 
+                                                is_selected=is_selected
+                                                on_select=Callback::new(move |checked| {
+                                                    selected_hashes.update(|selected| {
+                                                        if checked { selected.insert(h_for_change.clone()); }
+                                                        else { selected.remove(&h_for_change); }
+                                                    });
+                                                })
+                                            /> 
                                         }
                                     }
                                 } />
@@ -180,6 +215,13 @@ pub fn TorrentTable() -> impl IntoView {
                         </DataTable>
                     </div>
                 </DataTableWrapper>
+                
+                // Selection Info Footer
+                <div class="flex items-center justify-between py-2 text-xs text-muted-foreground">
+                    <div>
+                        {move || format!("{} / {} torrent seçili", selected_count.get(), filtered_hashes.get().len())}
+                    </div>
+                </div>
             </div>
 
             // --- MOBILE VIEW ---
@@ -205,6 +247,8 @@ pub fn TorrentTable() -> impl IntoView {
 fn TorrentRow(
     hash: String,
     on_action: Callback<(String, String)>,
+    is_selected: Signal<bool>,
+    on_select: Callback<bool>,
 ) -> impl IntoView {
     let store = use_context::<crate::store::TorrentStore>().expect("store not provided");
     let h = hash.clone();
@@ -221,7 +265,7 @@ fn TorrentRow(
                     let t_name = t.name.clone();
                     let status_color = match t.status { shared::TorrentStatus::Seeding => "text-green-500", shared::TorrentStatus::Downloading => "text-blue-500", shared::TorrentStatus::Paused => "text-yellow-500", shared::TorrentStatus::Error => "text-red-500", _ => "text-muted-foreground" };
                     
-                    let is_selected = Memo::new(move |_| {
+                    let is_active_selection = Memo::new(move |_| {
                         let selected = store.selected_torrent.get();
                         selected.as_deref() == Some(stored_hash.get_value().as_str())
                     });
@@ -233,10 +277,16 @@ fn TorrentRow(
                     view! {
                         <TorrentContextMenu torrent_hash=h_for_menu on_action=on_action.clone()>
                             <DataTableRow 
-                                class="cursor-pointer group"
-                                attr:data-state=move || if is_selected.get() { "selected" } else { "" }
+                                class="cursor-pointer group h-10"
+                                attr:data-state=move || if is_selected.get() || is_active_selection.get() { "selected" } else { "" }
                                 on:click=move |_| store.selected_torrent.set(Some(stored_hash.get_value()))
                             >
+                                <DataTableCell class="w-12 px-4">
+                                    <Checkbox 
+                                        checked=is_selected 
+                                        on_checked_change=on_select 
+                                    />
+                                </DataTableCell>
                                 <DataTableCell class="font-medium truncate max-w-[200px] lg:max-w-md" attr:title=t_name_for_title>
                                     {t_name_for_content}
                                 </DataTableCell>

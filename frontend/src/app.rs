@@ -8,12 +8,13 @@ use leptos::task::spawn_local;
 use leptos_router::components::{Router, Routes, Route};
 use leptos_router::hooks::use_navigate;
 use leptos_shadcn_skeleton::Skeleton;
-use leptos_shadcn_toast::SonnerProvider;
+use leptos_shadcn_toast::{Toaster, SonnerProvider};
 
 #[component]
 pub fn App() -> impl IntoView {
     view! {
         <SonnerProvider>
+            <Toaster />
             <InnerApp />
         </SonnerProvider>
     }

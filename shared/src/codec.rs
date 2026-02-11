@@ -7,8 +7,11 @@ use std::future::Future;
 
 pub struct MessagePack;
 
-impl Encoding for MessagePack {
+impl leptos::server_fn::codec::ContentType for MessagePack {
     const CONTENT_TYPE: &'static str = "application/msgpack";
+}
+
+impl Encoding for MessagePack {
     const METHOD: leptos::server_fn::request::Method = leptos::server_fn::request::Method::POST;
 }
 
@@ -18,46 +21,15 @@ where
     Input: Serialize + Send,
     Output: Send,
 {
-    fn into_req(args: Input, path: &str) -> Result<ClientReq, ServerFnError> {
+    fn into_req(self, args: Input, path: &str) -> Result<ClientReq, ServerFnError> {
         let data = rmp_serde::to_vec(&args)
             .map_err(|e| ServerFnError::Serialization(e.to_string()))?;
 
-        // ClientReq is typically http::Request or similar.
-        // If ClientReq::new(method, path) doesn't exist, check if ClientReq is alias for Request.
-        // In leptos 0.8+, ClientReq::try_new(method, uri, body) is available via trait extension usually or direct impl.
-        // Actually, ClientReq IS http::Request in server/ssr, and gloo_net::Request in hydrate (often).
-        
-        // Let's assume ClientReq::post(path).body(...) or similar builders.
-        // Or if it's http::Request:
-        // http::Request::builder().method("POST").uri(path).header(...).body(data)
-        
-        // But ClientReq type differs between Features.
-        // Let's try to use `ClientReq` assuming it has `try_new` as seen in other codecs (Json).
-        // If that fails, I will use conditional compilation for specific types.
-        
-        // The error "expected a type, found a trait" suggests `ClientReq` handles differently.
-        // Let's look at `Json` codec usage pattern if possible - I can't read source.
-        
-        // Let's try constructing via builder if available.
-        // Or better, let's look at what `ClientReq` is.
-        // In `leptos_server_fn::request`, `ClientReq` is public type alias.
-        
-        // If I use `ClientReq::try_new`, I need it to be available.
-        // Let's try `ClientReq::new` again but verify imports.
-        // Maybe I need to import `http::Method`?
-        
-        // Let's try using `http::Request` explicitly if possible, or just construct it.
-        // If `ClientReq` is `http::Request`, `ClientReq::builder()` works.
-        
-        let req = ClientReq::builder()
-            .method("POST")
-            .uri(path)
-            .header("Content-Type", "application/msgpack")
-            .header("Accept", "application/msgpack")
-            .body(bytes::Bytes::from(data))
-            .map_err(|e| ServerFnError::Request(e.to_string()))?;
-            
-        Ok(req)
+        ClientReq::try_new(
+            leptos::server_fn::request::Method::POST,
+            path,
+            leptos::server_fn::request::Payload::Binary(bytes::Bytes::from(data))
+        )
     }
 }
 
@@ -102,10 +74,10 @@ where
             let data = rmp_serde::to_vec(&res)
             .map_err(|e| ServerFnError::Serialization(e.to_string()))?;
             
-            let mut res = Res::new(200);
-            res.try_set_header("Content-Type", "application/msgpack")?;
-            res.try_set_body(bytes::Bytes::from(data))?;
-            Ok(res)
+            Res::try_from_bytes(
+                bytes::Bytes::from(data), 
+                "application/msgpack"
+            )
         }
     }
 }

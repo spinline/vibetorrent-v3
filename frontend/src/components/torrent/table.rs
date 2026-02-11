@@ -9,6 +9,7 @@ use crate::components::context_menu::TorrentContextMenu;
 use crate::components::ui::card::{Card, CardHeader, CardTitle, CardContent as CardBody};
 use crate::components::ui::data_table::*;
 use crate::components::ui::checkbox::Checkbox;
+use crate::components::ui::button::{Button, ButtonVariant};
 
 fn format_bytes(bytes: i64) -> String {
     const UNITS: [&str; 6] = ["B", "KB", "MB", "GB", "TB", "PB"];
@@ -134,6 +135,18 @@ pub fn TorrentTable() -> impl IntoView {
         }
     };
 
+    let sort_icon = move |col: SortColumn| {
+        let is_active = sort_col.0.get() == col;
+        let class = if is_active { 
+            "size-3 opacity-100 text-primary" 
+        } else { 
+            "size-3 opacity-30 group-hover:opacity-100 transition-opacity" 
+        };
+        view! {
+            <ArrowUpDown class=class.to_string() />
+        }
+    };
+
     let on_action = Callback::new(move |(action, hash): (String, String)| {
         let (success_msg_str, error_msg_str): (&'static str, &'static str) = get_action_messages(&action);
         let success_msg = success_msg_str.to_string();
@@ -171,19 +184,39 @@ pub fn TorrentTable() -> impl IntoView {
                                             on_checked_change=handle_select_all
                                         />
                                     </DataTableHead>
+                                    
+                                    // Column Headers with Sorting
                                     <DataTableHead class="cursor-pointer group select-none" on:click=move |_| handle_sort(SortColumn::Name)>
-                                        <div class="flex items-center gap-2">
-                                            "Name" 
-                                            <ArrowUpDown class="size-3 opacity-50 group-hover:opacity-100 transition-opacity" />
-                                        </div>
+                                        <div class="flex items-center gap-2">"Name" {move || sort_icon(SortColumn::Name)}</div>
                                     </DataTableHead>
-                                    <DataTableHead class="w-24">"Size"</DataTableHead>
-                                    <DataTableHead class="w-48">"Progress"</DataTableHead>
-                                    <DataTableHead class="w-24">"Status"</DataTableHead>
-                                    <DataTableHead class="w-24 text-right">"DL Speed"</DataTableHead>
-                                    <DataTableHead class="w-24 text-right">"UP Speed"</DataTableHead>
-                                    <DataTableHead class="w-24 text-right">"ETA"</DataTableHead>
-                                    <DataTableHead class="w-32 text-right">"Date"</DataTableHead>
+                                    
+                                    <DataTableHead class="w-24 cursor-pointer group select-none" on:click=move |_| handle_sort(SortColumn::Size)>
+                                        <div class="flex items-center gap-2">"Size" {move || sort_icon(SortColumn::Size)}</div>
+                                    </DataTableHead>
+                                    
+                                    <DataTableHead class="w-48 cursor-pointer group select-none" on:click=move |_| handle_sort(SortColumn::Progress)>
+                                        <div class="flex items-center gap-2">"Progress" {move || sort_icon(SortColumn::Progress)}</div>
+                                    </DataTableHead>
+                                    
+                                    <DataTableHead class="w-24 cursor-pointer group select-none" on:click=move |_| handle_sort(SortColumn::Status)>
+                                        <div class="flex items-center gap-2">"Status" {move || sort_icon(SortColumn::Status)}</div>
+                                    </DataTableHead>
+                                    
+                                    <DataTableHead class="w-24 cursor-pointer group select-none text-right" on:click=move |_| handle_sort(SortColumn::DownSpeed)>
+                                        <div class="flex items-center justify-end gap-2">"DL Speed" {move || sort_icon(SortColumn::DownSpeed)}</div>
+                                    </DataTableHead>
+                                    
+                                    <DataTableHead class="w-24 cursor-pointer group select-none text-right" on:click=move |_| handle_sort(SortColumn::UpSpeed)>
+                                        <div class="flex items-center justify-end gap-2">"UP Speed" {move || sort_icon(SortColumn::UpSpeed)}</div>
+                                    </DataTableHead>
+                                    
+                                    <DataTableHead class="w-24 cursor-pointer group select-none text-right" on:click=move |_| handle_sort(SortColumn::ETA)>
+                                        <div class="flex items-center justify-end gap-2">"ETA" {move || sort_icon(SortColumn::ETA)}</div>
+                                    </DataTableHead>
+                                    
+                                    <DataTableHead class="w-32 cursor-pointer group select-none text-right" on:click=move |_| handle_sort(SortColumn::AddedDate)>
+                                        <div class="flex items-center justify-end gap-2">"Date" {move || sort_icon(SortColumn::AddedDate)}</div>
+                                    </DataTableHead>
                                 </DataTableRow>
                             </DataTableHeader>
                             <DataTableBody>

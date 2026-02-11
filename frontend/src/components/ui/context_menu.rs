@@ -100,12 +100,12 @@ pub fn ContextMenuHoldAction(
 
     Effect::new(move |_| {
         if is_holding.get() {
-            let start_time = web_sys::window().unwrap().performance().unwrap().now();
+            let start_time = js_sys::Date::now();
             let duration = hold_duration as f64;
             
             leptos::task::spawn_local(async move {
                 while is_holding.get_untracked() {
-                    let now = web_sys::window().unwrap().performance().unwrap().now();
+                    let now = js_sys::Date::now();
                     let elapsed = now - start_time;
                     let p = (elapsed / duration).min(1.0);
                     progress.set(p * 100.0);
@@ -133,8 +133,8 @@ pub fn ContextMenuHoldAction(
             on:mousedown=on_mousedown
             on:mouseup=on_mouseup
             on:mouseleave=on_mouseup
-            on:touchstart=on_mousedown
-            on:touchend=on_mouseup
+            on:touchstart=move |_| on_mousedown(web_sys::MouseEvent::new("mousedown").unwrap())
+            on:touchend=move |_| on_mouseup(web_sys::MouseEvent::new("mouseup").unwrap())
         >
             // Progress background
             <div 

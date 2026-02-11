@@ -4,7 +4,8 @@ use crate::store::{get_action_messages, show_toast};
 use crate::api;
 use shared::NotificationLevel;
 use crate::components::context_menu::TorrentContextMenu;
-use crate::components::ui::card::{Card, CardHeader, CardTitle, CardContent};
+use crate::components::ui::card::{Card, CardHeader, CardTitle, CardContent as CardBody};
+use crate::components::ui::table::*;
 
 fn format_bytes(bytes: i64) -> String {
     const UNITS: [&str; 6] = ["B", "KB", "MB", "GB", "TB", "PB"];
@@ -106,10 +107,10 @@ pub fn TorrentTable() -> impl IntoView {
     let sort_arrow = move |col: SortColumn| {
         if sort_col.0.get() == col {
             match sort_dir.0.get() {
-                SortDirection::Ascending => view! { <span class="ml-1 text-xs">"▲"</span> }.into_any(),
-                SortDirection::Descending => view! { <span class="ml-1 text-xs">"▼"</span> }.into_any(),
+                SortDirection::Ascending => view! { <span class="ml-1 text-[10px]">"▲"</span> }.into_any(),
+                SortDirection::Descending => view! { <span class="ml-1 text-[10px]">"▼"</span> }.into_any(),
             }
-        } else { view! { <span class="ml-1 text-xs opacity-0 group-hover:opacity-50">"▲"</span> }.into_any() }
+        } else { view! { <span class="ml-1 text-[10px] opacity-0 group-hover:opacity-50 transition-opacity">"▲"</span> }.into_any() }
     };
 
     let on_action = Callback::new(move |(action, hash): (String, String)| {
@@ -132,51 +133,56 @@ pub fn TorrentTable() -> impl IntoView {
     });
 
     view! {
-        <div class="h-full bg-background relative flex flex-col overflow-hidden">
+        <div class="h-full bg-background relative flex flex-col overflow-hidden px-4 py-2">
             // --- DESKTOP VIEW ---
             <div class="hidden md:flex flex-col h-full overflow-hidden">
-                // Header
-                <div class="flex items-center text-xs uppercase text-muted-foreground border-b border-border bg-muted/50 h-9 shrink-0 px-2 font-medium">
-                    <div class="flex-1 px-2 cursor-pointer hover:text-foreground group select-none flex items-center" on:click=move |_| handle_sort(SortColumn::Name)>
-                        "Name" {move || sort_arrow(SortColumn::Name)}
+                <TableWrapper class="flex-1 flex flex-col min-h-0 bg-card/50">
+                    <div class="flex-1 overflow-y-auto overflow-x-hidden">
+                        <Table class="w-full">
+                            <TableHeader class="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
+                                <TableRow class="hover:bg-transparent">
+                                    <TableHead class="cursor-pointer group select-none whitespace-nowrap" on:click=move |_| handle_sort(SortColumn::Name)>
+                                        <div class="flex items-center">"Name" {move || sort_arrow(SortColumn::Name)}</div>
+                                    </TableHead>
+                                    <TableHead class="w-24 cursor-pointer group select-none whitespace-nowrap" on:click=move |_| handle_sort(SortColumn::Size)>
+                                        <div class="flex items-center">"Size" {move || sort_arrow(SortColumn::Size)}</div>
+                                    </TableHead>
+                                    <TableHead class="w-48 cursor-pointer group select-none whitespace-nowrap" on:click=move |_| handle_sort(SortColumn::Progress)>
+                                        <div class="flex items-center">"Progress" {move || sort_arrow(SortColumn::Progress)}</div>
+                                    </TableHead>
+                                    <TableHead class="w-24 cursor-pointer group select-none whitespace-nowrap" on:click=move |_| handle_sort(SortColumn::Status)>
+                                        <div class="flex items-center">"Status" {move || sort_arrow(SortColumn::Status)}</div>
+                                    </TableHead>
+                                    <TableHead class="w-24 cursor-pointer group select-none whitespace-nowrap" on:click=move |_| handle_sort(SortColumn::DownSpeed)>
+                                        <div class="flex items-center">"DL Speed" {move || sort_arrow(SortColumn::DownSpeed)}</div>
+                                    </TableHead>
+                                    <TableHead class="w-24 cursor-pointer group select-none whitespace-nowrap" on:click=move |_| handle_sort(SortColumn::UpSpeed)>
+                                        <div class="flex items-center">"Up Speed" {move || sort_arrow(SortColumn::UpSpeed)}</div>
+                                    </TableHead>
+                                    <TableHead class="w-24 cursor-pointer group select-none whitespace-nowrap" on:click=move |_| handle_sort(SortColumn::ETA)>
+                                        <div class="flex items-center">"ETA" {move || sort_arrow(SortColumn::ETA)}</div>
+                                    </TableHead>
+                                    <TableHead class="w-32 cursor-pointer group select-none whitespace-nowrap" on:click=move |_| handle_sort(SortColumn::AddedDate)>
+                                        <div class="flex items-center">"Date" {move || sort_arrow(SortColumn::AddedDate)}</div>
+                                    </TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                <For each=move || filtered_hashes.get() key=|hash| hash.clone() children={
+                                    let on_action = on_action.clone();
+                                    move |hash| {
+                                        let h = hash.clone();
+                                        view! { 
+                                            <TorrentContextMenu torrent_hash=h on_action=on_action.clone()>
+                                                <TorrentRow hash=hash.clone() /> 
+                                            </TorrentContextMenu>
+                                        }
+                                    }
+                                } />
+                            </TableBody>
+                        </Table>
                     </div>
-                    <div class="w-24 px-2 cursor-pointer hover:text-foreground group select-none flex items-center" on:click=move |_| handle_sort(SortColumn::Size)>
-                        "Size" {move || sort_arrow(SortColumn::Size)}
-                    </div>
-                    <div class="w-48 px-2 cursor-pointer hover:text-foreground group select-none flex items-center" on:click=move |_| handle_sort(SortColumn::Progress)>
-                        "Progress" {move || sort_arrow(SortColumn::Progress)}
-                    </div>
-                    <div class="w-24 px-2 cursor-pointer hover:text-foreground group select-none flex items-center" on:click=move |_| handle_sort(SortColumn::Status)>
-                        "Status" {move || sort_arrow(SortColumn::Status)}
-                    </div>
-                    <div class="w-24 px-2 cursor-pointer hover:text-foreground group select-none flex items-center" on:click=move |_| handle_sort(SortColumn::DownSpeed)>
-                        "DL Speed" {move || sort_arrow(SortColumn::DownSpeed)}
-                    </div>
-                    <div class="w-24 px-2 cursor-pointer hover:text-foreground group select-none flex items-center" on:click=move |_| handle_sort(SortColumn::UpSpeed)>
-                        "Up Speed" {move || sort_arrow(SortColumn::UpSpeed)}
-                    </div>
-                    <div class="w-24 px-2 cursor-pointer hover:text-foreground group select-none flex items-center" on:click=move |_| handle_sort(SortColumn::ETA)>
-                        "ETA" {move || sort_arrow(SortColumn::ETA)}
-                    </div>
-                    <div class="w-32 px-2 cursor-pointer hover:text-foreground group select-none flex items-center" on:click=move |_| handle_sort(SortColumn::AddedDate)>
-                        "Date" {move || sort_arrow(SortColumn::AddedDate)}
-                    </div>
-                </div>
-
-                // Regular List
-                <div class="flex-1 overflow-y-auto min-h-0">
-                    <For each=move || filtered_hashes.get() key=|hash| hash.clone() children={
-                        let on_action = on_action.clone();
-                        move |hash| {
-                            let h = hash.clone();
-                            view! { 
-                                <TorrentContextMenu torrent_hash=h on_action=on_action.clone()>
-                                    <TorrentRow hash=hash.clone() /> 
-                                </TorrentContextMenu>
-                            }
-                        }
-                    } />
-                </div>
+                </TableWrapper>
             </div>
 
             // --- MOBILE VIEW ---
@@ -219,35 +225,50 @@ fn TorrentRow(
                     let t_name = t.name.clone();
                     let status_color = match t.status { shared::TorrentStatus::Seeding => "text-green-500", shared::TorrentStatus::Downloading => "text-blue-500", shared::TorrentStatus::Paused => "text-yellow-500", shared::TorrentStatus::Error => "text-red-500", _ => "text-muted-foreground" };
                     
+                    let is_selected = Memo::new(move |_| {
+                        let selected = store.selected_torrent.get();
+                        selected.as_deref() == Some(stored_hash.get_value().as_str())
+                    });
+
+                    let t_name_for_title = t_name.clone();
+                    let t_name_for_content = t_name.clone();
+
                     view! {
-                        <div 
-                            class=move || {
-                                let selected = store.selected_torrent.get();
-                                let is_selected = selected.as_deref() == Some(stored_hash.get_value().as_str());
-                                if is_selected {
-                                    "flex items-center text-sm bg-primary/10 border-b border-border h-[48px] px-2 select-none cursor-pointer transition-colors w-full"
-                                } else {
-                                    "flex items-center text-sm hover:bg-muted/50 border-b border-border h-[48px] px-2 select-none cursor-pointer transition-colors w-full"
-                                }
-                            }
+                        <TableRow 
+                            class="cursor-pointer h-12"
+                            attr:data-state=move || if is_selected.get() { "selected" } else { "" }
                             on:click=move |_| store.selected_torrent.set(Some(stored_hash.get_value()))
                         >
-                            <div class="flex-1 min-w-0 px-2 font-medium truncate" title=t_name.clone()>{t_name.clone()}</div>
-                            <div class="w-24 px-2 font-mono text-xs text-muted-foreground">{format_bytes(t.size)}</div>
-                            <div class="w-48 px-2">
+                            <TableCell class="font-medium truncate max-w-[200px] lg:max-w-md px-2 py-0 h-12 flex items-center border-0" attr:title=t_name_for_title>
+                                {t_name_for_content}
+                            </TableCell>
+                            <TableCell class="font-mono text-xs text-muted-foreground px-2">
+                                {format_bytes(t.size)}
+                            </TableCell>
+                            <TableCell class="px-2">
                                 <div class="flex items-center gap-2">
-                                    <div class="h-2 w-full bg-secondary rounded-full overflow-hidden">
+                                    <div class="h-1.5 w-full bg-secondary rounded-full overflow-hidden">
                                         <div class="h-full bg-primary transition-all duration-500" style=format!("width: {}%", t.percent_complete)></div>
                                     </div>
                                     <span class="text-[10px] text-muted-foreground w-10 text-right">{format!("{:.1}%", t.percent_complete)}</span>
                                 </div>
-                            </div>
-                            <div class={format!("w-24 px-2 text-xs font-medium {}", status_color)}>{format!("{:?}", t.status)}</div>
-                            <div class="w-24 px-2 text-right font-mono text-xs text-green-600 dark:text-green-500">{format_speed(t.down_rate)}</div>
-                            <div class="w-24 px-2 text-right font-mono text-xs text-blue-600 dark:text-blue-500">{format_speed(t.up_rate)}</div>
-                            <div class="w-24 px-2 text-right font-mono text-xs text-muted-foreground">{format_duration(t.eta)}</div>
-                            <div class="w-32 px-2 text-right font-mono text-xs text-muted-foreground">{format_date(t.added_date)}</div>
-                        </div>
+                            </TableCell>
+                            <TableCell class={format!("px-2 text-xs font-semibold {}", status_color)}>
+                                {format!("{:?}", t.status)}
+                            </TableCell>
+                            <TableCell class="text-right font-mono text-xs text-green-600 dark:text-green-500 px-2 whitespace-nowrap">
+                                {format_speed(t.down_rate)}
+                            </TableCell>
+                            <TableCell class="text-right font-mono text-xs text-blue-600 dark:text-blue-500 px-2 whitespace-nowrap">
+                                {format_speed(t.up_rate)}
+                            </TableCell>
+                            <TableCell class="text-right font-mono text-xs text-muted-foreground px-2 whitespace-nowrap">
+                                {format_duration(t.eta)}
+                            </TableCell>
+                            <TableCell class="text-right font-mono text-xs text-muted-foreground px-2 whitespace-nowrap">
+                                {format_date(t.added_date)}
+                            </TableCell>
+                        </TableRow>
                     }
                 }
             }
@@ -293,7 +314,7 @@ fn TorrentCard(
                                     <div class={format!("inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 {}", status_badge_class)}>{format!("{:?}", t.status)}</div>
                                 </div>
                             </CardHeader>
-                            <CardContent class="p-3 pt-2 gap-3 flex flex-col">
+                            <CardBody class="p-3 pt-2 gap-3 flex flex-col">
                                 <div class="flex flex-col gap-1">
                                     <div class="flex justify-between text-[10px] text-muted-foreground">
                                         <span>{format_bytes(t.size)}</span>
@@ -309,7 +330,7 @@ fn TorrentCard(
                                     <div class="flex flex-col"><span>"ETA"</span><span>{format_duration(t.eta)}</span></div>
                                     <div class="flex flex-col text-right"><span>"DATE"</span><span>{format_date(t.added_date)}</span></div>
                                 </div>
-                            </CardContent>
+                            </CardBody>
                         </Card>
                         </div>
                     }

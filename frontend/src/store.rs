@@ -9,6 +9,7 @@ use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 
 pub fn show_toast(level: NotificationLevel, message: impl Into<String>) {
     let msg = message.into();
+    log::info!("Displaying toast: [{:?}] {}", level, msg);
     match level {
         NotificationLevel::Info => { leptos_shadcn_toast::toast::info(&msg).show(); },
         NotificationLevel::Success => { leptos_shadcn_toast::toast::success(&msg).show(); },

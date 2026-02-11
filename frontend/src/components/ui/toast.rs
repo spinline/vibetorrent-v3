@@ -49,21 +49,20 @@ pub fn SonnerTrigger(
 ) -> impl IntoView {
     let variant_classes = match toast.variant {
         ToastType::Default => "bg-background text-foreground border-border",
-        ToastType::Success => "bg-background text-foreground border-border [&_.icon]:text-success",
+        ToastType::Success => "bg-background text-foreground border-border [&_.icon]:text-green-500",
         ToastType::Error => "bg-background text-foreground border-border [&_.icon]:text-destructive",
-        ToastType::Warning => "bg-background text-foreground border-border [&_.icon]:text-warning",
-        ToastType::Info => "bg-background text-foreground border-border [&_.icon]:text-info",
+        ToastType::Warning => "bg-background text-foreground border-border [&_.icon]:text-yellow-500",
+        ToastType::Info => "bg-background text-foreground border-border [&_.icon]:text-blue-500",
         ToastType::Loading => "bg-background text-foreground border-border",
     };
 
     // Sonner Stacking Logic
-    // We calculate inverse index: 0 is the newest (top), 1 is older, etc.
     let inverse_index = index; 
-    let offset = inverse_index as f64 * 16.0;
+    let offset = inverse_index as f64 * 12.0;
     let scale = 1.0 - (inverse_index as f64 * 0.05);
-    let opacity = if inverse_index > 2 { 0.0 } else { 1.0 - (inverse_index as f64 * 0.2) };
+    let opacity = if inverse_index > 2 { 0.0 } else { 1.0 - (inverse_index as f64 * 0.15) };
     
-    let is_bottom = !position.to_string().contains("Top");
+    let is_bottom = position.to_string().contains("Bottom");
     let y_direction = if is_bottom { -1.0 } else { 1.0 };
     let translate_y = offset * y_direction;
 
@@ -76,10 +75,10 @@ pub fn SonnerTrigger(
     );
 
     let icon = match toast.variant {
-        ToastType::Success => Some(view! { <span class="icon text-success">"✓"</span> }.into_any()),
-        ToastType::Error => Some(view! { <span class="icon text-destructive">"✕"</span> }.into_any()),
-        ToastType::Warning => Some(view! { <span class="icon text-warning">"⚠"</span> }.into_any()),
-        ToastType::Info => Some(view! { <span class="icon text-info">"ℹ"</span> }.into_any()),
+        ToastType::Success => Some(view! { <span class="icon font-bold">"✓"</span> }.into_any()),
+        ToastType::Error => Some(view! { <span class="icon font-bold">"✕"</span> }.into_any()),
+        ToastType::Warning => Some(view! { <span class="icon font-bold">"⚠"</span> }.into_any()),
+        ToastType::Info => Some(view! { <span class="icon font-bold">"ℹ"</span> }.into_any()),
         _ => None,
     };
 
@@ -87,7 +86,7 @@ pub fn SonnerTrigger(
         <div
             class=tw_merge!(
                 "absolute transition-all duration-300 ease-in-out cursor-pointer pointer-events-auto",
-                "flex items-center gap-3 min-w-[350px] p-4 rounded-lg border shadow-lg bg-card",
+                "flex items-center gap-3 w-full max-w-[calc(100vw-2rem)] sm:max-w-[380px] p-4 rounded-lg border shadow-lg bg-card",
                 if is_bottom { "bottom-0" } else { "top-0" },
                 variant_classes
             )
@@ -99,15 +98,14 @@ pub fn SonnerTrigger(
             }
         >
             {icon}
-            <div class="flex flex-col gap-1">
-                <div class="text-sm font-semibold">{toast.title}</div>
-                {move || toast.description.as_ref().map(|d| view! { <div class="text-xs opacity-70">{d.clone()}</div> })}
+            <div class="flex flex-col gap-0.5 overflow-hidden">
+                <div class="text-sm font-semibold truncate leading-tight">{toast.title}</div>
+                {move || toast.description.as_ref().map(|d| view! { <div class="text-xs opacity-70 truncate">{d.clone()}</div> })}
             </div>
         </div>
     }.into_any()
 }
 
-// Thread local storage for global access
 thread_local! {
     static TOASTS: std::cell::RefCell<Option<RwSignal<Vec<ToastData>>>> = std::cell::RefCell::new(None);
 }
@@ -124,26 +122,29 @@ pub fn Toaster(#[prop(default = SonnerPosition::default())] position: SonnerPosi
     let toasts = store.toasts;
     let is_hovered = RwSignal::new(false);
 
-    let container_class = match position {
-        SonnerPosition::TopLeft => "left-6 top-6 items-start",
-        SonnerPosition::TopRight => "right-6 top-6 items-end",
-        SonnerPosition::TopCenter => "left-1/2 -translate-x-1/2 top-6 items-center",
-        SonnerPosition::BottomCenter => "left-1/2 -translate-x-1/2 bottom-6 items-center",
-        SonnerPosition::BottomLeft => "left-6 bottom-6 items-start",
-        SonnerPosition::BottomRight => "right-6 bottom-6 items-end",
+    let (container_class, mobile_class) = match position {
+        SonnerPosition::TopLeft => ("left-6 top-6 items-start", "left-4 top-4"),
+        SonnerPosition::TopRight => ("right-6 top-6 items-end", "right-4 top-4"),
+        SonnerPosition::TopCenter => ("left-1/2 -translate-x-1/2 top-6 items-center", "left-1/2 -translate-x-1/2 top-4"),
+        SonnerPosition::BottomCenter => ("left-1/2 -translate-x-1/2 bottom-6 items-center", "left-1/2 -translate-x-1/2 bottom-4"),
+        SonnerPosition::BottomLeft => ("left-6 bottom-6 items-start", "left-4 bottom-4"),
+        SonnerPosition::BottomRight => ("right-6 bottom-6 items-end", "right-4 bottom-4"),
     };
 
     view! {
         <div 
-            class=tw_merge!("fixed z-[100] flex flex-col pointer-events-none min-h-[200px] w-[400px]", container_class)
+            class=tw_merge!(
+                "fixed z-[100] flex flex-col pointer-events-none min-h-[100px] w-full sm:w-[400px]",
+                container_class,
+                // Safe areas for mobile
+                "pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)] px-4 sm:px-0"
+            )
             on:mouseenter=move |_| is_hovered.set(true)
             on:mouseleave=move |_| is_hovered.set(false)
         >
             <For
                 each=move || {
                     let list = toasts.get();
-                    // Reverse the list so newest is at the end (for stacking)
-                    // or newest is at the beginning (for display logic)
                     list.into_iter().rev().enumerate().collect::<Vec<_>>()
                 }
                 key=|(_, toast)| toast.id
@@ -151,11 +152,10 @@ pub fn Toaster(#[prop(default = SonnerPosition::default())] position: SonnerPosi
                     let id = toast.id;
                     let total = toasts.with(|t| t.len());
                     
-                    // If hovered, expand the stack
                     let expanded_style = move || {
                         if is_hovered.get() {
-                            let offset = index as f64 * 70.0;
-                            let is_bottom = !position.to_string().contains("Top");
+                            let offset = index as f64 * 64.0;
+                            let is_bottom = position.to_string().contains("Bottom");
                             let y_dir = if is_bottom { -1.0 } else { 1.0 };
                             format!("transform: translateY({}px) scale(1); opacity: 1;", offset * y_dir)
                         } else {
@@ -164,7 +164,7 @@ pub fn Toaster(#[prop(default = SonnerPosition::default())] position: SonnerPosi
                     };
 
                     view! {
-                        <div style=expanded_style>
+                        <div class="contents" style=expanded_style>
                             <SonnerTrigger
                                 toast=toast
                                 index=index
@@ -182,7 +182,6 @@ pub fn Toaster(#[prop(default = SonnerPosition::default())] position: SonnerPosi
     }.into_any()
 }
 
-// Global Helper Functions
 pub fn toast(title: impl Into<String>, variant: ToastType) {
     let signal_opt = TOASTS.with(|t| *t.borrow());
     

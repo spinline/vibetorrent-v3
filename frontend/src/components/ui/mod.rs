@@ -6,3 +6,5 @@ pub mod context_menu;
 pub mod theme_toggle;
 pub mod svg_icon;
 pub mod table;
+pub mod data_table;
+pub mod sonner;

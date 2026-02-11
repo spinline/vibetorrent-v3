@@ -5,7 +5,7 @@ use crate::api;
 use shared::NotificationLevel;
 use crate::components::context_menu::TorrentContextMenu;
 use crate::components::ui::card::{Card, CardHeader, CardTitle, CardContent as CardBody};
-use crate::components::ui::table::*;
+use crate::components::ui::data_table::*;
 
 fn format_bytes(bytes: i64) -> String {
     const UNITS: [&str; 6] = ["B", "KB", "MB", "GB", "TB", "PB"];
@@ -136,38 +136,38 @@ pub fn TorrentTable() -> impl IntoView {
         <div class="h-full bg-background relative flex flex-col overflow-hidden px-4 py-2">
             // --- DESKTOP VIEW ---
             <div class="hidden md:flex flex-col h-full overflow-hidden">
-                <TableWrapper class="flex-1 flex flex-col min-h-0 bg-card/50">
-                    <div class="flex-1 overflow-y-auto overflow-x-hidden">
-                        <Table class="w-full">
-                            <TableHeader class="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
-                                <TableRow class="hover:bg-transparent">
-                                    <TableHead class="cursor-pointer group select-none whitespace-nowrap" on:click=move |_| handle_sort(SortColumn::Name)>
+                <DataTableWrapper class="flex-1 min-h-0 bg-card/50">
+                    <div class="h-full overflow-auto">
+                        <DataTable>
+                            <DataTableHeader class="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
+                                <DataTableRow class="hover:bg-transparent">
+                                    <DataTableHead class="cursor-pointer group select-none" on:click=move |_| handle_sort(SortColumn::Name)>
                                         <div class="flex items-center">"Name" {move || sort_arrow(SortColumn::Name)}</div>
-                                    </TableHead>
-                                    <TableHead class="w-24 cursor-pointer group select-none whitespace-nowrap" on:click=move |_| handle_sort(SortColumn::Size)>
+                                    </DataTableHead>
+                                    <DataTableHead class="w-24 cursor-pointer group select-none" on:click=move |_| handle_sort(SortColumn::Size)>
                                         <div class="flex items-center">"Size" {move || sort_arrow(SortColumn::Size)}</div>
-                                    </TableHead>
-                                    <TableHead class="w-48 cursor-pointer group select-none whitespace-nowrap" on:click=move |_| handle_sort(SortColumn::Progress)>
+                                    </DataTableHead>
+                                    <DataTableHead class="w-48 cursor-pointer group select-none" on:click=move |_| handle_sort(SortColumn::Progress)>
                                         <div class="flex items-center">"Progress" {move || sort_arrow(SortColumn::Progress)}</div>
-                                    </TableHead>
-                                    <TableHead class="w-24 cursor-pointer group select-none whitespace-nowrap" on:click=move |_| handle_sort(SortColumn::Status)>
+                                    </DataTableHead>
+                                    <DataTableHead class="w-24 cursor-pointer group select-none" on:click=move |_| handle_sort(SortColumn::Status)>
                                         <div class="flex items-center">"Status" {move || sort_arrow(SortColumn::Status)}</div>
-                                    </TableHead>
-                                    <TableHead class="w-24 cursor-pointer group select-none whitespace-nowrap" on:click=move |_| handle_sort(SortColumn::DownSpeed)>
+                                    </DataTableHead>
+                                    <DataTableHead class="w-24 cursor-pointer group select-none" on:click=move |_| handle_sort(SortColumn::DownSpeed)>
                                         <div class="flex items-center">"DL Speed" {move || sort_arrow(SortColumn::DownSpeed)}</div>
-                                    </TableHead>
-                                    <TableHead class="w-24 cursor-pointer group select-none whitespace-nowrap" on:click=move |_| handle_sort(SortColumn::UpSpeed)>
+                                    </DataTableHead>
+                                    <DataTableHead class="w-24 cursor-pointer group select-none" on:click=move |_| handle_sort(SortColumn::UpSpeed)>
                                         <div class="flex items-center">"Up Speed" {move || sort_arrow(SortColumn::UpSpeed)}</div>
-                                    </TableHead>
-                                    <TableHead class="w-24 cursor-pointer group select-none whitespace-nowrap" on:click=move |_| handle_sort(SortColumn::ETA)>
+                                    </DataTableHead>
+                                    <DataTableHead class="w-24 cursor-pointer group select-none" on:click=move |_| handle_sort(SortColumn::ETA)>
                                         <div class="flex items-center">"ETA" {move || sort_arrow(SortColumn::ETA)}</div>
-                                    </TableHead>
-                                    <TableHead class="w-32 cursor-pointer group select-none whitespace-nowrap" on:click=move |_| handle_sort(SortColumn::AddedDate)>
+                                    </DataTableHead>
+                                    <DataTableHead class="w-32 cursor-pointer group select-none" on:click=move |_| handle_sort(SortColumn::AddedDate)>
                                         <div class="flex items-center">"Date" {move || sort_arrow(SortColumn::AddedDate)}</div>
-                                    </TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
+                                    </DataTableHead>
+                                </DataTableRow>
+                            </DataTableHeader>
+                            <DataTableBody>
                                 <For each=move || filtered_hashes.get() key=|hash| hash.clone() children={
                                     let on_action = on_action.clone();
                                     move |hash| {
@@ -176,10 +176,10 @@ pub fn TorrentTable() -> impl IntoView {
                                         }
                                     }
                                 } />
-                            </TableBody>
-                        </Table>
+                            </DataTableBody>
+                        </DataTable>
                     </div>
-                </TableWrapper>
+                </DataTableWrapper>
             </div>
 
             // --- MOBILE VIEW ---
@@ -232,41 +232,41 @@ fn TorrentRow(
 
                     view! {
                         <TorrentContextMenu torrent_hash=h_for_menu on_action=on_action.clone()>
-                            <TableRow 
-                                class="cursor-pointer h-12"
+                            <DataTableRow 
+                                class="cursor-pointer group"
                                 attr:data-state=move || if is_selected.get() { "selected" } else { "" }
                                 on:click=move |_| store.selected_torrent.set(Some(stored_hash.get_value()))
                             >
-                                <TableCell class="font-medium truncate max-w-[200px] lg:max-w-md px-2 py-0 h-12 flex items-center border-0" attr:title=t_name_for_title>
+                                <DataTableCell class="font-medium truncate max-w-[200px] lg:max-w-md" attr:title=t_name_for_title>
                                     {t_name_for_content}
-                                </TableCell>
-                                <TableCell class="font-mono text-xs text-muted-foreground px-2">
+                                </DataTableCell>
+                                <DataTableCell class="font-mono text-xs text-muted-foreground">
                                     {format_bytes(t.size)}
-                                </TableCell>
-                                <TableCell class="px-2">
+                                </DataTableCell>
+                                <DataTableCell>
                                     <div class="flex items-center gap-2">
                                         <div class="h-1.5 w-full bg-secondary rounded-full overflow-hidden">
                                             <div class="h-full bg-primary transition-all duration-500" style=format!("width: {}%", t.percent_complete)></div>
                                         </div>
                                         <span class="text-[10px] text-muted-foreground w-10 text-right">{format!("{:.1}%", t.percent_complete)}</span>
                                     </div>
-                                </TableCell>
-                                <TableCell class={format!("px-2 text-xs font-semibold {}", status_color)}>
+                                </DataTableCell>
+                                <DataTableCell class={format!("text-xs font-semibold {}", status_color)}>
                                     {format!("{:?}", t.status)}
-                                </TableCell>
-                                <TableCell class="text-right font-mono text-xs text-green-600 dark:text-green-500 px-2 whitespace-nowrap">
+                                </DataTableCell>
+                                <DataTableCell class="text-right font-mono text-xs text-green-600 dark:text-green-500 whitespace-nowrap">
                                     {format_speed(t.down_rate)}
-                                </TableCell>
-                                <TableCell class="text-right font-mono text-xs text-blue-600 dark:text-blue-500 px-2 whitespace-nowrap">
+                                </DataTableCell>
+                                <DataTableCell class="text-right font-mono text-xs text-blue-600 dark:text-blue-500 whitespace-nowrap">
                                     {format_speed(t.up_rate)}
-                                </TableCell>
-                                <TableCell class="text-right font-mono text-xs text-muted-foreground px-2 whitespace-nowrap">
+                                </DataTableCell>
+                                <DataTableCell class="text-right font-mono text-xs text-muted-foreground whitespace-nowrap">
                                     {format_duration(t.eta)}
-                                </TableCell>
-                                <TableCell class="text-right font-mono text-xs text-muted-foreground px-2 whitespace-nowrap">
+                                </DataTableCell>
+                                <DataTableCell class="text-right font-mono text-xs text-muted-foreground whitespace-nowrap">
                                     {format_date(t.added_date)}
-                                </TableCell>
-                            </TableRow>
+                                </DataTableCell>
+                            </DataTableRow>
                         </TorrentContextMenu>
                     }.into_any()
                 }

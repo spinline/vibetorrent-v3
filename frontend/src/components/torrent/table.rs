@@ -220,11 +220,9 @@ pub fn TorrentTable() -> impl IntoView {
                 <div class="flex items-center gap-2">
                     <Show when=move || has_selection.get()>
                         <DropdownMenu>
-                            <DropdownMenuTrigger>
-                                <Button variant=ButtonVariant::Secondary size=ButtonSize::Sm class="gap-2">
-                                    <Ellipsis class="size-4" />
-                                    {move || format!("Toplu İşlem ({})", selected_count.get())}
-                                </Button>
+                            <DropdownMenuTrigger class="gap-2 bg-secondary text-secondary-foreground border-none hover:bg-secondary/80">
+                                <Ellipsis class="size-4" />
+                                {move || format!("Toplu İşlem ({})", selected_count.get())}
                             </DropdownMenuTrigger>
                             <DropdownMenuContent class="w-48">
                                 <DropdownMenuLabel>"Seçili Torrentler"</DropdownMenuLabel>
@@ -239,10 +237,10 @@ pub fn TorrentTable() -> impl IntoView {
                                     <div class="my-1 h-px bg-border" />
                                     
                                     <AlertDialog>
-                                        <AlertDialogTrigger class="w-full">
-                                            <DropdownMenuItem class="text-destructive focus:bg-destructive/10">
-                                                <Trash2 class="mr-2 size-4" /> "Toplu Sil"
-                                            </DropdownMenuItem>
+                                        <AlertDialogTrigger class="w-full text-left">
+                                            <div class="inline-flex gap-2 items-center w-full rounded-sm px-2 py-1.5 text-sm transition-colors text-destructive hover:bg-destructive/10 focus:bg-destructive/10">
+                                                <Trash2 class="size-4" /> "Toplu Sil"
+                                            </div>
                                         </AlertDialogTrigger>
                                         <AlertDialogContent>
                                             <AlertDialogHeader>

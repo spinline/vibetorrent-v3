@@ -8,13 +8,12 @@ use leptos::task::spawn_local;
 use leptos_router::components::{Router, Routes, Route};
 use leptos_router::hooks::use_navigate;
 use leptos_shadcn_skeleton::Skeleton;
-use leptos_shadcn_toast::{Toaster, SonnerProvider};
+use leptos_shadcn_toast::SonnerProvider;
 
 #[component]
 pub fn App() -> impl IntoView {
     view! {
         <SonnerProvider>
-            <Toaster />
             <InnerApp />
         </SonnerProvider>
     }
@@ -64,6 +63,7 @@ fn InnerApp() -> impl IntoView {
             }
 
             is_loading.1.set(false);
+            crate::store::toast_success("VibeTorrent'e Hoşgeldiniz");
         });
     });
 

@@ -7,15 +7,18 @@ use std::collections::HashMap;
 use struct_patch::traits::Patch;
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 
+use crate::components::toast::ToastContext;
+
 pub fn show_toast(level: NotificationLevel, message: impl Into<String>) {
     let msg = message.into();
     gloo_console::log!("TOAST CALL:", &msg, format!("{:?}", level));
     log::info!("Displaying toast: [{:?}] {}", level, msg);
-    match level {
-        NotificationLevel::Info => { leptos_shadcn_toast::toast::info(&msg).show(); },
-        NotificationLevel::Success => { leptos_shadcn_toast::toast::success(&msg).show(); },
-        NotificationLevel::Warning => { leptos_shadcn_toast::toast::warning(&msg).show(); },
-        NotificationLevel::Error => { leptos_shadcn_toast::toast::error(&msg).show(); },
+    
+    if let Some(context) = use_context::<ToastContext>() {
+        context.add(msg, level);
+    } else {
+        log::error!("ToastContext not found!");
+        gloo_console::error!("ToastContext not found!");
     }
 }
 

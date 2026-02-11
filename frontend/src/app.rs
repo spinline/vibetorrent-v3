@@ -8,20 +8,20 @@ use leptos::task::spawn_local;
 use leptos_router::components::{Router, Routes, Route};
 use leptos_router::hooks::use_navigate;
 use leptos_shadcn_skeleton::Skeleton;
-use leptos_shadcn_toast::SonnerProvider;
+use crate::components::toast::Toaster;
 
 #[component]
 pub fn App() -> impl IntoView {
     view! {
-        <SonnerProvider>
-            <InnerApp />
-        </SonnerProvider>
+        <InnerApp />
+        <Toaster />
     }
 }
 
 #[component]
 fn InnerApp() -> impl IntoView {
     crate::store::provide_torrent_store();
+    crate::components::toast::provide_toast_context();
     let store = use_context::<crate::store::TorrentStore>();
 
     let is_loading = signal(true);

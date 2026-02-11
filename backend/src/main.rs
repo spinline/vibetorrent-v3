@@ -413,10 +413,6 @@ async fn main() {
     let app = app.merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()));
 
     // Setup & Auth Routes (cookie-based, stay as REST)
-    let scgi_path_for_ctx = args.socket.clone();
-    let db_for_ctx = db.clone();
-    let app = app
-        .route("/api/events", get(sse::sse_handler))
     // Setup & Auth Routes (cookie-based, stay as REST)
     let scgi_path_for_ctx = args.socket.clone();
     let db_for_ctx = db.clone();

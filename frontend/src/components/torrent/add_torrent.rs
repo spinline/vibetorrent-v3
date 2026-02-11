@@ -10,7 +10,7 @@ use crate::api;
 pub fn AddTorrentDialog(
     on_close: Callback<()>,
 ) -> impl IntoView {
-    let store = use_context::<TorrentStore>().expect("TorrentStore not provided");
+    let _store = use_context::<TorrentStore>().expect("TorrentStore not provided");
 
     let uri = signal(String::new());
     let is_loading = signal(false);

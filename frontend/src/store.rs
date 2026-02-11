@@ -2,7 +2,7 @@ use futures::StreamExt;
 use gloo_net::eventsource::futures::EventSource;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
-use shared::{AppEvent, GlobalStats, NotificationLevel, SystemNotification, Torrent};
+use shared::{AppEvent, GlobalStats, NotificationLevel, Torrent};
 use std::collections::HashMap;
 use struct_patch::traits::Patch;
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};

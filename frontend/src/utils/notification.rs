@@ -1,6 +1,6 @@
 use wasm_bindgen::prelude::*;
 use web_sys::{Notification, NotificationOptions};
-use leptos::prelude::*;
+
 
 /// Request browser notification permission from user
 pub async fn request_notification_permission() -> bool {

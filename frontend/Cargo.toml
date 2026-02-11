@@ -39,3 +39,6 @@ struct-patch = "0.5"
 leptos_ui = "0.3"
 tw_merge = "0.1"
 strum = { version = "0.26", features = ["derive"] }
+
+[package.metadata.leptos]
+tailwind-input-file = "input.css"

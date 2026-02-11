@@ -2,6 +2,7 @@ use leptos::prelude::*;
 use tw_merge::*;
 
 #[derive(Clone, Copy, PartialEq, Eq, Default, strum::Display, Debug)]
+#[allow(dead_code)]
 pub enum ToastType {
     #[default]
     Default,
@@ -13,6 +14,7 @@ pub enum ToastType {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Default, strum::Display, Debug)]
+#[allow(dead_code)]
 pub enum SonnerPosition {
     TopLeft,
     TopCenter,
@@ -226,7 +228,11 @@ pub fn toast(title: impl Into<String>, variant: ToastType) {
     }
 }
 
+#[allow(dead_code)]
 pub fn toast_success(title: impl Into<String>) { toast(title, ToastType::Success); }
+#[allow(dead_code)]
 pub fn toast_error(title: impl Into<String>) { toast(title, ToastType::Error); }
+#[allow(dead_code)]
 pub fn toast_warning(title: impl Into<String>) { toast(title, ToastType::Warning); }
+#[allow(dead_code)]
 pub fn toast_info(title: impl Into<String>) { toast(title, ToastType::Info); }

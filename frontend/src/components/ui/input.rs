@@ -5,6 +5,7 @@ use tw_merge::tw_merge;
 
 #[derive(Default, Clone, Copy, PartialEq, Eq, AsRefStr)]
 #[strum(serialize_all = "lowercase")]
+#[allow(dead_code)]
 pub enum InputType {
     #[default]
     Text,

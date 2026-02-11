@@ -31,6 +31,7 @@ fn InnerApp() -> impl IntoView {
     Effect::new(move |_| {
         spawn_local(async move {
             log::info!("App initialization started...");
+            gloo_console::log!("APP INIT: Checking setup status...");
 
             // Check if setup is needed via Server Function
             match shared::server_fns::auth::get_setup_status().await {

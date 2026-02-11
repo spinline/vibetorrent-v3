@@ -132,6 +132,8 @@ pub fn TorrentTable() -> impl IntoView {
         })
     });
 
+    let has_selection = Signal::derive(move || selected_count.get() > 0);
+
     let handle_select_all = Callback::new(move |checked: bool| {
         selected_hashes.update(|selected| {
             let hashes = filtered_hashes.get_untracked();
@@ -156,7 +158,7 @@ pub fn TorrentTable() -> impl IntoView {
     let sort_icon = move |col: SortColumn| {
         let is_active = sort_col.0.get() == col;
         let class = if is_active { "size-3 text-primary" } else { "size-3 opacity-30 group-hover:opacity-100 transition-opacity" };
-        view! { <ArrowUpDown class=class.to_string() /> }
+        view! { <ArrowUpDown class=class.to_string() /> }.into_any()
     };
 
     let bulk_action = move |action: &'static str| {
@@ -216,7 +218,7 @@ pub fn TorrentTable() -> impl IntoView {
                 </div>
 
                 <div class="flex items-center gap-2">
-                    <Show when=move || selected_count.get() > 0>
+                    <Show when=move || has_selection.get()>
                         <DropdownMenu>
                             <DropdownMenuTrigger>
                                 <Button variant=ButtonVariant::Secondary size=ButtonSize::Sm class="gap-2">
@@ -412,7 +414,7 @@ pub fn TorrentTable() -> impl IntoView {
             <div class="hidden md:flex items-center justify-between px-2 py-1 text-[11px] text-muted-foreground bg-muted/20 border rounded-md">
                 <div class="flex gap-4">
                     <span>{move || format!("Toplam: {} torrent", filtered_hashes.get().len())}</span>
-                    <Show when=move || selected_count.get() > 0>
+                    <Show when=move || has_selection.get()>
                         <span class="text-primary font-medium">{move || format!("{} torrent seçili", selected_count.get())}</span>
                     </Show>
                 </div>
@@ -450,6 +452,7 @@ fn TorrentRow(
                         selected.as_deref() == Some(stored_hash.get_value().as_str())
                     });
 
+                    let t_name_stored = StoredValue::new(t_name.clone());
                     let h_for_menu = stored_hash.get_value();
 
                     view! {
@@ -466,28 +469,25 @@ fn TorrentRow(
                                     />
                                 </DataTableCell>
                                 
-                                {let t_name = t_name.clone();
-                                 move || visible_columns.get().contains("Name").then({
-                                    let t_name = t_name.clone();
+                                {move || visible_columns.get().contains("Name").then({
                                     move || view! {
-                                        <DataTableCell class="font-medium truncate max-w-[200px] lg:max-w-md" attr:title=t_name.clone()>
-                                            {t_name.clone()}
+                                        <DataTableCell class="font-medium truncate max-w-[200px] lg:max-w-md" attr:title=t_name_stored.get_value()>
+                                            {t_name_stored.get_value()}
                                         </DataTableCell>
                                     }
                                 }).into_any()}
 
-                                {move || visible_columns.get().contains("Size").then(|| {
-                                    let size_str = format_bytes(t.size);
-                                    view! {
-                                        <DataTableCell class="font-mono text-xs text-muted-foreground whitespace-nowrap">
-                                            {size_str}
-                                        </DataTableCell>
+                                {move || visible_columns.get().contains("Size").then({
+                                    let size_bytes = t.size;
+                                    move || {
+                                        let size_str = format_bytes(size_bytes);
+                                        view! { <DataTableCell class="font-mono text-xs text-muted-foreground whitespace-nowrap">{size_str}</DataTableCell> }
                                     }
                                 }).into_any()}
 
-                                {move || visible_columns.get().contains("Progress").then(|| {
+                                {move || visible_columns.get().contains("Progress").then({
                                     let percent = t.percent_complete;
-                                    view! {
+                                    move || view! {
                                         <DataTableCell>
                                             <div class="flex items-center gap-2">
                                                 <div class="h-1.5 w-full bg-secondary rounded-full overflow-hidden min-w-[80px]">
@@ -499,48 +499,41 @@ fn TorrentRow(
                                     }
                                 }).into_any()}
 
-                                {move || visible_columns.get().contains("Status").then(|| {
-                                    let status_str = format!("{:?}", t.status);
-                                    view! {
-                                        <DataTableCell class={format!("text-xs font-semibold whitespace-nowrap {}", status_color)}>
-                                            {status_str}
-                                        </DataTableCell>
+                                {move || visible_columns.get().contains("Status").then({
+                                    let status_text = format!("{:?}", t.status);
+                                    let color = status_color;
+                                    move || view! { <DataTableCell class={format!("text-xs font-semibold whitespace-nowrap {}", color)}>{status_text.clone()}</DataTableCell> }
+                                }).into_any()}
+
+                                {move || visible_columns.get().contains("DownSpeed").then({
+                                    let rate = t.down_rate;
+                                    move || {
+                                        let speed_str = format_speed(rate);
+                                        view! { <DataTableCell class="text-right font-mono text-xs text-green-600 dark:text-green-500 whitespace-nowrap">{speed_str}</DataTableCell> }
                                     }
                                 }).into_any()}
 
-                                {move || visible_columns.get().contains("DownSpeed").then(|| {
-                                    let speed_str = format_speed(t.down_rate);
-                                    view! {
-                                        <DataTableCell class="text-right font-mono text-xs text-green-600 dark:text-green-500 whitespace-nowrap">
-                                            {speed_str}
-                                        </DataTableCell>
+                                {move || visible_columns.get().contains("UpSpeed").then({
+                                    let rate = t.up_rate;
+                                    move || {
+                                        let speed_str = format_speed(rate);
+                                        view! { <DataTableCell class="text-right font-mono text-xs text-blue-600 dark:text-blue-500 whitespace-nowrap">{speed_str}</DataTableCell> }
                                     }
                                 }).into_any()}
 
-                                {move || visible_columns.get().contains("UpSpeed").then(|| {
-                                    let speed_str = format_speed(t.up_rate);
-                                    view! {
-                                        <DataTableCell class="text-right font-mono text-xs text-blue-600 dark:text-blue-500 whitespace-nowrap">
-                                            {speed_str}
-                                        </DataTableCell>
+                                {move || visible_columns.get().contains("ETA").then({
+                                    let eta = t.eta;
+                                    move || {
+                                        let eta_str = format_duration(eta);
+                                        view! { <DataTableCell class="text-right font-mono text-xs text-muted-foreground whitespace-nowrap">{eta_str}</DataTableCell> }
                                     }
                                 }).into_any()}
 
-                                {move || visible_columns.get().contains("ETA").then(|| {
-                                    let eta_str = format_duration(t.eta);
-                                    view! {
-                                        <DataTableCell class="text-right font-mono text-xs text-muted-foreground whitespace-nowrap">
-                                            {eta_str}
-                                        </DataTableCell>
-                                    }
-                                }).into_any()}
-
-                                {move || visible_columns.get().contains("AddedDate").then(|| {
-                                    let date_str = format_date(t.added_date);
-                                    view! {
-                                        <DataTableCell class="text-right font-mono text-xs text-muted-foreground whitespace-nowrap">
-                                            {date_str}
-                                        </DataTableCell>
+                                {move || visible_columns.get().contains("AddedDate").then({
+                                    let date = t.added_date;
+                                    move || {
+                                        let date_str = format_date(date);
+                                        view! { <DataTableCell class="text-right font-mono text-xs text-muted-foreground whitespace-nowrap">{date_str}</DataTableCell> }
                                     }
                                 }).into_any()}
                             </DataTableRow>

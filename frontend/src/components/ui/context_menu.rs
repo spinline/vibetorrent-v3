@@ -202,7 +202,7 @@ pub fn ContextMenuTrigger(
     #[prop(optional)] on_open: Option<Callback<()>>,
 ) -> impl IntoView {
     let ctx = expect_context::<ContextMenuContext>();
-    let trigger_class = tw_merge!("block w-full h-full", class);
+    let trigger_class = tw_merge!("contents", class);
 
     view! {
         <div

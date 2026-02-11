@@ -9,7 +9,6 @@ use crate::components::context_menu::TorrentContextMenu;
 use crate::components::ui::card::{Card, CardHeader, CardTitle, CardContent as CardBody};
 use crate::components::ui::data_table::*;
 use crate::components::ui::checkbox::Checkbox;
-use crate::components::ui::button::{Button, ButtonVariant};
 
 fn format_bytes(bytes: i64) -> String {
     const UNITS: [&str; 6] = ["B", "KB", "MB", "GB", "TB", "PB"];
@@ -163,7 +162,7 @@ pub fn TorrentTable() -> impl IntoView {
                         <DataTable>
                             <DataTableHeader class="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
                                 <DataTableRow class="hover:bg-transparent">
-                                    <DataTableHead class="w-12 px-4">
+                                    <DataTableHead class="w-12">
                                         <Checkbox
                                             checked=Signal::derive(move || {
                                                 let hashes = filtered_hashes.get();
@@ -281,7 +280,7 @@ fn TorrentRow(
                                 attr:data-state=move || if is_selected.get() || is_active_selection.get() { "selected" } else { "" }
                                 on:click=move |_| store.selected_torrent.set(Some(stored_hash.get_value()))
                             >
-                                <DataTableCell class="w-12 px-4">
+                                <DataTableCell class="w-12">
                                     <Checkbox 
                                         checked=is_selected 
                                         on_checked_change=on_select 
@@ -295,7 +294,7 @@ fn TorrentRow(
                                 </DataTableCell>
                                 <DataTableCell>
                                     <div class="flex items-center gap-2">
-                                        <div class="h-1.5 w-full bg-secondary rounded-full overflow-hidden">
+                                        <div class="h-1.5 w-full bg-secondary rounded-full overflow-hidden min-w-[80px]">
                                             <div class="h-full bg-primary transition-all duration-500" style=format!("width: {}%", t.percent_complete)></div>
                                         </div>
                                         <span class="text-[10px] text-muted-foreground w-10 text-right">{format!("{:.1}%", t.percent_complete)}</span>

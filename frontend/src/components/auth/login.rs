@@ -1,15 +1,12 @@
 use leptos::prelude::*;
 use leptos::task::spawn_local;
-use leptos_shadcn_card::{Card, CardHeader, CardContent};
-use leptos_shadcn_input::Input;
-use leptos_shadcn_button::Button;
-use leptos_shadcn_label::Label;
-use leptos_shadcn_alert::{Alert, AlertDescription, AlertVariant};
+use crate::components::ui::card::{Card, CardHeader, CardContent};
+use crate::components::ui::input::{Input, InputType};
 
 #[component]
 pub fn Login() -> impl IntoView {
-    let username = signal(String::new());
-    let password = signal(String::new());
+    let username = RwSignal::new(String::new());
+    let password = RwSignal::new(String::new());
     let error = signal(Option::<String>::None);
     let loading = signal(false);
 
@@ -18,8 +15,8 @@ pub fn Login() -> impl IntoView {
         loading.1.set(true);
         error.1.set(None);
 
-        let user = username.0.get();
-        let pass = password.0.get();
+        let user = username.get();
+        let pass = password.get();
 
         spawn_local(async move {
             match shared::server_fns::auth::login(user, pass).await {
@@ -52,44 +49,40 @@ pub fn Login() -> impl IntoView {
                 <CardContent class="pt-4">
                     <form on:submit=handle_login class="space-y-4">
                         <div class="space-y-2">
-                            <Label>"Kullanıcı Adı"</Label>
+                            <label class="text-sm font-medium leading-none">"Kullanıcı Adı"</label>
                             <Input
-                                input_type="text"
+                                r#type=InputType::Text
                                 placeholder="Kullanıcı adınız"
-                                value=MaybeProp::derive(move || Some(username.0.get()))
-                                on_change=Callback::new(move |val: String| username.1.set(val))
-                                disabled=Signal::derive(move || loading.0.get())
+                                bind_value=username
+                                disabled=loading.0.get()
                             />
                         </div>
                         <div class="space-y-2">
-                            <Label>"Şifre"</Label>
+                            <label class="text-sm font-medium leading-none">"Şifre"</label>
                             <Input
-                                input_type="password"
+                                r#type=InputType::Password
                                 placeholder="******"
-                                value=MaybeProp::derive(move || Some(password.0.get()))
-                                on_change=Callback::new(move |val: String| password.1.set(val))
-                                disabled=Signal::derive(move || loading.0.get())
+                                bind_value=password
+                                disabled=loading.0.get()
                             />
                         </div>
 
                         <Show when=move || error.0.get().is_some()>
-                            <Alert variant=AlertVariant::Destructive>
-                                <AlertDescription>
-                                    {move || error.0.get().unwrap_or_default()}
-                                </AlertDescription>
-                            </Alert>
+                            <div class="rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+                                {move || error.0.get().unwrap_or_default()}
+                            </div>
                         </Show>
 
                         <div class="pt-2">
-                            <Button
-                                class="w-full"
-                                disabled=Signal::derive(move || loading.0.get())
+                            <button
+                                class="inline-flex items-center justify-center w-full h-9 px-4 py-2 rounded-md text-sm font-medium bg-primary text-primary-foreground shadow-xs hover:bg-primary/90 transition-all disabled:pointer-events-none disabled:opacity-50"
+                                disabled=move || loading.0.get()
                             >
                                 <Show when=move || loading.0.get() fallback=|| "Giriş Yap">
                                     <span class="animate-spin mr-2 h-4 w-4 border-2 border-current border-t-transparent rounded-full"></span>
                                     "Giriş Yapılıyor..."
                                 </Show>
-                            </Button>
+                            </button>
                         </div>
                     </form>
                 </CardContent>

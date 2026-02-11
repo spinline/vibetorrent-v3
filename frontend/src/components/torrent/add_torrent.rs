@@ -1,8 +1,6 @@
 use leptos::prelude::*;
 use leptos::task::spawn_local;
-use leptos_shadcn_input::Input;
-use leptos_shadcn_button::{Button, ButtonVariant};
-use leptos_shadcn_alert::{Alert, AlertDescription, AlertVariant};
+use crate::components::ui::input::{Input, InputType};
 use crate::store::TorrentStore;
 use crate::api;
 
@@ -12,13 +10,13 @@ pub fn AddTorrentDialog(
 ) -> impl IntoView {
     let _store = use_context::<TorrentStore>().expect("TorrentStore not provided");
 
-    let uri = signal(String::new());
+    let uri = RwSignal::new(String::new());
     let is_loading = signal(false);
     let error_msg = signal(Option::<String>::None);
 
     let handle_submit = move |ev: web_sys::SubmitEvent| {
         ev.prevent_default();
-        let uri_val = uri.0.get();
+        let uri_val = uri.get();
         
         if uri_val.is_empty() {
             error_msg.1.set(Some("Please enter a Magnet URI or URL".to_string()));
@@ -69,29 +67,31 @@ pub fn AddTorrentDialog(
             
             <form on:submit=handle_submit class="space-y-4">
                 <Input
-                    input_type="text"
+                    r#type=InputType::Text
                     placeholder="magnet:?xt=urn:btih:..."
-                    value=MaybeProp::derive(move || Some(uri.0.get()))
-                    on_change=Callback::new(move |val: String| uri.1.set(val))
-                    disabled=Signal::derive(move || is_loading.0.get())
+                    bind_value=uri
+                    disabled=is_loading.0.get()
                 />
                 
                 {move || error_msg.0.get().map(|msg| view! {
-                    <Alert variant=AlertVariant::Destructive>
-                        <AlertDescription>{msg}</AlertDescription>
-                    </Alert>
+                    <div class="rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+                        {msg}
+                    </div>
                 })}
 
                 <div class="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2">
-                    <Button
-                        variant=ButtonVariant::Ghost
-                        on_click=Callback::new(move |()| {
-                            on_close.run(());
-                        })
+                    <button
+                        type="button"
+                        class="inline-flex items-center justify-center h-9 px-4 py-2 rounded-md text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-colors"
+                        on:click=move |_| on_close.run(())
                     >
                         "Cancel"
-                    </Button>
-                    <Button disabled=Signal::derive(move || is_loading.0.get())>
+                    </button>
+                    <button
+                        type="submit"
+                        class="inline-flex items-center justify-center h-9 px-4 py-2 rounded-md text-sm font-medium bg-primary text-primary-foreground shadow-xs hover:bg-primary/90 transition-all disabled:pointer-events-none disabled:opacity-50"
+                        disabled=move || is_loading.0.get()
+                    >
                         {move || if is_loading.0.get() {
                             leptos::either::Either::Left(view! { 
                                 <span class="animate-spin mr-2 h-4 w-4 border-2 border-current border-t-transparent rounded-full"></span> 
@@ -100,7 +100,7 @@ pub fn AddTorrentDialog(
                         } else {
                             leptos::either::Either::Right(view! { "Add" })
                         }}
-                    </Button>
+                    </button>
                 </div>
             </form>
 

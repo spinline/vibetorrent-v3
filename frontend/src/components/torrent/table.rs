@@ -4,7 +4,7 @@ use crate::store::{get_action_messages, show_toast};
 use crate::api;
 use shared::NotificationLevel;
 use crate::components::context_menu::TorrentContextMenu;
-use leptos_shadcn_card::{Card, CardHeader, CardTitle, CardContent};
+use crate::components::ui::card::{Card, CardHeader, CardTitle, CardContent};
 
 fn format_bytes(bytes: i64) -> String {
     const UNITS: [&str; 6] = ["B", "KB", "MB", "GB", "TB", "PB"];

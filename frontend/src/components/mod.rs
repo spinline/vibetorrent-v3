@@ -3,3 +3,4 @@ pub mod layout;
 pub mod torrent;
 pub mod auth;
 pub mod toast;
+pub mod ui;

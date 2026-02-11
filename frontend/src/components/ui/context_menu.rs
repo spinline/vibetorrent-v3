@@ -78,6 +78,76 @@ pub fn ContextMenuAction(
     }
 }
 
+#[component]
+pub fn ContextMenuHoldAction(
+    children: Children,
+    #[prop(into)] on_hold_complete: Callback<()>,
+    #[prop(optional, into)] class: String,
+    #[prop(default = 1000)] hold_duration: u64,
+) -> impl IntoView {
+    let is_holding = RwSignal::new(false);
+    let progress = RwSignal::new(0.0);
+    
+    let on_mousedown = move |_| {
+        is_holding.set(true);
+        progress.set(0.0);
+    };
+    
+    let on_mouseup = move |_| {
+        is_holding.set(false);
+        progress.set(0.0);
+    };
+
+    Effect::new(move |_| {
+        if is_holding.get() {
+            let start_time = web_sys::window().unwrap().performance().unwrap().now();
+            let duration = hold_duration as f64;
+            
+            leptos::task::spawn_local(async move {
+                while is_holding.get_untracked() {
+                    let now = web_sys::window().unwrap().performance().unwrap().now();
+                    let elapsed = now - start_time;
+                    let p = (elapsed / duration).min(1.0);
+                    progress.set(p * 100.0);
+                    
+                    if p >= 1.0 {
+                        on_hold_complete.run(());
+                        is_holding.set(false);
+                        close_context_menu();
+                        break;
+                    }
+                    gloo_timers::future::TimeoutFuture::new(16).await; // ~60fps
+                }
+            });
+        }
+    });
+
+    let class = tw_merge!(
+        "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors overflow-hidden",
+        class
+    );
+
+    view! {
+        <div
+            class=class
+            on:mousedown=on_mousedown
+            on:mouseup=on_mouseup
+            on:mouseleave=on_mouseup
+            on:touchstart=on_mousedown
+            on:touchend=on_mouseup
+        >
+            // Progress background
+            <div 
+                class="absolute inset-y-0 left-0 bg-destructive/20 transition-all duration-75 ease-linear pointer-events-none"
+                style=move || format!("width: {}%;", progress.get())
+            />
+            <span class="relative z-10 flex items-center gap-2 w-full">
+                {children()}
+            </span>
+        </div>
+    }
+}
+
 #[derive(Clone)]
 struct ContextMenuContext {
     target_id: String,
@@ -160,7 +230,7 @@ pub fn ContextMenuContent(
 ) -> impl IntoView {
     let ctx = expect_context::<ContextMenuContext>();
 
-    let base_classes = "z-50 p-1 rounded-md border bg-card shadow-md w-[200px] fixed transition-all duration-200 data-[state=closed]:opacity-0 data-[state=closed]:scale-95 data-[state=open]:opacity-100 data-[state=open]:scale-100";
+    let base_classes = "z-50 min-w-[12rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md transition-all duration-200 data-[state=closed]:opacity-0 data-[state=closed]:scale-95 data-[state=open]:opacity-100 data-[state=open]:scale-100";
 
     let class = tw_merge!(base_classes, class);
 

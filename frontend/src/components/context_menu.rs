@@ -19,22 +19,31 @@ pub fn TorrentContextMenu(
                 {children()}
             </ContextMenuTrigger>
             
-            <ContextMenuContent>
-                <ContextMenuAction on:click=move |_| menu_action("start")>
+            <ContextMenuContent class="w-56">
+                <ContextMenuAction 
+                    class="px-2 py-1.5 hover:bg-accent hover:text-accent-foreground rounded-sm"
+                    on:click=move |_| menu_action("start")
+                >
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-2 h-4 w-4 opacity-70">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
                     </svg>
                     "Start"
                 </ContextMenuAction>
 
-                <ContextMenuAction on:click=move |_| menu_action("stop")>
+                <ContextMenuAction 
+                    class="px-2 py-1.5 hover:bg-accent hover:text-accent-foreground rounded-sm"
+                    on:click=move |_| menu_action("stop")
+                >
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-2 h-4 w-4 opacity-70">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25v13.5m-7.5-13.5v13.5" />
                     </svg>
                     "Stop"
                 </ContextMenuAction>
 
-                <ContextMenuAction on:click=move |_| menu_action("recheck")>
+                <ContextMenuAction 
+                    class="px-2 py-1.5 hover:bg-accent hover:text-accent-foreground rounded-sm"
+                    on:click=move |_| menu_action("recheck")
+                >
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-2 h-4 w-4 opacity-70">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
                     </svg>
@@ -44,7 +53,7 @@ pub fn TorrentContextMenu(
                 <div class="-mx-1 my-1 h-px bg-border" />
 
                 <ContextMenuAction 
-                    class="text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                    class="px-2 py-1.5 text-destructive hover:bg-destructive/10 hover:text-destructive rounded-sm"
                     on:click=move |_| menu_action("delete")
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-2 h-4 w-4 opacity-70">
@@ -53,15 +62,16 @@ pub fn TorrentContextMenu(
                     "Remove"
                 </ContextMenuAction>
 
-                <ContextMenuAction 
-                    class="text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                    on:click=move |_| menu_action("delete_with_data")
+                <ContextMenuHoldAction 
+                    class="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    on_hold_complete=move |_| menu_action("delete_with_data")
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-2 h-4 w-4 opacity-70">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m6 4.125l2.25 2.25m0 0l2.25 2.25M12 13.875l2.25-2.25M12 13.875l-2.25-2.25M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
                     </svg>
                     "Remove with Data"
-                </ContextMenuAction>
+                    <span class="ml-auto text-[10px] opacity-50">"Hold"</span>
+                </ContextMenuHoldAction>
             </ContextMenuContent>
         </ContextMenu>
     }

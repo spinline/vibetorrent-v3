@@ -64,8 +64,16 @@ pub fn SonnerTrigger(
         ToastType::Loading => "bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80",
     };
 
+    let animation_direction = if position.contains("Top") {
+        "slide-in-from-top-5"
+    } else {
+        "slide-in-from-bottom-5"
+    };
+
     let merged_class = tw_merge!(
-        "inline-flex flex-col items-start justify-center gap-1 min-w-[300px] rounded-md text-sm font-medium transition-all shadow-lg p-4 cursor-pointer pointer-events-auto border border-border/50",
+        "inline-flex flex-col items-start justify-center gap-1 min-w-[300px] rounded-md text-sm font-medium shadow-lg p-4 cursor-pointer pointer-events-auto border border-border/50 transition-all",
+        "animate-in fade-in duration-300 ease-out hover:scale-[1.02] active:scale-[0.98]",
+        animation_direction,
         variant_classes,
         class
     );
@@ -189,6 +197,7 @@ pub fn Toaster(#[prop(default = SonnerPosition::default())] position: SonnerPosi
                                 variant=toast.variant
                                 title=toast.title
                                 description=toast.description
+                                position=position.to_string()
                                 on_dismiss=Some(Callback::new(move |_| {
                                     toasts.update(|vec| vec.retain(|t| t.id != id));
                                 }))

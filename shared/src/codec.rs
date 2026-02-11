@@ -1,83 +1,88 @@
+use leptos::prelude::*;
 use leptos::server_fn::codec::{Encoding, FromReq, FromRes, IntoReq, IntoRes};
 use leptos::server_fn::request::{ClientReq, Req};
-use leptos::server_fn::response::{ClientRes, Res};
-use leptos::server_fn::error::ServerFnError;
+use leptos::server_fn::response::{ClientRes, Res, TryRes};
+use http::Method;
+use bytes::Bytes;
 use serde::{de::DeserializeOwned, Serialize};
 use std::future::Future;
 
 pub struct MessagePack;
 
-impl leptos::server_fn::codec::ContentType for MessagePack {
+impl leptos::server_fn::ContentType for MessagePack {
     const CONTENT_TYPE: &'static str = "application/msgpack";
 }
 
 impl Encoding for MessagePack {
-    const METHOD: leptos::server_fn::request::Method = leptos::server_fn::request::Method::POST;
+    const METHOD: Method = Method::POST;
 }
 
 #[cfg(any(feature = "ssr", feature = "hydrate"))]
-impl<Input, Output> IntoReq<MessagePack, Input, Output> for MessagePack
+impl<T, Request, Error> IntoReq<MessagePack, Request, Error> for T
 where
-    Input: Serialize + Send,
-    Output: Send,
+    Request: ClientReq<Error>,
+    T: Serialize + Send,
+    Error: Send,
 {
-    fn into_req(self, args: Input, path: &str) -> Result<ClientReq, ServerFnError> {
-        let data = rmp_serde::to_vec(&args)
-            .map_err(|e| ServerFnError::Serialization(e.to_string()))?;
-
-        ClientReq::try_new(
-            leptos::server_fn::request::Method::POST,
+    fn into_req(self, path: &str, accepts: &str) -> Result<Request, Error> {
+        let data = rmp_serde::to_vec(&self)
+            .map_err(|e| ServerFnError::new(e.to_string()).into())?;
+            
+        // Use try_new_post_bytes which should be available on ClientReq trait
+        Request::try_new_post_bytes(
             path,
-            leptos::server_fn::request::Payload::Binary(bytes::Bytes::from(data))
+            MessagePack::CONTENT_TYPE,
+            accepts,
+            Bytes::from(data)
         )
     }
 }
 
 #[cfg(any(feature = "ssr", feature = "hydrate"))]
-impl<Input, Output> FromRes<MessagePack, Input, Output> for MessagePack
+impl<T, Response, Error> FromRes<MessagePack, Response, Error> for T
 where
-    Input: Send,
-    Output: DeserializeOwned + Send,
+    Response: ClientRes<Error> + Send,
+    T: DeserializeOwned + Send,
+    Error: Send,
 {
-    fn from_res(res: ClientRes) -> impl Future<Output = Result<Output, ServerFnError>> + Send {
+    fn from_res(res: Response) -> impl Future<Output = Result<Self, Error>> + Send {
         async move {
             let data = res.try_into_bytes().await?;
             rmp_serde::from_slice(&data)
-                .map_err(|e| ServerFnError::Deserialization(e.to_string()))
+                .map_err(|e| ServerFnError::new(e.to_string()).into())
         }
     }
 }
 
 #[cfg(feature = "ssr")]
-impl<Input, Output> FromReq<MessagePack, Input, Output> for MessagePack
+impl<T, Request, Error> FromReq<MessagePack, Request, Error> for T
 where
-    Input: DeserializeOwned + Send,
-    Output: Send,
+    Request: Req<Error> + Send,
+    T: DeserializeOwned,
+    Error: Send,
 {
-    fn from_req(req: Req) -> impl Future<Output = Result<Input, ServerFnError>> + Send {
+    fn from_req(req: Request) -> impl Future<Output = Result<Self, Error>> + Send {
         async move {
-            let body_bytes = req.try_into_bytes().await?;
-            rmp_serde::from_slice(&body_bytes)
-                .map_err(|e| ServerFnError::Args(e.to_string()))
+            let data = req.try_into_bytes().await?;
+            rmp_serde::from_slice(&data)
+                .map_err(|e| ServerFnError::new(e.to_string()).into())
         }
     }
 }
 
 #[cfg(feature = "ssr")]
-impl<Input, Output> IntoRes<MessagePack, Input, Output> for MessagePack
+impl<T, Response, Error> IntoRes<MessagePack, Response, Error> for T
 where
-    Input: Send,
-    Output: Serialize + Send,
+    Response: TryRes<Error> + Send,
+    T: Serialize + Send,
+    Error: Send,
 {
-    fn into_res(res: Output) -> impl Future<Output = Result<Res, ServerFnError>> + Send {
+    fn into_res(self) -> impl Future<Output = Result<Response, Error>> + Send {
         async move {
-            let data = rmp_serde::to_vec(&res)
-            .map_err(|e| ServerFnError::Serialization(e.to_string()))?;
+            let data = rmp_serde::to_vec(&self)
+                .map_err(|e| ServerFnError::new(e.to_string()).into())?;
             
-            Res::try_from_bytes(
-                bytes::Bytes::from(data), 
-                "application/msgpack"
-            )
+            Response::try_from_bytes(MessagePack::CONTENT_TYPE, Bytes::from(data))
         }
     }
 }

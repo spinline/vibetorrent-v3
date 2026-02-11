@@ -138,8 +138,18 @@ pub fn SonnerList(
     }
 }
 
+// Thread local storage for global access without Context
+thread_local! {
+    static TOASTS: std::cell::RefCell<Option<RwSignal<Vec<ToastData>>>> = std::cell::RefCell::new(None);
+}
+
 pub fn provide_toaster() {
     let toasts = RwSignal::new(Vec::<ToastData>::new());
+    
+    // Set global thread_local
+    TOASTS.with(|t| *t.borrow_mut() = Some(toasts));
+    
+    // Also provide context for components
     provide_context(ToasterStore { toasts });
 }
 
@@ -191,7 +201,9 @@ pub fn Toaster(#[prop(default = SonnerPosition::default())] position: SonnerPosi
 
 // Global Helper Functions
 pub fn toast(title: impl Into<String>, variant: ToastType) {
-    if let Some(store) = use_context::<ToasterStore>() {
+    let signal_opt = TOASTS.with(|t| *t.borrow());
+    
+    if let Some(toasts) = signal_opt {
         let id = js_sys::Math::random().to_bits();
         let new_toast = ToastData {
             id,
@@ -201,18 +213,16 @@ pub fn toast(title: impl Into<String>, variant: ToastType) {
             duration: 4000,
         };
         
-        store.toasts.update(|t| t.push(new_toast.clone()));
+        toasts.update(|t| t.push(new_toast.clone()));
 
         // Auto remove after duration
         let duration = new_toast.duration;
         leptos::task::spawn_local(async move {
             gloo_timers::future::TimeoutFuture::new(duration as u32).await;
-            if let Some(store) = use_context::<ToasterStore>() {
-                store.toasts.update(|vec| vec.retain(|t| t.id != id));
-            }
+            toasts.update(|vec| vec.retain(|t| t.id != id));
         });
     } else {
-        gloo_console::warn!("ToasterStore not found. Make sure <Toaster /> is mounted.");
+        gloo_console::warn!("ToasterStore not found (global static). Make sure provide_toaster() is called.");
     }
 }
 

@@ -93,7 +93,7 @@ fn ToastItem(toast: Toast) -> impl IntoView {
         >
             <div class="flex items-start gap-4">
                 <div class="flex-1">
-                    <p class="text-sm font-medium">{&toast.message}</p>
+                    <p class="text-sm font-medium">{toast.message.clone()}</p>
                 </div>
                 <button
                     class="inline-flex shrink-0 opacity-50 hover:opacity-100 focus:opacity-100 focus:outline-none"

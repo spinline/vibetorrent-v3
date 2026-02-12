@@ -6,7 +6,7 @@ use crate::components::auth::setup::Setup;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use leptos_router::components::{Router, Routes, Route};
-use leptos_router::hooks::use_navigate;
+use leptos_router::hooks::{use_navigate, use_location};
 use crate::components::ui::toast::Toaster;
 use crate::components::hooks::use_theme_mode::ThemeMode;
 
@@ -41,6 +41,7 @@ pub fn App() -> impl IntoView {
 fn InnerApp() -> impl IntoView {
     crate::store::provide_torrent_store();
     let store = use_context::<crate::store::TorrentStore>();
+    let _loc = use_location();
 
     let is_loading = signal(true);
     let is_authenticated = signal(false);

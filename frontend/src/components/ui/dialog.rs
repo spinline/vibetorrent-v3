@@ -72,13 +72,13 @@ pub fn DialogTrigger(
 pub fn DialogContent(
     children: Children,
     #[prop(optional, into)] class: String,
+    #[prop(optional, into)] id: Option<String>,
     #[prop(into, optional)] hide_close_button: Option<bool>,
     #[prop(default = true)] close_on_backdrop_click: bool,
     #[prop(default = "Dialog")] data_name_prefix: &'static str,
 ) -> impl IntoView {
     let ctx = expect_context::<DialogContext>();
     let merged_class = tw_merge!(
-        // "flex flex-col gap-4", // TODO 🐛 Bug when I try to have this.. Using DialogBody instead.
         "relative bg-background border rounded-2xl shadow-lg p-6 w-full max-w-[calc(100%-2rem)] max-h-[85vh] fixed top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%] z-100 transition-all duration-200 data-[state=closed]:opacity-0 data-[state=closed]:scale-95 data-[state=open]:opacity-100 data-[state=open]:scale-100",
         class
     );
@@ -88,9 +88,13 @@ pub fn DialogContent(
 
     let target_id_clone = ctx.target_id.clone();
     let backdrop_id = format!("{}_backdrop", ctx.target_id);
-    let target_id_for_script = ctx.target_id.clone();
     let backdrop_id_for_script = backdrop_id.clone();
     let backdrop_behavior = if close_on_backdrop_click { "auto" } else { "manual" };
+
+    // Use provided id or fallback to random target_id
+    let final_id = id.unwrap_or_else(|| ctx.target_id.clone());
+    let final_id_for_script = final_id.clone();
+    let trigger_id_for_script = ctx.target_id.clone();
 
     view! {
         <script src="/lock_scroll.js"></script>
@@ -105,7 +109,7 @@ pub fn DialogContent(
         <div
             data-name=content_data_name
             class=merged_class
-            id=ctx.target_id
+            id=final_id
             data-target="target__dialog"
             data-state="closed"
             data-backdrop=backdrop_behavior
@@ -147,9 +151,7 @@ pub fn DialogContent(
                         dialog.setAttribute('data-initialized', 'true');
 
                         const openDialog = () => {{
-                            // Lock scrolling
-                            window.ScrollLock.lock();
-
+                            if (window.ScrollLock) window.ScrollLock.lock();
                             dialog.setAttribute('data-state', 'open');
                             backdrop.setAttribute('data-state', 'open');
                             dialog.style.pointerEvents = 'auto';
@@ -161,28 +163,18 @@ pub fn DialogContent(
                             backdrop.setAttribute('data-state', 'closed');
                             dialog.style.pointerEvents = 'none';
                             backdrop.style.pointerEvents = 'none';
-
-                            // Unlock scrolling after animation
                             window.ScrollLock.unlock(200);
                         }};
 
-                        // Open dialog when trigger is clicked
                         trigger.addEventListener('click', openDialog);
-
-                        // Close buttons
-                        const closeButtons = dialog.querySelectorAll('[data-dialog-close]');
-                        closeButtons.forEach(btn => {{
+                        dialog.querySelectorAll('[data-dialog-close]').forEach(btn => {{
                             btn.addEventListener('click', closeDialog);
                         }});
-
-                        // Close on backdrop click (if data-backdrop="auto")
                         backdrop.addEventListener('click', () => {{
                             if (dialog.getAttribute('data-backdrop') === 'auto') {{
                                 closeDialog();
                             }}
                         }});
-
-                        // Handle ESC key to close
                         document.addEventListener('keydown', (e) => {{
                             if (e.key === 'Escape' && dialog.getAttribute('data-state') === 'open') {{
                                 e.preventDefault();
@@ -190,17 +182,12 @@ pub fn DialogContent(
                             }}
                         }});
                     }};
-
-                    if (document.readyState === 'loading') {{
-                        document.addEventListener('DOMContentLoaded', setupDialog);
-                    }} else {{
-                        setupDialog();
-                    }}
+                    setupDialog();
                 }})();
                 "#,
-                target_id_for_script,
+                final_id_for_script,
                 backdrop_id_for_script,
-                target_id_for_script,
+                trigger_id_for_script,
             )}
         </script>
     }

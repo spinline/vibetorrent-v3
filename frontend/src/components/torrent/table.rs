@@ -1,5 +1,6 @@
 use leptos::prelude::*;
 use leptos::task::spawn_local;
+use wasm_bindgen::JsCast;
 use std::collections::HashSet;
 use icons::{ArrowUpDown, Inbox, Settings2, Play, Square, Trash2, Ellipsis, ArrowUp, ArrowDown, Check, ListFilter};
 use crate::store::{get_action_messages, show_toast};
@@ -252,7 +253,7 @@ pub fn TorrentTable() -> impl IntoView {
                                         // Trigger the hidden AlertDialog from this menu item
                                         <DropdownMenuItem class="text-destructive focus:bg-destructive/10 cursor-pointer" on:click=move |_| {
                                             if let Some(trigger) = document().get_element_by_id("bulk-delete-trigger") {
-                                                let _ = trigger.dyn_into::<web_sys::HtmlElement>().map(|el| el.click());
+                                                let _ = trigger.dyn_into::<web_sys::HtmlElement>().map(|el: web_sys::HtmlElement| el.click());
                                             }
                                         }>
                                             <Trash2 class="mr-2 size-4" /> "Toplu Sil..."
@@ -263,7 +264,7 @@ pub fn TorrentTable() -> impl IntoView {
 
                             // Hidden AlertDialog moved outside the DropdownMenuContent to ensure proper centering
                             <AlertDialog>
-                                <AlertDialogTrigger id="bulk-delete-trigger" class="hidden" />
+                                <AlertDialogTrigger attr:id="bulk-delete-trigger" class="hidden">""</AlertDialogTrigger>
                                 <AlertDialogContent class="sm:max-w-[425px]">
                                     <AlertDialogBody>
                                         <AlertDialogHeader class="space-y-3">

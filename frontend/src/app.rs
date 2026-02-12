@@ -1,4 +1,5 @@
 use crate::components::layout::protected::Protected;
+use crate::components::ui::skeleton::Skeleton;
 use crate::components::torrent::table::TorrentTable;
 use crate::components::auth::login::Login;
 use crate::components::auth::setup::Setup;
@@ -146,33 +147,33 @@ fn InnerApp() -> impl IntoView {
                                 <div class="flex h-screen bg-background">
                                     // Sidebar skeleton
                                     <div class="w-56 border-r border-border p-4 space-y-4">
-                                        <div class="h-8 w-3/4 animate-pulse rounded-md bg-muted" />
+                                        <Skeleton class="h-8 w-3/4" />
                                         <div class="space-y-2">
-                                            <div class="h-6 w-full animate-pulse rounded-md bg-muted" />
-                                            <div class="h-6 w-full animate-pulse rounded-md bg-muted" />
-                                            <div class="h-6 w-4/5 animate-pulse rounded-md bg-muted" />
-                                            <div class="h-6 w-full animate-pulse rounded-md bg-muted" />
-                                            <div class="h-6 w-3/5 animate-pulse rounded-md bg-muted" />
-                                            <div class="h-6 w-full animate-pulse rounded-md bg-muted" />
+                                            <Skeleton class="h-6 w-full" />
+                                            <Skeleton class="h-6 w-full" />
+                                            <Skeleton class="h-6 w-4/5" />
+                                            <Skeleton class="h-6 w-full" />
+                                            <Skeleton class="h-6 w-3/5" />
+                                            <Skeleton class="h-6 w-full" />
                                         </div>
                                     </div>
                                     // Main content skeleton
                                     <div class="flex-1 flex flex-col">
                                         <div class="border-b border-border p-4 flex items-center gap-4">
-                                            <div class="h-8 w-48 animate-pulse rounded-md bg-muted" />
-                                            <div class="h-8 w-64 animate-pulse rounded-md bg-muted" />
-                                            <div class="ml-auto"><div class="h-8 w-24 animate-pulse rounded-md bg-muted" /></div>
+                                            <Skeleton class="h-8 w-48" />
+                                            <Skeleton class="h-8 w-64" />
+                                            <div class="ml-auto"><Skeleton class="h-8 w-24" /></div>
                                         </div>
                                         <div class="flex-1 p-4 space-y-3">
-                                            <div class="h-10 w-full animate-pulse rounded-md bg-muted" />
-                                            <div class="h-10 w-full animate-pulse rounded-md bg-muted" />
-                                            <div class="h-10 w-full animate-pulse rounded-md bg-muted" />
-                                            <div class="h-10 w-full animate-pulse rounded-md bg-muted" />
-                                            <div class="h-10 w-full animate-pulse rounded-md bg-muted" />
-                                            <div class="h-10 w-3/4 animate-pulse rounded-md bg-muted" />
+                                            <Skeleton class="h-10 w-full" />
+                                            <Skeleton class="h-10 w-full" />
+                                            <Skeleton class="h-10 w-full" />
+                                            <Skeleton class="h-10 w-full" />
+                                            <Skeleton class="h-10 w-full" />
+                                            <Skeleton class="h-10 w-3/4" />
                                         </div>
                                         <div class="border-t border-border p-3">
-                                            <div class="h-5 w-96 animate-pulse rounded-md bg-muted" />
+                                            <Skeleton class="h-5 w-96" />
                                         </div>
                                     </div>
                                 </div>

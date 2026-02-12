@@ -14,6 +14,7 @@ pub mod select;
 pub mod separator;
 pub mod sheet;
 pub mod sidenav;
+pub mod skeleton;
 pub mod svg_icon;
 pub mod table;
 pub mod theme_toggle;

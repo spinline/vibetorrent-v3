@@ -66,29 +66,18 @@ pub fn SonnerTrigger(
         _ => "bg-primary",
     };
 
-    // Stacking & Expansion Logic
+    // List Layout Logic (No stacking/overlapping)
     let style = move || {
         let is_bottom = position.to_string().contains("Bottom");
         let y_direction = if is_bottom { -1.0 } else { 1.0 };
         
-        let (translate_y, scale, opacity) = if is_expanded.get() {
-            // Expanded state: Full list layout
-            let y = index as f64 * 80.0; // Increased height + gap
-            (y * y_direction, 1.0, 1.0)
-        } else {
-            // Stacked state: Sonner look
-            let y = index as f64 * 12.0; 
-            let s = 1.0 - (index as f64 * 0.05);
-            let o = if index > 3 { 0.0 } else { 1.0 - (index as f64 * 0.1) };
-            (y * y_direction, s, o)
-        };
+        // Dynamic Y position based on index (index 0 is the newest/bottom-most in the view)
+        let y = index as f64 * 72.0; // Height (approx 64px) + Gap (8px)
 
         format!(
-            "z-index: {}; transform: translateY({}px) scale({}); opacity: {};",
+            "z-index: {}; transform: translateY({}px); opacity: 1; transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;",
             total - index,
-            translate_y,
-            scale,
-            opacity
+            y * y_direction
         )
     };
 

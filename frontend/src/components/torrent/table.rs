@@ -239,21 +239,40 @@ pub fn TorrentTable() -> impl IntoView {
                                     <AlertDialog>
                                         <AlertDialogTrigger class="w-full text-left">
                                             <div class="inline-flex gap-2 items-center w-full rounded-sm px-2 py-1.5 text-sm transition-colors text-destructive hover:bg-destructive/10 focus:bg-destructive/10">
-                                                <Trash2 class="size-4" /> "Toplu Sil"
+                                                <Trash2 class="size-4" /> "Toplu Sil..."
                                             </div>
                                         </AlertDialogTrigger>
                                         <AlertDialogContent>
                                             <AlertDialogHeader>
-                                                <AlertDialogTitle>"Toplu Silme Onayı"</AlertDialogTitle>
-                                                <AlertDialogDescription>
-                                                    {move || format!("Seçili {} torrent silinecek. Bu işlem geri alınamaz.", selected_count.get())}
+                                                <AlertDialogTitle class="text-destructive flex items-center gap-2">
+                                                    <Trash2 class="size-5" />
+                                                    "Toplu Silme Onayı"
+                                                </AlertDialogTitle>
+                                                <AlertDialogDescription class="pt-2">
+                                                    {move || format!("Seçili {} adet torrent silinecek. Lütfen silme yöntemini seçin:", selected_count.get())}
+                                                    <div class="mt-4 p-3 bg-muted/50 rounded-md text-xs border border-border italic">
+                                                        "Dikkat: Verilerle birlikte silme işlemi dosyaları diskten de kalıcı olarak kaldıracaktır."
+                                                    </div>
                                                 </AlertDialogDescription>
                                             </AlertDialogHeader>
-                                            <AlertDialogFooter>
-                                                <AlertDialogClose>"İptal"</AlertDialogClose>
-                                                <Button variant=ButtonVariant::Destructive on:click=move |_| bulk_action("delete")>
-                                                    "Sil"
-                                                </Button>
+                                            <AlertDialogFooter class="gap-2 sm:gap-0">
+                                                <div class="flex flex-col sm:flex-row gap-2 w-full justify-end">
+                                                    <AlertDialogClose class="order-3 sm:order-1">"Vazgeç"</AlertDialogClose>
+                                                    <Button 
+                                                        variant=ButtonVariant::Outline
+                                                        class="order-2 text-foreground"
+                                                        on:click=move |_| bulk_action("delete")
+                                                    >
+                                                        "Sadece Listeden Sil"
+                                                    </Button>
+                                                    <Button 
+                                                        variant=ButtonVariant::Destructive
+                                                        class="order-1"
+                                                        on:click=move |_| bulk_action("delete_with_data")
+                                                    >
+                                                        "Verilerle Birlikte Sil"
+                                                    </Button>
+                                                </div>
                                             </AlertDialogFooter>
                                         </AlertDialogContent>
                                     </AlertDialog>

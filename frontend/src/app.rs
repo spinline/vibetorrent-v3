@@ -225,8 +225,9 @@ fn InnerApp() -> impl IntoView {
                 }/>
 
                 <Route path=leptos_router::path!("/settings") view=move || {
+                    let authenticated = is_authenticated.0.get();
                     Effect::new(move |_| {
-                        if !is_authenticated.0.get() {
+                        if !authenticated {
                             let navigate = use_navigate();
                             navigate("/login", Default::default());
                         }
@@ -234,7 +235,7 @@ fn InnerApp() -> impl IntoView {
                     
                     view! {
                         <Show when=move || !is_loading.0.get() fallback=|| ()>
-                            <Show when=move || is_authenticated.0.get() fallback=|| ()>
+                            <Show when=move || authenticated fallback=|| ()>
                                 <Protected>
                                     <div class="p-4">"Settings Page (Coming Soon)"</div>
                                 </Protected>
@@ -243,30 +244,6 @@ fn InnerApp() -> impl IntoView {
                     }
                 }/>
             </Routes>
-        </div>
-    }
-}
-
-                    <Route path=leptos_router::path!("/settings") view=move || {
-                        Effect::new(move |_| {
-                            if !is_authenticated.0.get() {
-                                let navigate = use_navigate();
-                                navigate("/login", Default::default());
-                            }
-                        });
-                        
-                        view! {
-                            <Show when=move || !is_loading.0.get() fallback=|| ()>
-                                <Show when=move || is_authenticated.0.get() fallback=|| ()>
-                                    <Protected>
-                                        <div class="p-4">"Settings Page (Coming Soon)"</div>
-                                    </Protected>
-                                </Show>
-                            </Show>
-                        }
-                    }/>
-                </Routes>
-            </Router>
         </div>
     }
 }

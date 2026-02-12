@@ -9,6 +9,7 @@ use crate::components::context_menu::TorrentContextMenu;
 use crate::components::ui::card::{Card, CardHeader, CardTitle, CardContent as CardBody};
 use crate::components::ui::data_table::*;
 use crate::components::ui::checkbox::Checkbox;
+use crate::components::ui::badge::{Badge, BadgeVariant};
 use crate::components::ui::button::{Button, ButtonVariant};
 use crate::components::ui::empty::*;
 use crate::components::ui::input::Input;
@@ -364,7 +365,6 @@ pub fn TorrentTable() -> impl IntoView {
             <div class="flex-1 min-h-0 overflow-hidden">
                 // Desktop Table View
                 <DataTableWrapper class="hidden md:block h-full bg-card/50">
-                    // ... (Masaüstü tablosu aynı kalıyor)
                     <div class="h-full overflow-auto">
                         <DataTable>
                             <DataTableHeader class="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
@@ -484,7 +484,7 @@ pub fn TorrentTable() -> impl IntoView {
                 </DataTableWrapper>
 
                 // Mobile Card View
-                <div class="block md:hidden h-full overflow-y-auto space-y-4 pb-32">
+                <div class="block md:hidden h-full overflow-y-auto space-y-4 pb-32 px-1">
                      <Show
                         when=move || !filtered_hashes.get().is_empty()
                         fallback=move || view! {
@@ -556,7 +556,6 @@ fn TorrentRow(
                 move || {
                     let t = torrent.get().unwrap();
                     let t_name = t.name.clone();
-                    let status_color = match t.status { shared::TorrentStatus::Seeding => "text-green-500", shared::TorrentStatus::Downloading => "text-blue-500", shared::TorrentStatus::Paused => "text-yellow-500", shared::TorrentStatus::Error => "text-red-500", _ => "text-muted-foreground" };
                     
                     let is_active_selection = Memo::new(move |_| {
                         let selected = store.selected_torrent.get();
@@ -612,8 +611,18 @@ fn TorrentRow(
 
                                 {move || visible_columns.get().contains("Status").then({
                                     let status_text = format!("{:?}", t.status);
-                                    let color = status_color;
-                                    move || view! { <DataTableCell class={format!("text-xs font-semibold whitespace-nowrap {}", color)}>{status_text.clone()}</DataTableCell> }
+                                    let variant = match t.status {
+                                        shared::TorrentStatus::Seeding => BadgeVariant::Success,
+                                        shared::TorrentStatus::Downloading => BadgeVariant::Info,
+                                        shared::TorrentStatus::Paused => BadgeVariant::Warning,
+                                        shared::TorrentStatus::Error => BadgeVariant::Destructive,
+                                        _ => BadgeVariant::Secondary,
+                                    };
+                                    move || view! { 
+                                        <DataTableCell class="whitespace-nowrap">
+                                            <Badge variant=variant>{status_text.clone()}</Badge>
+                                        </DataTableCell> 
+                                    }
                                 }).into_any()}
 
                                 {move || visible_columns.get().contains("DownSpeed").then({
@@ -676,12 +685,12 @@ fn TorrentCard(
                 move || {
                     let t = torrent.get().unwrap();
                     let t_name = t.name.clone();
-                    let status_badge_class = match t.status { 
-                        shared::TorrentStatus::Seeding => "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800", 
-                        shared::TorrentStatus::Downloading => "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200 dark:border-blue-800", 
-                        shared::TorrentStatus::Paused => "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800", 
-                        shared::TorrentStatus::Error => "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800", 
-                        _ => "bg-muted text-muted-foreground" 
+                    let status_variant = match t.status { 
+                        shared::TorrentStatus::Seeding => BadgeVariant::Success, 
+                        shared::TorrentStatus::Downloading => BadgeVariant::Info, 
+                        shared::TorrentStatus::Paused => BadgeVariant::Warning, 
+                        shared::TorrentStatus::Error => BadgeVariant::Destructive, 
+                        _ => BadgeVariant::Secondary 
                     };
                     let h_for_menu = stored_hash.get_value();
 
@@ -707,9 +716,9 @@ fn TorrentCard(
                                         <div class="flex-1 min-w-0">
                                             <h3 class="text-sm font-bold leading-tight line-clamp-2 break-all">{t_name.clone()}</h3>
                                         </div>
-                                        <div class={format!("shrink-0 inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider {}", status_badge_class)}>
+                                        <Badge variant=status_variant class="uppercase tracking-wider text-[10px]">
                                             {format!("{:?}", t.status)}
-                                        </div>
+                                        </Badge>
                                     </div>
 
                                     <div class="space-y-1.5">

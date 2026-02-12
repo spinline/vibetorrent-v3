@@ -14,7 +14,17 @@ use crate::components::ui::empty::*;
 use crate::components::ui::input::Input;
 use crate::components::ui::multi_select::*;
 use crate::components::ui::dropdown_menu::*;
-use crate::components::ui::alert_dialog::*;
+use crate::components::ui::alert_dialog::{
+    AlertDialog,
+    AlertDialogBody,
+    AlertDialogClose,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+};
 use tailwind_fuse::tw_merge;
 
 const ALL_COLUMNS: [(&str, &str); 8] = [
@@ -244,39 +254,41 @@ pub fn TorrentTable() -> impl IntoView {
                                             </div>
                                         </AlertDialogTrigger>
                                         <AlertDialogContent class="sm:max-w-[425px]">
-                                            <AlertDialogHeader class="space-y-3">
-                                                <AlertDialogTitle class="text-destructive flex items-center gap-2 text-xl">
-                                                    <Trash2 class="size-6" />
-                                                    "Toplu Silme Onayı"
-                                                </AlertDialogTitle>
-                                                <AlertDialogDescription class="text-sm leading-relaxed">
-                                                    {move || format!("Seçili {} adet torrent silinecek. Lütfen silme yöntemini seçin:", selected_count.get())}
-                                                    <div class="mt-4 p-4 bg-destructive/5 rounded-lg border border-destructive/10 text-xs text-destructive/80 font-medium">
-                                                        "⚠️ Dikkat: Verilerle birlikte silme işlemi dosyaları diskten de kalıcı olarak kaldıracaktır."
+                                            <AlertDialogBody>
+                                                <AlertDialogHeader class="space-y-3">
+                                                    <AlertDialogTitle class="text-destructive flex items-center gap-2 text-xl">
+                                                        <Trash2 class="size-6" />
+                                                        "Toplu Silme Onayı"
+                                                    </AlertDialogTitle>
+                                                    <AlertDialogDescription class="text-sm leading-relaxed">
+                                                        {move || format!("Seçili {} adet torrent silinecek. Lütfen silme yöntemini seçin:", selected_count.get())}
+                                                        <div class="mt-4 p-4 bg-destructive/5 rounded-lg border border-destructive/10 text-xs text-destructive/80 font-medium">
+                                                            "⚠️ Dikkat: Verilerle birlikte silme işlemi dosyaları diskten de kalıcı olarak kaldıracaktır."
+                                                        </div>
+                                                    </AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter class="mt-6">
+                                                    <div class="flex flex-col-reverse sm:flex-row gap-3 w-full sm:justify-end">
+                                                        <AlertDialogClose class="sm:flex-1 md:flex-none">"Vazgeç"</AlertDialogClose>
+                                                        <div class="flex flex-col sm:flex-row gap-2">
+                                                            <Button 
+                                                                variant=ButtonVariant::Secondary
+                                                                class="w-full sm:w-auto font-medium"
+                                                                on:click=move |_| bulk_action("delete")
+                                                            >
+                                                                "Sadece Sil"
+                                                            </Button>
+                                                            <Button 
+                                                                variant=ButtonVariant::Destructive
+                                                                class="w-full sm:w-auto font-bold"
+                                                                on:click=move |_| bulk_action("delete_with_data")
+                                                            >
+                                                                "Verilerle Sil"
+                                                            </Button>
+                                                        </div>
                                                     </div>
-                                                </AlertDialogDescription>
-                                            </AlertDialogHeader>
-                                            <AlertDialogFooter class="mt-6">
-                                                <div class="flex flex-col-reverse sm:flex-row gap-3 w-full sm:justify-end">
-                                                    <AlertDialogClose class="sm:flex-1 md:flex-none">"Vazgeç"</AlertDialogClose>
-                                                    <div class="flex flex-col sm:flex-row gap-2">
-                                                        <Button 
-                                                            variant=ButtonVariant::Secondary
-                                                            class="w-full sm:w-auto font-medium"
-                                                            on:click=move |_| bulk_action("delete")
-                                                        >
-                                                            "Sadece Sil"
-                                                        </Button>
-                                                        <Button 
-                                                            variant=ButtonVariant::Destructive
-                                                            class="w-full sm:w-auto font-bold"
-                                                            on:click=move |_| bulk_action("delete_with_data")
-                                                        >
-                                                            "Verilerle Sil"
-                                                        </Button>
-                                                    </div>
-                                                </div>
-                                            </AlertDialogFooter>
+                                                </AlertDialogFooter>
+                                            </AlertDialogBody>
                                         </AlertDialogContent>
                                     </AlertDialog>
                                 </DropdownMenuGroup>

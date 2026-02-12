@@ -1,7 +1,7 @@
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use std::collections::HashSet;
-use icons::{ArrowUpDown, Inbox, Settings2, Play, Square, Trash2, Ellipsis};
+use icons::{ArrowUpDown, Inbox, Settings2, Play, Square, Trash2, Ellipsis, ArrowUp, ArrowDown, Check, ListFilter};
 use crate::store::{get_action_messages, show_toast};
 use crate::api;
 use shared::NotificationLevel;
@@ -281,6 +281,57 @@ pub fn TorrentTable() -> impl IntoView {
                         </DropdownMenu>
                     </Show>
 
+                    // Mobile Sort Menu
+                    <div class="block md:hidden">
+                        <DropdownMenu>
+                            <DropdownMenuTrigger class="w-[100px] h-9 gap-2 text-xs">
+                                <ListFilter class="size-4" />
+                                "Sırala"
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent class="w-56">
+                                <DropdownMenuLabel>"Sıralama Ölçütü"</DropdownMenuLabel>
+                                <DropdownMenuGroup class="mt-2">
+                                    {move || {
+                                        let current_col = sort_col.0.get();
+                                        let current_dir = sort_dir.0.get();
+                                        
+                                        let sort_items = vec![
+                                            (SortColumn::Name, "İsim"),
+                                            (SortColumn::Size, "Boyut"),
+                                            (SortColumn::Progress, "İlerleme"),
+                                            (SortColumn::Status, "Durum"),
+                                            (SortColumn::DownSpeed, "DL Hızı"),
+                                            (SortColumn::UpSpeed, "UP Hızı"),
+                                            (SortColumn::ETA, "Kalan Süre"),
+                                            (SortColumn::AddedDate, "Tarih"),
+                                        ];
+
+                                        sort_items.into_iter().map(|(col, label)| {
+                                            let is_active = current_col == col;
+                                            view! {
+                                                <DropdownMenuItem on:click=move |_| handle_sort(col)>
+                                                    <div class="flex items-center justify-between w-full">
+                                                        <div class="flex items-center gap-2">
+                                                            {if is_active { view! { <Check class="size-4 text-primary" /> }.into_any() } else { view! { <div class="size-4" /> }.into_any() }}
+                                                            <span class=if is_active { "font-bold text-primary" } else { "" }>{label}</span>
+                                                        </div>
+                                                        {if is_active {
+                                                            match current_dir {
+                                                                SortDirection::Ascending => view! { <ArrowUp class="size-3 opacity-50" /> }.into_any(),
+                                                                SortDirection::Descending => view! { <ArrowDown class="size-3 opacity-50" /> }.into_any(),
+                                                            }
+                                                        } else { view! { "" }.into_any() }}
+                                                    </div>
+                                                </DropdownMenuItem>
+                                            }.into_any()
+                                        }).collect_view()
+                                    }}
+                                </DropdownMenuGroup>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
+
+                    // Desktop Columns Menu
                     <MultiSelect values=visible_columns class="hidden md:flex">
                         <MultiSelectTrigger class="w-[140px] h-9">
                             <div class="flex items-center gap-2 text-xs">

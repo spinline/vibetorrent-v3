@@ -88,7 +88,25 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Cache-first strategy for static assets (JS, CSS, Images)
+  // Special strategy for WASM and Main JS to prevent Preload warnings
+  if (url.pathname.endsWith(".wasm") || (url.pathname.endsWith(".js") && url.pathname.includes("frontend-"))) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          const responseToCache = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
+          return response;
+        })
+        .catch(() => {
+          return caches.match(event.request);
+        }),
+    );
+    return;
+  }
+
+  // Cache-first strategy for other static assets (CSS, Images, etc.)
   event.respondWith(
     caches.match(event.request).then((response) => {
       return (

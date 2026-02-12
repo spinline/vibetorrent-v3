@@ -9,12 +9,13 @@ use crate::components::context_menu::TorrentContextMenu;
 use crate::components::ui::card::{Card, CardHeader, CardTitle, CardContent as CardBody};
 use crate::components::ui::data_table::*;
 use crate::components::ui::checkbox::Checkbox;
-use crate::components::ui::button::{Button, ButtonVariant, ButtonSize};
+use crate::components::ui::button::{Button, ButtonVariant};
 use crate::components::ui::empty::*;
 use crate::components::ui::input::Input;
 use crate::components::ui::multi_select::*;
 use crate::components::ui::dropdown_menu::*;
 use crate::components::ui::alert_dialog::*;
+use tailwind_fuse::tw_merge;
 
 const ALL_COLUMNS: [(&str, &str); 8] = [
     ("Name", "Name"),
@@ -332,28 +333,30 @@ pub fn TorrentTable() -> impl IntoView {
                     </div>
 
                     // Desktop Columns Menu
-                    <MultiSelect values=visible_columns class="hidden md:flex">
-                        <MultiSelectTrigger class="w-[140px] h-9">
-                            <div class="flex items-center gap-2 text-xs">
-                                <Settings2 class="size-4" />
-                                "Sütunlar"
-                            </div>
-                        </MultiSelectTrigger>
-                        <MultiSelectContent>
-                            <MultiSelectGroup>
-                                {ALL_COLUMNS.into_iter().map(|(id, label)| {
-                                    let id_val = id.to_string();
-                                    view! {
-                                        <MultiSelectItem>
-                                            <MultiSelectOption value=id_val.clone() attr:disabled=move || id_val == "Name">
-                                                {label}
-                                            </MultiSelectOption>
-                                        </MultiSelectItem>
-                                    }.into_any()
-                                }).collect_view()}
-                            </MultiSelectGroup>
-                        </MultiSelectContent>
-                    </MultiSelect>
+                    <div class="hidden md:flex">
+                        <MultiSelect values=visible_columns>
+                            <MultiSelectTrigger class="w-[140px] h-9">
+                                <div class="flex items-center gap-2 text-xs">
+                                    <Settings2 class="size-4" />
+                                    "Sütunlar"
+                                </div>
+                            </MultiSelectTrigger>
+                            <MultiSelectContent>
+                                <MultiSelectGroup>
+                                    {ALL_COLUMNS.into_iter().map(|(id, label)| {
+                                        let id_val = id.to_string();
+                                        view! {
+                                            <MultiSelectItem>
+                                                <MultiSelectOption value=id_val.clone() attr:disabled=move || id_val == "Name">
+                                                    {label}
+                                                </MultiSelectOption>
+                                            </MultiSelectItem>
+                                        }.into_any()
+                                    }).collect_view()}
+                                </MultiSelectGroup>
+                            </MultiSelectContent>
+                        </MultiSelect>
+                    </div>
                 </div>
             </div>
 

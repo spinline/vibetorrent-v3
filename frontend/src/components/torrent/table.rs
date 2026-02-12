@@ -281,7 +281,7 @@ pub fn TorrentTable() -> impl IntoView {
                         </DropdownMenu>
                     </Show>
 
-                    <MultiSelect values=visible_columns>
+                    <MultiSelect values=visible_columns class="hidden md:flex">
                         <MultiSelectTrigger class="w-[140px] h-9">
                             <div class="flex items-center gap-2 text-xs">
                                 <Settings2 class="size-4" />
@@ -310,6 +310,7 @@ pub fn TorrentTable() -> impl IntoView {
             <div class="flex-1 min-h-0 overflow-hidden">
                 // Desktop Table View
                 <DataTableWrapper class="hidden md:block h-full bg-card/50">
+                    // ... (Masaüstü tablosu aynı kalıyor)
                     <div class="h-full overflow-auto">
                         <DataTable>
                             <DataTableHeader class="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
@@ -429,7 +430,7 @@ pub fn TorrentTable() -> impl IntoView {
                 </DataTableWrapper>
 
                 // Mobile Card View
-                <div class="block md:hidden h-full overflow-y-auto space-y-3 pb-20">
+                <div class="block md:hidden h-full overflow-y-auto space-y-4 pb-32">
                      <Show
                         when=move || !filtered_hashes.get().is_empty()
                         fallback=move || view! {
@@ -442,7 +443,25 @@ pub fn TorrentTable() -> impl IntoView {
                         <For each=move || filtered_hashes.get() key=|hash| hash.clone() children={
                             let on_action = on_action.clone();
                             move |hash| {
-                                view! { <TorrentCard hash=hash.clone() on_action=on_action.clone() /> }
+                                let h = hash.clone();
+                                let is_selected = Signal::derive(move || {
+                                    selected_hashes.with(|selected| selected.contains(&h))
+                                });
+                                let h_for_change = hash.clone();
+                                
+                                view! { 
+                                    <TorrentCard 
+                                        hash=hash.clone() 
+                                        on_action=on_action.clone() 
+                                        is_selected=is_selected
+                                        on_select=Callback::new(move |checked| {
+                                            selected_hashes.update(|selected| {
+                                                if checked { selected.insert(h_for_change.clone()); }
+                                                else { selected.remove(&h_for_change); }
+                                            });
+                                        })
+                                    /> 
+                                }
                             }
                         } />
                     </Show>
@@ -587,6 +606,8 @@ fn TorrentRow(
 fn TorrentCard(
     hash: String,
     on_action: Callback<(String, String)>,
+    is_selected: Signal<bool>,
+    on_select: Callback<bool>,
 ) -> impl IntoView {
     let store = use_context::<crate::store::TorrentStore>().expect("store not provided");
     let h = hash.clone();
@@ -601,48 +622,73 @@ fn TorrentCard(
                 move || {
                     let t = torrent.get().unwrap();
                     let t_name = t.name.clone();
-                    let status_badge_class = match t.status { shared::TorrentStatus::Seeding => "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800", shared::TorrentStatus::Downloading => "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200 dark:border-blue-800", shared::TorrentStatus::Paused => "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800", shared::TorrentStatus::Error => "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800", _ => "bg-muted text-muted-foreground" };
+                    let status_badge_class = match t.status { 
+                        shared::TorrentStatus::Seeding => "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800", 
+                        shared::TorrentStatus::Downloading => "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200 dark:border-blue-800", 
+                        shared::TorrentStatus::Paused => "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800", 
+                        shared::TorrentStatus::Error => "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800", 
+                        _ => "bg-muted text-muted-foreground" 
+                    };
                     let h_for_menu = stored_hash.get_value();
 
                     view! {
                         <TorrentContextMenu torrent_hash=h_for_menu on_action=on_action.clone()>
                             <div
-                                class=move || {
-                                    let selected = store.selected_torrent.get();
-                                    let is_selected = selected.as_deref() == Some(stored_hash.get_value().as_str());
-                                    if is_selected {
-                                        "ring-2 ring-primary rounded-lg transition-all"
-                                    } else {
-                                        "transition-all"
+                                class=move || tw_merge!(
+                                    "rounded-lg transition-all duration-200 border cursor-pointer select-none overflow-hidden active:scale-[0.98]",
+                                    if is_selected.get() { 
+                                        "bg-primary/10 border-primary shadow-sm" 
+                                    } else { 
+                                        "bg-card border-border hover:border-primary/50" 
                                     }
+                                )
+                                on:click=move |_| {
+                                    let current = is_selected.get();
+                                    on_select.run(!current);
+                                    store.selected_torrent.set(Some(stored_hash.get_value()));
                                 }
-                                on:click=move |_| store.selected_torrent.set(Some(stored_hash.get_value()))
                             >
-                            <Card class="h-full select-none cursor-pointer hover:border-primary transition-colors">
-                                <CardHeader class="p-3 pb-0">
-                                    <div class="flex justify-between items-start gap-2">
-                                        <CardTitle class="text-sm font-medium leading-tight line-clamp-2">{t_name.clone()}</CardTitle>
-                                        <div class={format!("inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 {}", status_badge_class)}>{format!("{:?}", t.status)}</div>
-                                    </div>
-                                </CardHeader>
-                                <CardBody class="p-3 pt-2 gap-3 flex flex-col">
-                                    <div class="flex flex-col gap-1">
-                                        <div class="flex justify-between text-[10px] text-muted-foreground">
-                                            <span>{format_bytes(t.size)}</span>
-                                            <span>{format!("{:.1}%", t.percent_complete)}</span>
+                                <div class="p-4 space-y-3">
+                                    <div class="flex justify-between items-start gap-3">
+                                        <div class="flex-1 min-w-0">
+                                            <h3 class="text-sm font-bold leading-tight line-clamp-2 break-all">{t_name.clone()}</h3>
                                         </div>
-                                        <div class="h-1.5 w-full bg-secondary rounded-full overflow-hidden">
-                                            <div class="h-full bg-primary transition-all duration-500" style=format!("width: {}%", t.percent_complete)></div>
+                                        <div class={format!("shrink-0 inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider {}", status_badge_class)}>
+                                            {format!("{:?}", t.status)}
                                         </div>
                                     </div>
-                                    <div class="grid grid-cols-4 gap-2 text-[10px] font-mono text-muted-foreground pt-1 border-t border-border/50">
-                                        <div class="flex flex-col text-blue-600 dark:text-blue-500"><span>"DL"</span><span>{format_speed(t.down_rate)}</span></div>
-                                        <div class="flex flex-col text-green-600 dark:text-green-500"><span>"UP"</span><span>{format_speed(t.up_rate)}</span></div>
-                                        <div class="flex flex-col"><span>"ETA"</span><span>{format_duration(t.eta)}</span></div>
-                                        <div class="flex flex-col text-right"><span>"DATE"</span><span>{format_date(t.added_date)}</span></div>
+
+                                    <div class="space-y-1.5">
+                                        <div class="flex justify-between text-[10px] font-medium text-muted-foreground">
+                                            <span class="flex items-center gap-1">
+                                                <span class="opacity-70">"Boyut:"</span> {format_bytes(t.size)}
+                                            </span>
+                                            <span class="font-bold text-primary">{format!("{:.1}%", t.percent_complete)}</span>
+                                        </div>
+                                        <div class="h-2 w-full bg-secondary rounded-full overflow-hidden">
+                                            <div class="h-full bg-primary transition-all duration-500 ease-out" style=format!("width: {}%", t.percent_complete)></div>
+                                        </div>
                                     </div>
-                                </CardBody>
-                            </Card>
+
+                                    <div class="grid grid-cols-2 gap-y-2 gap-x-4 text-[10px] font-mono pt-2 border-t border-border/40">
+                                        <div class="flex flex-col gap-0.5">
+                                            <span class="text-muted-foreground uppercase text-[8px] tracking-tighter">"İndirme"</span>
+                                            <span class="text-blue-600 dark:text-blue-400 font-bold">{format_speed(t.down_rate)}</span>
+                                        </div>
+                                        <div class="flex flex-col gap-0.5">
+                                            <span class="text-muted-foreground uppercase text-[8px] tracking-tighter">"Gönderme"</span>
+                                            <span class="text-green-600 dark:text-green-400 font-bold">{format_speed(t.up_rate)}</span>
+                                        </div>
+                                        <div class="flex flex-col gap-0.5">
+                                            <span class="text-muted-foreground uppercase text-[8px] tracking-tighter">"Kalan Süre"</span>
+                                            <span class="text-foreground font-medium">{format_duration(t.eta)}</span>
+                                        </div>
+                                        <div class="flex flex-col gap-0.5 items-end text-right">
+                                            <span class="text-muted-foreground uppercase text-[8px] tracking-tighter">"Eklenme"</span>
+                                            <span class="text-foreground/70">{format_date(t.added_date)}</span>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </TorrentContextMenu>
                     }.into_any()

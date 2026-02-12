@@ -66,18 +66,11 @@ pub fn SonnerTrigger(
         _ => "bg-primary",
     };
 
-    // List Layout Logic (No stacking/overlapping)
+    // Simplified Style (No manual translateY needed with Flexbox)
     let style = move || {
-        let is_bottom = position.to_string().contains("Bottom");
-        let y_direction = if is_bottom { -1.0 } else { 1.0 };
-        
-        // Dynamic Y position based on index (index 0 is the newest/bottom-most in the view)
-        let y = index as f64 * 72.0; // Height (approx 64px) + Gap (8px)
-
         format!(
-            "z-index: {}; transform: translateY({}px); opacity: 1; transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;",
-            total - index,
-            y * y_direction
+            "z-index: {}; opacity: 1; transition: all 0.3s ease;",
+            total - index
         )
     };
 
@@ -105,9 +98,8 @@ pub fn SonnerTrigger(
     view! {
         <div
             class=move || tw_merge!(
-                "absolute transition-all duration-300 ease-in-out cursor-pointer pointer-events-auto overflow-hidden",
+                "relative transition-all duration-300 ease-in-out cursor-pointer pointer-events-auto",
                 "flex items-center gap-3 w-full max-w-[calc(100vw-2rem)] sm:max-w-[380px] p-4 rounded-lg border shadow-xl bg-card",
-                if position.to_string().contains("Bottom") { "bottom-0" } else { "top-0" },
                 variant_classes,
                 animation_class()
             )
@@ -150,7 +142,8 @@ pub fn provide_toaster() {
 pub fn Toaster(#[prop(default = SonnerPosition::default())] position: SonnerPosition) -> impl IntoView {
     let store = use_context::<ToasterStore>().expect("Toaster context not found");
     let toasts = store.toasts;
-    let is_hovered = RwSignal::new(false);
+
+    let is_bottom = position.to_string().contains("Bottom");
 
     let container_class = match position {
         SonnerPosition::TopLeft => "left-6 top-6 items-start",
@@ -175,17 +168,16 @@ pub fn Toaster(#[prop(default = SonnerPosition::default())] position: SonnerPosi
         </style>
         <div 
             class=tw_merge!(
-                "fixed z-[100] flex flex-col pointer-events-none min-h-[100px] w-full sm:w-[400px]",
+                "fixed z-[100] flex gap-3 pointer-events-none w-full sm:w-[400px]",
+                if is_bottom { "flex-col-reverse" } else { "flex-col" },
                 container_class,
                 "pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)] px-4 sm:px-0"
             )
-            on:mouseenter=move |_| is_hovered.set(true)
-            on:mouseleave=move |_| is_hovered.set(false)
         >
             <For
                 each=move || {
                     let list = toasts.get();
-                    list.into_iter().rev().enumerate().collect::<Vec<_>>()
+                    list.into_iter().enumerate().collect::<Vec<_>>()
                 }
                 key=|(_, toast)| toast.id
                 children=move |(index, toast)| {
@@ -199,7 +191,7 @@ pub fn Toaster(#[prop(default = SonnerPosition::default())] position: SonnerPosi
                             index=index
                             total=total
                             position=position
-                            is_expanded=is_hovered.into()
+                            is_expanded=Signal::derive(move || true)
                             on_dismiss=Callback::new(move |_| {
                                 is_exiting.set(true);
                                 leptos::task::spawn_local(async move {

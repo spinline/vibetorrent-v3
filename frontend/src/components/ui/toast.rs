@@ -170,9 +170,10 @@ pub fn Toaster(#[prop(default = SonnerPosition::default())] position: SonnerPosi
         <div 
             class=tw_merge!(
                 "fixed z-[100] flex gap-3 pointer-events-none w-full sm:w-[400px]",
+                "left-1/2 -translate-x-1/2 sm:left-auto sm:translate-x-0 px-4 sm:px-0", // Mobile centering fix
                 if is_bottom { "flex-col-reverse" } else { "flex-col" },
                 container_class,
-                "pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)] px-4 sm:px-0"
+                "pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]"
             )
         >
             <For

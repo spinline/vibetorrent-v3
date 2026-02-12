@@ -1259,6 +1259,7 @@ dependencies = [
  "gloo-console",
  "gloo-net",
  "gloo-timers",
+ "icons",
  "js-sys",
  "leptos",
  "leptos-use",
@@ -1271,7 +1272,7 @@ dependencies = [
  "serde_json",
  "shared",
  "struct-patch",
- "strum",
+ "strum 0.26.3",
  "tailwind_fuse",
  "thiserror 2.0.18",
  "tw_merge",
@@ -1862,6 +1863,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f31827a206f56af32e590ba56d5d2d085f558508192593743f16b2306495269f"
 dependencies = [
  "cc",
+]
+
+[[package]]
+name = "icons"
+version = "0.18.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "75da3d473e24e0b541bf28cf31e67b262c379a4cbc2149f4865b7d99406711dc"
+dependencies = [
+ "leptos",
+ "strum 0.27.2",
+ "tw_merge",
 ]
 
 [[package]]
@@ -4137,7 +4149,16 @@ version = "0.26.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8fec0f0aef304996cf250b31b5a10dee7980c85da9d759361292b8bca5a18f06"
 dependencies = [
- "strum_macros",
+ "strum_macros 0.26.4",
+]
+
+[[package]]
+name = "strum"
+version = "0.27.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "af23d6f6c1a224baef9d3f61e287d2761385a5b88fdab4eb4c6f11aeb54c4bcf"
+dependencies = [
+ "strum_macros 0.27.2",
 ]
 
 [[package]]
@@ -4150,6 +4171,18 @@ dependencies = [
  "proc-macro2",
  "quote",
  "rustversion",
+ "syn 2.0.114",
+]
+
+[[package]]
+name = "strum_macros"
+version = "0.27.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7695ce3845ea4b33927c055a39dc438a45b059f7c1b3d91d38d10355fb8cbca7"
+dependencies = [
+ "heck",
+ "proc-macro2",
+ "quote",
  "syn 2.0.114",
 ]
 

@@ -32,6 +32,7 @@ pub struct ToastData {
     pub description: Option<String>,
     pub variant: ToastType,
     pub duration: u64, // ms
+    pub is_exiting: RwSignal<bool>,
 }
 
 #[derive(Clone, Copy)]
@@ -72,13 +73,13 @@ pub fn SonnerTrigger(
         
         let (translate_y, scale, opacity) = if is_expanded.get() {
             // Expanded state: Full list layout
-            let y = index as f64 * 70.0; // height + gap
+            let y = index as f64 * 80.0; // Increased height + gap
             (y * y_direction, 1.0, 1.0)
         } else {
             // Stacked state: Sonner look
-            let y = index as f64 * 10.0; 
+            let y = index as f64 * 12.0; 
             let s = 1.0 - (index as f64 * 0.05);
-            let o = if index > 2 { 0.0 } else { 1.0 - (index as f64 * 0.2) };
+            let o = if index > 3 { 0.0 } else { 1.0 - (index as f64 * 0.1) };
             (y * y_direction, s, o)
         };
 
@@ -91,21 +92,35 @@ pub fn SonnerTrigger(
         )
     };
 
+    let animation_class = move || {
+        let pos = position.to_string();
+        let is_left = pos.contains("Left");
+        let is_exiting = toast.is_exiting.get();
+        
+        match (is_left, is_exiting) {
+            (true, false) => "animate-sonner-in-left",
+            (true, true) => "animate-sonner-out-left",
+            (false, false) => "animate-sonner-in-right",
+            (false, true) => "animate-sonner-out-right",
+        }
+    };
+
     let icon = match toast.variant {
-        ToastType::Success => Some(view! { <span class="icon font-bold">"✓"</span> }.into_any()),
-        ToastType::Error => Some(view! { <span class="icon font-bold">"✕"</span> }.into_any()),
-        ToastType::Warning => Some(view! { <span class="icon font-bold">"⚠"</span> }.into_any()),
-        ToastType::Info => Some(view! { <span class="icon font-bold">"ℹ"</span> }.into_any()),
+        ToastType::Success => Some(view! { <span class="icon font-bold text-lg">"✓"</span> }.into_any()),
+        ToastType::Error => Some(view! { <span class="icon font-bold text-lg">"✕"</span> }.into_any()),
+        ToastType::Warning => Some(view! { <span class="icon font-bold text-lg">"⚠"</span> }.into_any()),
+        ToastType::Info => Some(view! { <span class="icon font-bold text-lg">"ℹ"</span> }.into_any()),
         _ => None,
     };
 
     view! {
         <div
-            class=tw_merge!(
+            class=move || tw_merge!(
                 "absolute transition-all duration-300 ease-in-out cursor-pointer pointer-events-auto overflow-hidden",
-                "flex items-center gap-3 w-full max-w-[calc(100vw-2rem)] sm:max-w-[380px] p-4 rounded-lg border shadow-lg bg-card",
+                "flex items-center gap-3 w-full max-w-[calc(100vw-2rem)] sm:max-w-[380px] p-4 rounded-lg border shadow-xl bg-card",
                 if position.to_string().contains("Bottom") { "bottom-0" } else { "top-0" },
-                variant_classes
+                variant_classes,
+                animation_class()
             )
             style=style
             on:click=move |_| {
@@ -116,13 +131,13 @@ pub fn SonnerTrigger(
         >
             {icon}
             <div class="flex flex-col gap-0.5 overflow-hidden flex-1">
-                <div class="text-sm font-semibold truncate leading-tight">{toast.title}</div>
-                {move || toast.description.as_ref().map(|d| view! { <div class="text-xs opacity-70 truncate">{d.clone()}</div> })}
+                <div class="text-sm font-bold truncate leading-tight">{toast.title}</div>
+                {move || toast.description.as_ref().map(|d| view! { <div class="text-xs opacity-80 truncate">{d.clone()}</div> })}
             </div>
 
             // Progress Bar
             <div 
-                class=tw_merge!("absolute bottom-0 left-0 h-1 w-full opacity-20", bar_color)
+                class=tw_merge!("absolute bottom-0 left-0 h-1 w-full opacity-30", bar_color)
                 style=format!(
                     "animation: sonner-progress {}ms linear forwards; transform-origin: left;",
                     toast.duration
@@ -159,7 +174,15 @@ pub fn Toaster(#[prop(default = SonnerPosition::default())] position: SonnerPosi
 
     view! {
         <style>
-            "@keyframes sonner-progress { from { transform: scaleX(1); } to { transform: scaleX(0); } }"
+            "@keyframes sonner-progress { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+             @keyframes sonner-in-right { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+             @keyframes sonner-out-right { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100%); opacity: 0; } }
+             @keyframes sonner-in-left { from { transform: translateX(-100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+             @keyframes sonner-out-left { from { transform: translateX(0); opacity: 1; } to { transform: translateX(-100%); opacity: 0; } }
+             .animate-sonner-in-right { animation: sonner-in-right 0.3s ease-out forwards; }
+             .animate-sonner-out-right { animation: sonner-out-right 0.3s ease-in forwards; }
+             .animate-sonner-in-left { animation: sonner-in-left 0.3s ease-out forwards; }
+             .animate-sonner-out-left { animation: sonner-out-left 0.3s ease-in forwards; }"
         </style>
         <div 
             class=tw_merge!(
@@ -179,6 +202,7 @@ pub fn Toaster(#[prop(default = SonnerPosition::default())] position: SonnerPosi
                 children=move |(index, toast)| {
                     let id = toast.id;
                     let total = toasts.with(|t| t.len());
+                    let is_exiting = toast.is_exiting;
                     
                     view! {
                         <SonnerTrigger
@@ -188,7 +212,11 @@ pub fn Toaster(#[prop(default = SonnerPosition::default())] position: SonnerPosi
                             position=position
                             is_expanded=is_hovered.into()
                             on_dismiss=Callback::new(move |_| {
-                                toasts.update(|vec| vec.retain(|t| t.id != id));
+                                is_exiting.set(true);
+                                leptos::task::spawn_local(async move {
+                                    gloo_timers::future::TimeoutFuture::new(300).await;
+                                    toasts.update(|vec| vec.retain(|t| t.id != id));
+                                });
                             })
                         />
                     }
@@ -209,6 +237,7 @@ pub fn toast(title: impl Into<String>, variant: ToastType) {
             description: None,
             variant,
             duration: 4000,
+            is_exiting: RwSignal::new(false),
         };
         
         toasts.update(|t| {
@@ -219,8 +248,11 @@ pub fn toast(title: impl Into<String>, variant: ToastType) {
         });
 
         let duration = new_toast.duration;
+        let is_exiting = new_toast.is_exiting;
         leptos::task::spawn_local(async move {
             gloo_timers::future::TimeoutFuture::new(duration as u32).await;
+            is_exiting.set(true);
+            gloo_timers::future::TimeoutFuture::new(300).await;
             toasts.update(|vec| vec.retain(|t| t.id != id));
         });
     }

@@ -220,7 +220,7 @@ pub fn TorrentTable() -> impl IntoView {
                 <div class="flex items-center gap-2">
                     <Show when=move || has_selection.get()>
                         <DropdownMenu>
-                            <DropdownMenuTrigger class="gap-2 bg-secondary text-secondary-foreground border-none hover:bg-secondary/80">
+                            <DropdownMenuTrigger class="w-[140px] h-9 gap-2">
                                 <Ellipsis class="size-4" />
                                 {move || format!("Toplu İşlem ({})", selected_count.get())}
                             </DropdownMenuTrigger>

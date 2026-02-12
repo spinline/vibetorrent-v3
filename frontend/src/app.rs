@@ -131,51 +131,25 @@ fn InnerApp() -> impl IntoView {
                     view! { <Setup /> }
                 } />
 
-                <Route path=leptos_router::path!("/") view=move || {
-                    let navigate = use_navigate();
-                    Effect::new(move |_| {
-                        if !is_loading.0.get() {
-                            if needs_setup.0.get() {
-                                log::info!("Setup not completed, redirecting to setup");
-                                navigate("/setup", Default::default());
-                            } else if !is_authenticated.0.get() {
-                                log::info!("Not authenticated, redirecting to login");
-                                navigate("/login", Default::default());
+                    <Route path=leptos_router::path!("/") view=move || {
+                        let navigate = use_navigate();
+                        Effect::new(move |_| {
+                            if !is_loading.0.get() {
+                                if needs_setup.0.get() {
+                                    log::info!("Setup not completed, redirecting to setup");
+                                    navigate("/setup", Default::default());
+                                } else if !is_authenticated.0.get() {
+                                    log::info!("Not authenticated, redirecting to login");
+                                    navigate("/login", Default::default());
+                                }
                             }
-                        }
-                    });
-                    
-                    view! {
-                        <Show when=move || !is_loading.0.get() fallback=move || {
-                            let path = loc.pathname.get();
-                            if path == "/login" {
-                                // Login Skeleton
+                        });
+                        
+                        view! {
+                            <Show when=move || !is_loading.0.get() fallback=|| {
+                                // Standard 1: Always show Dashboard Skeleton
                                 view! {
-                                    <div class="flex items-center justify-center min-h-screen bg-muted/40 px-4">
-                                        <Card class="w-full max-w-sm shadow-lg border-none">
-                                            <CardHeader class="pb-2 items-center space-y-4">
-                                                <Skeleton class="w-12 h-12 rounded-xl" />
-                                                <Skeleton class="h-8 w-32" />
-                                                <Skeleton class="h-4 w-48" />
-                                            </CardHeader>
-                                            <CardContent class="pt-4 space-y-6">
-                                                <div class="space-y-2">
-                                                    <Skeleton class="h-4 w-24" />
-                                                    <Skeleton class="h-10 w-full" />
-                                                </div>
-                                                <div class="space-y-2">
-                                                    <Skeleton class="h-4 w-24" />
-                                                    <Skeleton class="h-10 w-full" />
-                                                </div>
-                                                <Skeleton class="h-10 w-full rounded-md mt-4" />
-                                            </CardContent>
-                                        </Card>
-                                    </div>
-                                }.into_any()
-                            } else {
-                                // Dashboard Skeleton
-                                view! {
-                                    <div class="flex h-screen bg-background">
+                                    <div class="flex h-screen bg-background text-foreground overflow-hidden">
                                         // Sidebar skeleton
                                         <div class="w-56 border-r border-border p-4 space-y-4">
                                             <Skeleton class="h-8 w-3/4" />
@@ -189,7 +163,7 @@ fn InnerApp() -> impl IntoView {
                                             </div>
                                         </div>
                                         // Main content skeleton
-                                        <div class="flex-1 flex flex-col">
+                                        <div class="flex-1 flex flex-col min-w-0">
                                             <div class="border-b border-border p-4 flex items-center gap-4">
                                                 <Skeleton class="h-8 w-48" />
                                                 <Skeleton class="h-8 w-64" />
@@ -209,20 +183,19 @@ fn InnerApp() -> impl IntoView {
                                         </div>
                                     </div>
                                 }.into_any()
-                            }
-                        }>
-                            <Show when=move || is_authenticated.0.get() fallback=|| ()>
-                                <Protected>
-                                    <div class="flex flex-col h-full overflow-hidden">
-                                        <div class="flex-1 overflow-hidden">
-                                            <TorrentTable />
+                            }>
+                                <Show when=move || is_authenticated.0.get() fallback=|| ()>
+                                    <Protected>
+                                        <div class="flex flex-col h-full overflow-hidden">
+                                            <div class="flex-1 overflow-hidden">
+                                                <TorrentTable />
+                                            </div>
                                         </div>
-                                    </div>
-                                </Protected>
+                                    </Protected>
+                                </Show>
                             </Show>
-                        </Show>
-                    }.into_any()
-                }/>
+                        }.into_any()
+                    }/>
 
                 <Route path=leptos_router::path!("/settings") view=move || {
                     let authenticated = is_authenticated.0.get();

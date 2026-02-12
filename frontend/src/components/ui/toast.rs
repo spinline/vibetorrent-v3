@@ -56,6 +56,14 @@ pub fn SonnerTrigger(
         ToastType::Loading => "bg-background text-foreground border-border",
     };
 
+    let bar_color = match toast.variant {
+        ToastType::Success => "bg-green-500",
+        ToastType::Error => "bg-destructive",
+        ToastType::Warning => "bg-yellow-500",
+        ToastType::Info => "bg-blue-500",
+        _ => "bg-primary",
+    };
+
     // Sonner Stacking Logic
     let inverse_index = index; 
     let offset = inverse_index as f64 * 12.0;
@@ -83,9 +91,21 @@ pub fn SonnerTrigger(
     };
 
     view! {
+        <style>
+            "
+            @keyframes sonner-progress {
+                from { transform: scaleX(1); }
+                to { transform: scaleX(0); }
+            }
+            .sonner-progress-bar {
+                animation: sonner-progress linear forwards;
+                transform-origin: left;
+            }
+            "
+        </style>
         <div
             class=tw_merge!(
-                "absolute transition-all duration-300 ease-in-out cursor-pointer pointer-events-auto",
+                "absolute transition-all duration-300 ease-in-out cursor-pointer pointer-events-auto overflow-hidden",
                 "flex items-center gap-3 w-full max-w-[calc(100vw-2rem)] sm:max-w-[380px] p-4 rounded-lg border shadow-lg bg-card",
                 if is_bottom { "bottom-0" } else { "top-0" },
                 variant_classes
@@ -98,10 +118,16 @@ pub fn SonnerTrigger(
             }
         >
             {icon}
-            <div class="flex flex-col gap-0.5 overflow-hidden">
+            <div class="flex flex-col gap-0.5 overflow-hidden flex-1">
                 <div class="text-sm font-semibold truncate leading-tight">{toast.title}</div>
                 {move || toast.description.as_ref().map(|d| view! { <div class="text-xs opacity-70 truncate">{d.clone()}</div> })}
             </div>
+
+            // Progress Bar
+            <div 
+                class=tw_merge!("absolute bottom-0 left-0 h-1 w-full sonner-progress-bar opacity-40", bar_color)
+                style=format!("animation-duration: {}ms;", toast.duration)
+            />
         </div>
     }.into_any()
 }
@@ -122,13 +148,13 @@ pub fn Toaster(#[prop(default = SonnerPosition::default())] position: SonnerPosi
     let toasts = store.toasts;
     let is_hovered = RwSignal::new(false);
 
-    let (container_class, mobile_class) = match position {
-        SonnerPosition::TopLeft => ("left-6 top-6 items-start", "left-4 top-4"),
-        SonnerPosition::TopRight => ("right-6 top-6 items-end", "right-4 top-4"),
-        SonnerPosition::TopCenter => ("left-1/2 -translate-x-1/2 top-6 items-center", "left-1/2 -translate-x-1/2 top-4"),
-        SonnerPosition::BottomCenter => ("left-1/2 -translate-x-1/2 bottom-6 items-center", "left-1/2 -translate-x-1/2 bottom-4"),
-        SonnerPosition::BottomLeft => ("left-6 bottom-6 items-start", "left-4 bottom-4"),
-        SonnerPosition::BottomRight => ("right-6 bottom-6 items-end", "right-4 bottom-4"),
+    let container_class = match position {
+        SonnerPosition::TopLeft => "left-6 top-6 items-start",
+        SonnerPosition::TopRight => ("right-6 top-6 items-end"),
+        SonnerPosition::TopCenter => ("left-1/2 -translate-x-1/2 top-6 items-center"),
+        SonnerPosition::BottomCenter => ("left-1/2 -translate-x-1/2 bottom-6 items-center"),
+        SonnerPosition::BottomLeft => ("left-6 bottom-6 items-start"),
+        SonnerPosition::BottomRight => ("right-6 bottom-6 items-end"),
     };
 
     view! {
@@ -136,7 +162,6 @@ pub fn Toaster(#[prop(default = SonnerPosition::default())] position: SonnerPosi
             class=tw_merge!(
                 "fixed z-[100] flex flex-col pointer-events-none min-h-[100px] w-full sm:w-[400px]",
                 container_class,
-                // Safe areas for mobile
                 "pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)] px-4 sm:px-0"
             )
             on:mouseenter=move |_| is_hovered.set(true)

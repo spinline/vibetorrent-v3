@@ -49,6 +49,7 @@ pub fn SonnerTrigger(
     is_expanded: Signal<bool>,
     #[prop(optional)] on_dismiss: Option<Callback<()>>,
 ) -> impl IntoView {
+    let _ = is_expanded; // Silence unused warning while keeping prop name intact for builder
     let variant_classes = match toast.variant {
         ToastType::Default => "bg-background text-foreground border-border",
         ToastType::Success => "bg-background text-foreground border-border [&_.icon]:text-green-500",

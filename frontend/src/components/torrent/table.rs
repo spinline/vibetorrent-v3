@@ -6,7 +6,6 @@ use crate::store::{get_action_messages, show_toast};
 use crate::api;
 use shared::NotificationLevel;
 use crate::components::context_menu::TorrentContextMenu;
-use crate::components::ui::card::{Card, CardHeader, CardTitle, CardContent as CardBody};
 use crate::components::ui::data_table::*;
 use crate::components::ui::checkbox::Checkbox;
 use crate::components::ui::badge::{Badge, BadgeVariant};

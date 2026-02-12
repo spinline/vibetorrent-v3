@@ -287,9 +287,10 @@ pub fn TorrentTable() -> impl IntoView {
                 </div>
             </div>
 
-            // --- MAIN TABLE ---
+            // --- MAIN CONTENT ---
             <div class="flex-1 min-h-0 overflow-hidden">
-                <DataTableWrapper class="h-full bg-card/50">
+                // Desktop Table View
+                <DataTableWrapper class="hidden md:block h-full bg-card/50">
                     <div class="h-full overflow-auto">
                         <DataTable>
                             <DataTableHeader class="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
@@ -305,49 +306,49 @@ pub fn TorrentTable() -> impl IntoView {
                                     </DataTableHead>
                                     
                                     {move || visible_columns.get().contains("Name").then(|| view! {
-                                        <DataTableHead class="cursor-pointer group select-none" on:click=move |_| handle_sort(SortColumn::Name)>
+                                        <DataTableHead class="cursor-pointer group select-none transition-all duration-100 active:scale-[0.98] hover:bg-muted/30 hover:text-foreground" on:click=move |_| handle_sort(SortColumn::Name)>
                                             <div class="flex items-center gap-2">"Name" {move || sort_icon(SortColumn::Name)}</div>
                                         </DataTableHead>
                                     }).into_any()}
                                     
                                     {move || visible_columns.get().contains("Size").then(|| view! {
-                                        <DataTableHead class="w-24 cursor-pointer group select-none" on:click=move |_| handle_sort(SortColumn::Size)>
+                                        <DataTableHead class="w-24 cursor-pointer group select-none transition-all duration-100 active:scale-[0.98] hover:bg-muted/30 hover:text-foreground" on:click=move |_| handle_sort(SortColumn::Size)>
                                             <div class="flex items-center gap-2">"Size" {move || sort_icon(SortColumn::Size)}</div>
                                         </DataTableHead>
                                     }).into_any()}
                                     
                                     {move || visible_columns.get().contains("Progress").then(|| view! {
-                                        <DataTableHead class="w-48 cursor-pointer group select-none" on:click=move |_| handle_sort(SortColumn::Progress)>
+                                        <DataTableHead class="w-48 cursor-pointer group select-none transition-all duration-100 active:scale-[0.98] hover:bg-muted/30 hover:text-foreground" on:click=move |_| handle_sort(SortColumn::Progress)>
                                             <div class="flex items-center gap-2">"Progress" {move || sort_icon(SortColumn::Progress)}</div>
                                         </DataTableHead>
                                     }).into_any()}
                                     
                                     {move || visible_columns.get().contains("Status").then(|| view! {
-                                        <DataTableHead class="w-24 cursor-pointer group select-none" on:click=move |_| handle_sort(SortColumn::Status)>
+                                        <DataTableHead class="w-24 cursor-pointer group select-none transition-all duration-100 active:scale-[0.98] hover:bg-muted/30 hover:text-foreground" on:click=move |_| handle_sort(SortColumn::Status)>
                                             <div class="flex items-center gap-2">"Status" {move || sort_icon(SortColumn::Status)}</div>
                                         </DataTableHead>
                                     }).into_any()}
                                     
                                     {move || visible_columns.get().contains("DownSpeed").then(|| view! {
-                                        <DataTableHead class="w-24 cursor-pointer group select-none text-right" on:click=move |_| handle_sort(SortColumn::DownSpeed)>
+                                        <DataTableHead class="w-24 cursor-pointer group select-none transition-all duration-100 active:scale-[0.98] hover:bg-muted/30 hover:text-foreground text-right" on:click=move |_| handle_sort(SortColumn::DownSpeed)>
                                             <div class="flex items-center justify-end gap-2">"DL Speed" {move || sort_icon(SortColumn::DownSpeed)}</div>
                                         </DataTableHead>
                                     }).into_any()}
                                     
                                     {move || visible_columns.get().contains("UpSpeed").then(|| view! {
-                                        <DataTableHead class="w-24 cursor-pointer group select-none text-right" on:click=move |_| handle_sort(SortColumn::UpSpeed)>
+                                        <DataTableHead class="w-24 cursor-pointer group select-none transition-all duration-100 active:scale-[0.98] hover:bg-muted/30 hover:text-foreground text-right" on:click=move |_| handle_sort(SortColumn::UpSpeed)>
                                             <div class="flex items-center justify-end gap-2">"UP Speed" {move || sort_icon(SortColumn::UpSpeed)}</div>
                                         </DataTableHead>
                                     }).into_any()}
                                     
                                     {move || visible_columns.get().contains("ETA").then(|| view! {
-                                        <DataTableHead class="w-24 cursor-pointer group select-none text-right" on:click=move |_| handle_sort(SortColumn::ETA)>
+                                        <DataTableHead class="w-24 cursor-pointer group select-none transition-all duration-100 active:scale-[0.98] hover:bg-muted/30 hover:text-foreground text-right" on:click=move |_| handle_sort(SortColumn::ETA)>
                                             <div class="flex items-center justify-end gap-2">"ETA" {move || sort_icon(SortColumn::ETA)}</div>
                                         </DataTableHead>
                                     }).into_any()}
                                     
                                     {move || visible_columns.get().contains("AddedDate").then(|| view! {
-                                        <DataTableHead class="w-32 cursor-pointer group select-none text-right" on:click=move |_| handle_sort(SortColumn::AddedDate)>
+                                        <DataTableHead class="w-32 cursor-pointer group select-none transition-all duration-100 active:scale-[0.98] hover:bg-muted/30 hover:text-foreground text-right" on:click=move |_| handle_sort(SortColumn::AddedDate)>
                                             <div class="flex items-center justify-end gap-2">"Date" {move || sort_icon(SortColumn::AddedDate)}</div>
                                         </DataTableHead>
                                     }).into_any()}
@@ -407,6 +408,26 @@ pub fn TorrentTable() -> impl IntoView {
                         </DataTable>
                     </div>
                 </DataTableWrapper>
+
+                // Mobile Card View
+                <div class="block md:hidden h-full overflow-y-auto space-y-3 pb-20">
+                     <Show
+                        when=move || !filtered_hashes.get().is_empty()
+                        fallback=move || view! {
+                            <div class="flex flex-col items-center justify-center h-64 opacity-50 text-muted-foreground">
+                                <Inbox class="size-12 mb-2" />
+                                <p>"Torrent Bulunamadı"</p>
+                            </div>
+                        }.into_any()
+                    >
+                        <For each=move || filtered_hashes.get() key=|hash| hash.clone() children={
+                            let on_action = on_action.clone();
+                            move |hash| {
+                                view! { <TorrentCard hash=hash.clone() on_action=on_action.clone() /> }
+                            }
+                        } />
+                    </Show>
+                </div>
             </div>
 
             <div class="hidden md:flex items-center justify-between px-2 py-1 text-[11px] text-muted-foreground bg-muted/20 border rounded-md">

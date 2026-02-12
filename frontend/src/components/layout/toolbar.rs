@@ -41,7 +41,7 @@ pub fn Toolbar() -> impl IntoView {
                         <span class="hidden sm:inline">"Add Torrent"</span>
                         <span class="sm:hidden">"Add"</span>
                     </DialogTrigger>
-                    <DialogContent id="add-torrent-dialog">
+                    <DialogContent id="add-torrent-dialog" class="sm:max-w-[425px]">
                         <AddTorrentDialogContent />
                     </DialogContent>
                 </Dialog>

@@ -256,23 +256,25 @@ pub fn TorrentTable() -> impl IntoView {
                                                     </div>
                                                 </AlertDialogDescription>
                                             </AlertDialogHeader>
-                                            <AlertDialogFooter class="gap-2 sm:gap-0">
-                                                <div class="flex flex-col sm:flex-row gap-2 w-full justify-end">
-                                                    <AlertDialogClose class="order-3 sm:order-1">"Vazgeç"</AlertDialogClose>
-                                                    <Button 
-                                                        variant=ButtonVariant::Outline
-                                                        class="order-2 text-foreground"
-                                                        on:click=move |_| bulk_action("delete")
-                                                    >
-                                                        "Sadece Listeden Sil"
-                                                    </Button>
-                                                    <Button 
-                                                        variant=ButtonVariant::Destructive
-                                                        class="order-1"
-                                                        on:click=move |_| bulk_action("delete_with_data")
-                                                    >
-                                                        "Verilerle Birlikte Sil"
-                                                    </Button>
+                                            <AlertDialogFooter>
+                                                <div class="flex flex-col-reverse sm:flex-row gap-2 w-full sm:justify-end mt-4 sm:mt-0">
+                                                    <AlertDialogClose class="w-full sm:w-auto">"Vazgeç"</AlertDialogClose>
+                                                    <div class="flex flex-col sm:flex-row gap-2">
+                                                        <Button 
+                                                            variant=ButtonVariant::Outline
+                                                            class="w-full sm:w-auto text-foreground"
+                                                            on:click=move |_| bulk_action("delete")
+                                                        >
+                                                            "Sadece Listeden Sil"
+                                                        </Button>
+                                                        <Button 
+                                                            variant=ButtonVariant::Destructive
+                                                            class="w-full sm:w-auto"
+                                                            on:click=move |_| bulk_action("delete_with_data")
+                                                        >
+                                                            "Verilerle Birlikte Sil"
+                                                        </Button>
+                                                    </div>
                                                 </div>
                                             </AlertDialogFooter>
                                         </AlertDialogContent>

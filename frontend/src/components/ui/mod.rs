@@ -1,3 +1,4 @@
+pub mod accordion;
 pub mod alert_dialog;
 pub mod button;
 pub mod card;
@@ -11,10 +12,9 @@ pub mod input;
 pub mod multi_select;
 pub mod select;
 pub mod separator;
+pub mod sheet;
+pub mod sidenav;
 pub mod svg_icon;
 pub mod table;
 pub mod theme_toggle;
 pub mod toast;
-pub mod sidenav;
-pub mod sheet;
-pub mod accordion;

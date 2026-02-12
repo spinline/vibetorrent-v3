@@ -1,13 +1,12 @@
 use crate::components::layout::protected::Protected;
 use crate::components::ui::skeleton::Skeleton;
-use crate::components::ui::card::{Card, CardHeader, CardContent};
 use crate::components::torrent::table::TorrentTable;
 use crate::components::auth::login::Login;
 use crate::components::auth::setup::Setup;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use leptos_router::components::{Router, Routes, Route};
-use leptos_router::hooks::{use_navigate, use_location};
+use leptos_router::hooks::use_navigate;
 use crate::components::ui::toast::Toaster;
 use crate::components::hooks::use_theme_mode::ThemeMode;
 
@@ -42,7 +41,6 @@ pub fn App() -> impl IntoView {
 fn InnerApp() -> impl IntoView {
     crate::store::provide_torrent_store();
     let store = use_context::<crate::store::TorrentStore>();
-    let loc = use_location();
 
     let is_loading = signal(true);
     let is_authenticated = signal(false);
@@ -131,71 +129,71 @@ fn InnerApp() -> impl IntoView {
                     view! { <Setup /> }
                 } />
 
-                    <Route path=leptos_router::path!("/") view=move || {
-                        let navigate = use_navigate();
-                        Effect::new(move |_| {
-                            if !is_loading.0.get() {
-                                if needs_setup.0.get() {
-                                    log::info!("Setup not completed, redirecting to setup");
-                                    navigate("/setup", Default::default());
-                                } else if !is_authenticated.0.get() {
-                                    log::info!("Not authenticated, redirecting to login");
-                                    navigate("/login", Default::default());
-                                }
+                <Route path=leptos_router::path!("/") view=move || {
+                    let navigate = use_navigate();
+                    Effect::new(move |_| {
+                        if !is_loading.0.get() {
+                            if needs_setup.0.get() {
+                                log::info!("Setup not completed, redirecting to setup");
+                                navigate("/setup", Default::default());
+                            } else if !is_authenticated.0.get() {
+                                log::info!("Not authenticated, redirecting to login");
+                                navigate("/login", Default::default());
                             }
-                        });
-                        
-                        view! {
-                            <Show when=move || !is_loading.0.get() fallback=|| {
-                                // Standard 1: Always show Dashboard Skeleton
-                                view! {
-                                    <div class="flex h-screen bg-background text-foreground overflow-hidden">
-                                        // Sidebar skeleton
-                                        <div class="w-56 border-r border-border p-4 space-y-4">
-                                            <Skeleton class="h-8 w-3/4" />
-                                            <div class="space-y-2">
-                                                <Skeleton class="h-6 w-full" />
-                                                <Skeleton class="h-6 w-full" />
-                                                <Skeleton class="h-6 w-4/5" />
-                                                <Skeleton class="h-6 w-full" />
-                                                <Skeleton class="h-6 w-3/5" />
-                                                <Skeleton class="h-6 w-full" />
-                                            </div>
-                                        </div>
-                                        // Main content skeleton
-                                        <div class="flex-1 flex flex-col min-w-0">
-                                            <div class="border-b border-border p-4 flex items-center gap-4">
-                                                <Skeleton class="h-8 w-48" />
-                                                <Skeleton class="h-8 w-64" />
-                                                <div class="ml-auto"><Skeleton class="h-8 w-24" /></div>
-                                            </div>
-                                            <div class="flex-1 p-4 space-y-3">
-                                                <Skeleton class="h-10 w-full" />
-                                                <Skeleton class="h-10 w-full" />
-                                                <Skeleton class="h-10 w-full" />
-                                                <Skeleton class="h-10 w-full" />
-                                                <Skeleton class="h-10 w-full" />
-                                                <Skeleton class="h-10 w-3/4" />
-                                            </div>
-                                            <div class="border-t border-border p-3">
-                                                <Skeleton class="h-5 w-96" />
-                                            </div>
+                        }
+                    });
+                    
+                    view! {
+                        <Show when=move || !is_loading.0.get() fallback=|| {
+                            // Standard 1: Always show Dashboard Skeleton
+                            view! {
+                                <div class="flex h-screen bg-background text-foreground overflow-hidden">
+                                    // Sidebar skeleton
+                                    <div class="w-56 border-r border-border p-4 space-y-4">
+                                        <Skeleton class="h-8 w-3/4" />
+                                        <div class="space-y-2">
+                                            <Skeleton class="h-6 w-full" />
+                                            <Skeleton class="h-6 w-full" />
+                                            <Skeleton class="h-6 w-4/5" />
+                                            <Skeleton class="h-6 w-full" />
+                                            <Skeleton class="h-6 w-3/5" />
+                                            <Skeleton class="h-6 w-full" />
                                         </div>
                                     </div>
-                                }.into_any()
-                            }>
-                                <Show when=move || is_authenticated.0.get() fallback=|| ()>
-                                    <Protected>
-                                        <div class="flex flex-col h-full overflow-hidden">
-                                            <div class="flex-1 overflow-hidden">
-                                                <TorrentTable />
-                                            </div>
+                                    // Main content skeleton
+                                    <div class="flex-1 flex flex-col min-w-0">
+                                        <div class="border-b border-border p-4 flex items-center gap-4">
+                                            <Skeleton class="h-8 w-48" />
+                                            <Skeleton class="h-8 w-64" />
+                                            <div class="ml-auto"><Skeleton class="h-8 w-24" /></div>
                                         </div>
-                                    </Protected>
-                                </Show>
+                                        <div class="flex-1 p-4 space-y-3">
+                                            <Skeleton class="h-10 w-full" />
+                                            <Skeleton class="h-10 w-full" />
+                                            <Skeleton class="h-10 w-full" />
+                                            <Skeleton class="h-10 w-full" />
+                                            <Skeleton class="h-10 w-full" />
+                                            <Skeleton class="h-10 w-3/4" />
+                                        </div>
+                                        <div class="border-t border-border p-3">
+                                            <Skeleton class="h-5 w-96" />
+                                        </div>
+                                    </div>
+                                </div>
+                            }.into_any()
+                        }>
+                            <Show when=move || is_authenticated.0.get() fallback=|| ()>
+                                <Protected>
+                                    <div class="flex flex-col h-full overflow-hidden">
+                                        <div class="flex-1 overflow-hidden">
+                                            <TorrentTable />
+                                        </div>
+                                    </div>
+                                </Protected>
                             </Show>
-                        }.into_any()
-                    }/>
+                        </Show>
+                    }.into_any()
+                }/>
 
                 <Route path=leptos_router::path!("/settings") view=move || {
                     let authenticated = is_authenticated.0.get();

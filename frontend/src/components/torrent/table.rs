@@ -261,7 +261,7 @@ pub fn TorrentTable() -> impl IntoView {
                                                     <AlertDialogClose class="sm:flex-1 md:flex-none">"Vazgeç"</AlertDialogClose>
                                                     <div class="flex flex-col sm:flex-row gap-2">
                                                         <Button 
-                                                            variant=BadgeVariant::Secondary.into()
+                                                            variant=ButtonVariant::Secondary
                                                             class="w-full sm:w-auto font-medium"
                                                             on:click=move |_| bulk_action("delete")
                                                         >

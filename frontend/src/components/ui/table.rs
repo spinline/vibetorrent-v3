@@ -33,7 +33,11 @@ pub fn TableRow(children: Children, #[prop(optional, into)] class: String) -> im
 
 #[component]
 pub fn TableHead(children: Children, #[prop(optional, into)] class: String) -> impl IntoView {
-    let class = tw_merge!("h-10 px-4 text-left align-middle font-medium text-muted-foreground whitespace-nowrap", class);
+    let class = tw_merge!(
+        "h-10 px-4 text-left align-middle font-medium text-muted-foreground whitespace-nowrap",
+        "transition-all duration-100 active:scale-[0.98] cursor-pointer select-none hover:bg-muted/30 hover:text-foreground",
+        class
+    );
     view! { <th class=class>{children()}</th> }
 }
 

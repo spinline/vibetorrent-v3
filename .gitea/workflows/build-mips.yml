@@ -22,12 +22,32 @@ jobs:
         git fetch --depth=1 origin ${{ gitea.sha }}
         git checkout FETCH_HEAD
 
+    - name: Cache Cargo
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-
+
+    - name: Cache Node Modules
+      uses: actions/cache@v3
+      with:
+        path: frontend/node_modules
+        key: ${{ runner.os }}-node-${{ hashFiles('frontend/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-node-
+
     - name: Build Frontend
       run: |
         cd frontend
         npm install
         npx @tailwindcss/cli -i input.css -o public/tailwind.css --minify --content './src/**/*.rs'
-        # Trunk'ın optimizasyonunu kapalı (0) tutuyoruz çünkü Cargo.toml'daki opt-level='z' zaten o işi yapıyor.
         trunk build --release
 
     - name: Build Backend (MIPS)

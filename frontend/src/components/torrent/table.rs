@@ -6,6 +6,7 @@ use crate::store::{get_action_messages, show_toast};
 use crate::api;
 use shared::NotificationLevel;
 use crate::components::context_menu::TorrentContextMenu;
+use crate::components::ui::card::{Card, CardHeader, CardTitle, CardContent as CardBody};
 use crate::components::ui::data_table::*;
 use crate::components::ui::checkbox::Checkbox;
 use crate::components::ui::badge::{Badge, BadgeVariant};
@@ -230,70 +231,78 @@ pub fn TorrentTable() -> impl IntoView {
 
                 <div class="flex items-center gap-2">
                     <Show when=move || has_selection.get()>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger class="w-[140px] h-9 gap-2">
-                                <Ellipsis class="size-4" />
-                                {move || format!("Toplu İşlem ({})", selected_count.get())}
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent class="w-48">
-                                <DropdownMenuLabel>"Seçili Torrentler"</DropdownMenuLabel>
-                                <DropdownMenuGroup class="mt-2">
-                                    <DropdownMenuItem on:click=move |_| bulk_action("start")>
-                                        <Play class="mr-2 size-4" /> "Başlat"
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem on:click=move |_| bulk_action("stop")>
-                                        <Square class="mr-2 size-4" /> "Durdur"
-                                    </DropdownMenuItem>
-                                    
-                                    <div class="my-1 h-px bg-border" />
-                                    
-                                    <AlertDialog>
-                                        <AlertDialogTrigger class="w-full text-left">
-                                            <div class="inline-flex gap-2 items-center w-full rounded-sm px-2 py-1.5 text-sm transition-colors text-destructive hover:bg-destructive/10 focus:bg-destructive/10 cursor-pointer">
-                                                <Trash2 class="size-4" /> "Toplu Sil..."
+                        <div class="flex items-center gap-2">
+                            <DropdownMenu>
+                                <DropdownMenuTrigger class="w-[140px] h-9 gap-2">
+                                    <Ellipsis class="size-4" />
+                                    {move || format!("Toplu İşlem ({})", selected_count.get())}
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent class="w-48">
+                                    <DropdownMenuLabel>"Seçili Torrentler"</DropdownMenuLabel>
+                                    <DropdownMenuGroup class="mt-2">
+                                        <DropdownMenuItem on:click=move |_| bulk_action("start")>
+                                            <Play class="mr-2 size-4" /> "Başlat"
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem on:click=move |_| bulk_action("stop")>
+                                            <Square class="mr-2 size-4" /> "Durdur"
+                                        </DropdownMenuItem>
+                                        
+                                        <div class="my-1 h-px bg-border" />
+                                        
+                                        // Trigger the hidden AlertDialog from this menu item
+                                        <DropdownMenuItem class="text-destructive focus:bg-destructive/10 cursor-pointer" on:click=move |_| {
+                                            if let Some(trigger) = document().get_element_by_id("bulk-delete-trigger") {
+                                                let _ = trigger.dyn_into::<web_sys::HtmlElement>().map(|el| el.click());
+                                            }
+                                        }>
+                                            <Trash2 class="mr-2 size-4" /> "Toplu Sil..."
+                                        </DropdownMenuItem>
+                                    </DropdownMenuGroup>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+
+                            // Hidden AlertDialog moved outside the DropdownMenuContent to ensure proper centering
+                            <AlertDialog>
+                                <AlertDialogTrigger id="bulk-delete-trigger" class="hidden" />
+                                <AlertDialogContent class="sm:max-w-[425px]">
+                                    <AlertDialogBody>
+                                        <AlertDialogHeader class="space-y-3">
+                                            <AlertDialogTitle class="text-destructive flex items-center gap-2 text-xl">
+                                                <Trash2 class="size-6" />
+                                                "Toplu Silme Onayı"
+                                            </AlertDialogTitle>
+                                            <AlertDialogDescription class="text-sm leading-relaxed text-left">
+                                                {move || format!("Seçili {} adet torrent silinecek. Lütfen silme yöntemini seçin:", selected_count.get())}
+                                                <div class="mt-4 p-4 bg-destructive/5 rounded-lg border border-destructive/10 text-xs text-destructive/80 font-medium">
+                                                    "⚠️ Dikkat: Verilerle birlikte silme işlemi dosyaları diskten de kalıcı olarak kaldıracaktır."
+                                                </div>
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter class="mt-6">
+                                            <div class="flex flex-col-reverse sm:flex-row gap-3 w-full sm:justify-end">
+                                                <AlertDialogClose class="sm:flex-1 md:flex-none">"Vazgeç"</AlertDialogClose>
+                                                <div class="flex flex-col sm:flex-row gap-2">
+                                                    <Button 
+                                                        variant=ButtonVariant::Secondary
+                                                        class="w-full sm:w-auto font-medium"
+                                                        on:click=move |_| bulk_action("delete")
+                                                    >
+                                                        "Sadece Sil"
+                                                    </Button>
+                                                    <Button 
+                                                        variant=ButtonVariant::Destructive
+                                                        class="w-full sm:w-auto font-bold"
+                                                        on:click=move |_| bulk_action("delete_with_data")
+                                                    >
+                                                        "Verilerle Sil"
+                                                    </Button>
+                                                </div>
                                             </div>
-                                        </AlertDialogTrigger>
-                                        <AlertDialogContent class="sm:max-w-[425px]">
-                                            <AlertDialogBody>
-                                                <AlertDialogHeader class="space-y-3">
-                                                    <AlertDialogTitle class="text-destructive flex items-center gap-2 text-xl">
-                                                        <Trash2 class="size-6" />
-                                                        "Toplu Silme Onayı"
-                                                    </AlertDialogTitle>
-                                                    <AlertDialogDescription class="text-sm leading-relaxed">
-                                                        {move || format!("Seçili {} adet torrent silinecek. Lütfen silme yöntemini seçin:", selected_count.get())}
-                                                        <div class="mt-4 p-4 bg-destructive/5 rounded-lg border border-destructive/10 text-xs text-destructive/80 font-medium">
-                                                            "⚠️ Dikkat: Verilerle birlikte silme işlemi dosyaları diskten de kalıcı olarak kaldıracaktır."
-                                                        </div>
-                                                    </AlertDialogDescription>
-                                                </AlertDialogHeader>
-                                                <AlertDialogFooter class="mt-6">
-                                                    <div class="flex flex-col-reverse sm:flex-row gap-3 w-full sm:justify-end">
-                                                        <AlertDialogClose class="sm:flex-1 md:flex-none">"Vazgeç"</AlertDialogClose>
-                                                        <div class="flex flex-col sm:flex-row gap-2">
-                                                            <Button 
-                                                                variant=ButtonVariant::Secondary
-                                                                class="w-full sm:w-auto font-medium"
-                                                                on:click=move |_| bulk_action("delete")
-                                                            >
-                                                                "Sadece Sil"
-                                                            </Button>
-                                                            <Button 
-                                                                variant=ButtonVariant::Destructive
-                                                                class="w-full sm:w-auto font-bold"
-                                                                on:click=move |_| bulk_action("delete_with_data")
-                                                            >
-                                                                "Verilerle Sil"
-                                                            </Button>
-                                                        </div>
-                                                    </div>
-                                                </AlertDialogFooter>
-                                            </AlertDialogBody>
-                                        </AlertDialogContent>
-                                    </AlertDialog>
-                                </DropdownMenuGroup>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                                        </AlertDialogFooter>
+                                    </AlertDialogBody>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        </div>
                     </Show>
 
                     // Mobile Sort Menu

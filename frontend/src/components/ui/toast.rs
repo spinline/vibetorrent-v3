@@ -45,6 +45,7 @@ pub fn SonnerTrigger(
     index: usize,
     total: usize,
     position: SonnerPosition,
+    is_expanded: Signal<bool>,
     #[prop(optional)] on_dismiss: Option<Callback<()>>,
 ) -> impl IntoView {
     let variant_classes = match toast.variant {
@@ -64,23 +65,31 @@ pub fn SonnerTrigger(
         _ => "bg-primary",
     };
 
-    // Sonner Stacking Logic
-    let inverse_index = index; 
-    let offset = inverse_index as f64 * 12.0;
-    let scale = 1.0 - (inverse_index as f64 * 0.05);
-    let opacity = if inverse_index > 2 { 0.0 } else { 1.0 - (inverse_index as f64 * 0.15) };
-    
-    let is_bottom = position.to_string().contains("Bottom");
-    let y_direction = if is_bottom { -1.0 } else { 1.0 };
-    let translate_y = offset * y_direction;
+    // Stacking & Expansion Logic
+    let style = move || {
+        let is_bottom = position.to_string().contains("Bottom");
+        let y_direction = if is_bottom { -1.0 } else { 1.0 };
+        
+        let (translate_y, scale, opacity) = if is_expanded.get() {
+            // Expanded state: Full list layout
+            let y = index as f64 * 70.0; // height + gap
+            (y * y_direction, 1.0, 1.0)
+        } else {
+            // Stacked state: Sonner look
+            let y = index as f64 * 10.0; 
+            let s = 1.0 - (index as f64 * 0.05);
+            let o = if index > 2 { 0.0 } else { 1.0 - (index as f64 * 0.2) };
+            (y * y_direction, s, o)
+        };
 
-    let style = format!(
-        "z-index: {}; transform: translateY({}px) scale({}); opacity: {};",
-        total - index,
-        translate_y,
-        scale,
-        opacity
-    );
+        format!(
+            "z-index: {}; transform: translateY({}px) scale({}); opacity: {};",
+            total - index,
+            translate_y,
+            scale,
+            opacity
+        )
+    };
 
     let icon = match toast.variant {
         ToastType::Success => Some(view! { <span class="icon font-bold">"✓"</span> }.into_any()),
@@ -91,23 +100,11 @@ pub fn SonnerTrigger(
     };
 
     view! {
-        <style>
-            "
-            @keyframes sonner-progress {
-                from { transform: scaleX(1); }
-                to { transform: scaleX(0); }
-            }
-            .sonner-progress-bar {
-                animation: sonner-progress linear forwards;
-                transform-origin: left;
-            }
-            "
-        </style>
         <div
             class=tw_merge!(
                 "absolute transition-all duration-300 ease-in-out cursor-pointer pointer-events-auto overflow-hidden",
                 "flex items-center gap-3 w-full max-w-[calc(100vw-2rem)] sm:max-w-[380px] p-4 rounded-lg border shadow-lg bg-card",
-                if is_bottom { "bottom-0" } else { "top-0" },
+                if position.to_string().contains("Bottom") { "bottom-0" } else { "top-0" },
                 variant_classes
             )
             style=style
@@ -125,8 +122,11 @@ pub fn SonnerTrigger(
 
             // Progress Bar
             <div 
-                class=tw_merge!("absolute bottom-0 left-0 h-1 w-full sonner-progress-bar opacity-40", bar_color)
-                style=format!("animation-duration: {}ms;", toast.duration)
+                class=tw_merge!("absolute bottom-0 left-0 h-1 w-full opacity-20", bar_color)
+                style=format!(
+                    "animation: sonner-progress {}ms linear forwards; transform-origin: left;",
+                    toast.duration
+                )
             />
         </div>
     }.into_any()
@@ -150,14 +150,17 @@ pub fn Toaster(#[prop(default = SonnerPosition::default())] position: SonnerPosi
 
     let container_class = match position {
         SonnerPosition::TopLeft => "left-6 top-6 items-start",
-        SonnerPosition::TopRight => ("right-6 top-6 items-end"),
-        SonnerPosition::TopCenter => ("left-1/2 -translate-x-1/2 top-6 items-center"),
-        SonnerPosition::BottomCenter => ("left-1/2 -translate-x-1/2 bottom-6 items-center"),
-        SonnerPosition::BottomLeft => ("left-6 bottom-6 items-start"),
-        SonnerPosition::BottomRight => ("right-6 bottom-6 items-end"),
+        SonnerPosition::TopRight => "right-6 top-6 items-end",
+        SonnerPosition::TopCenter => "left-1/2 -translate-x-1/2 top-6 items-center",
+        SonnerPosition::BottomCenter => "left-1/2 -translate-x-1/2 bottom-6 items-center",
+        SonnerPosition::BottomLeft => "left-6 bottom-6 items-start",
+        SonnerPosition::BottomRight => "right-6 bottom-6 items-end",
     };
 
     view! {
+        <style>
+            "@keyframes sonner-progress { from { transform: scaleX(1); } to { transform: scaleX(0); } }"
+        </style>
         <div 
             class=tw_merge!(
                 "fixed z-[100] flex flex-col pointer-events-none min-h-[100px] w-full sm:w-[400px]",
@@ -177,29 +180,17 @@ pub fn Toaster(#[prop(default = SonnerPosition::default())] position: SonnerPosi
                     let id = toast.id;
                     let total = toasts.with(|t| t.len());
                     
-                    let expanded_style = move || {
-                        if is_hovered.get() {
-                            let offset = index as f64 * 64.0;
-                            let is_bottom = position.to_string().contains("Bottom");
-                            let y_dir = if is_bottom { -1.0 } else { 1.0 };
-                            format!("transform: translateY({}px) scale(1); opacity: 1;", offset * y_dir)
-                        } else {
-                            "".to_string()
-                        }
-                    };
-
                     view! {
-                        <div class="contents" style=expanded_style>
-                            <SonnerTrigger
-                                toast=toast
-                                index=index
-                                total=total
-                                position=position
-                                on_dismiss=Callback::new(move |_| {
-                                    toasts.update(|vec| vec.retain(|t| t.id != id));
-                                })
-                            />
-                        </div>
+                        <SonnerTrigger
+                            toast=toast
+                            index=index
+                            total=total
+                            position=position
+                            is_expanded=is_hovered.into()
+                            on_dismiss=Callback::new(move |_| {
+                                toasts.update(|vec| vec.retain(|t| t.id != id));
+                            })
+                        />
                     }
                 }
             />

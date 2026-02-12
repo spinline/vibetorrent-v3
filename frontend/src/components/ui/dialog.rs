@@ -93,7 +93,7 @@ pub fn DialogContent(
     let backdrop_behavior = if close_on_backdrop_click { "auto" } else { "manual" };
 
     view! {
-        <script src="/hooks/lock_scroll.js"></script>
+        <script src="/lock_scroll.js"></script>
 
         <div
             data-name=backdrop_data_name

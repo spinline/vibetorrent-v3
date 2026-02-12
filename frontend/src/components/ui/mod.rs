@@ -11,7 +11,6 @@ pub mod input;
 pub mod multi_select;
 pub mod select;
 pub mod separator;
-pub mod sonner;
 pub mod svg_icon;
 pub mod table;
 pub mod theme_toggle;

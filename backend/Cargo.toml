@@ -47,3 +47,6 @@ governor = "0.10.4"
 leptos = { version = "0.8.15", features = ["nightly"] }
 leptos_axum = { version = "0.8.7" }
 jsonwebtoken = "9"
+tw_merge = { version = "0.1.17", features = ["variant"] }
+icons = { version = "0.18.0", features = ["leptos"] }
+leptos_ui = "0.3.20"

@@ -86,37 +86,23 @@ pub fn ContextMenuHoldAction(
     #[prop(default = 1000)] hold_duration: u64,
 ) -> impl IntoView {
     let is_holding = RwSignal::new(false);
-    let progress = RwSignal::new(0.0);
     
     let on_mousedown = move |_| {
         is_holding.set(true);
-        progress.set(0.0);
     };
     
     let on_mouseup = move |_| {
         is_holding.set(false);
-        progress.set(0.0);
     };
 
     Effect::new(move |_| {
         if is_holding.get() {
-            let start_time = js_sys::Date::now();
-            let duration = hold_duration as f64;
-            
             leptos::task::spawn_local(async move {
-                while is_holding.get_untracked() {
-                    let now = js_sys::Date::now();
-                    let elapsed = now - start_time;
-                    let p = (elapsed / duration).min(1.0);
-                    progress.set(p * 100.0);
-                    
-                    if p >= 1.0 {
-                        on_hold_complete.run(());
-                        is_holding.set(false);
-                        close_context_menu();
-                        break;
-                    }
-                    gloo_timers::future::TimeoutFuture::new(16).await; // ~60fps
+                gloo_timers::future::TimeoutFuture::new(hold_duration as u32).await;
+                if is_holding.get_untracked() {
+                    on_hold_complete.run(());
+                    is_holding.set(false);
+                    close_context_menu();
                 }
             });
         }
@@ -128,8 +114,18 @@ pub fn ContextMenuHoldAction(
     );
 
     view! {
+        <style>
+            "@keyframes hold-progress {
+                from { width: 0%; }
+                to { width: 100%; }
+            }
+            .animate-hold {
+                animation: hold-progress var(--hold-duration) linear forwards;
+            }"
+        </style>
         <div
             class=class
+            attr:style=format!("--hold-duration: {}ms", hold_duration)
             on:mousedown=on_mousedown
             on:mouseup=on_mouseup
             on:mouseleave=on_mouseup
@@ -137,10 +133,10 @@ pub fn ContextMenuHoldAction(
             on:touchend=move |_| on_mouseup(web_sys::MouseEvent::new("mouseup").unwrap())
         >
             // Progress background
-            <div 
-                class="absolute inset-y-0 left-0 bg-destructive/20 transition-all duration-75 ease-linear pointer-events-none"
-                style=move || format!("width: {}%;", progress.get())
-            />
+            <Show when=move || is_holding.get()>
+                <div class="absolute inset-y-0 left-0 bg-destructive/20 pointer-events-none animate-hold" />
+            </Show>
+            
             <span class="relative z-10 flex items-center gap-2 w-full">
                 {children()}
             </span>

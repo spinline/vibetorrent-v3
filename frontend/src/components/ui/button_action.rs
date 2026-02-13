@@ -11,16 +11,22 @@ pub fn ButtonAction(
     #[prop(default = ButtonVariant::Default)] variant: ButtonVariant,
 ) -> impl IntoView {
     let is_holding = RwSignal::new(false);
+    let generation = StoredValue::new(0u64);
     
-    // Explicitly define handlers to avoid type mismatches between Mouse and Touch events
-    let on_down = move |_| is_holding.set(true);
+    let on_down = move |_| {
+        generation.update_value(|g| *g += 1);
+        is_holding.set(true);
+    };
+    
     let on_up = move |_| is_holding.set(false);
 
     Effect::new(move |_| {
         if is_holding.get() {
+            let current_gen = generation.get_value();
             leptos::task::spawn_local(async move {
                 gloo_timers::future::TimeoutFuture::new(hold_duration as u32).await;
-                if is_holding.get_untracked() {
+                // Double validation: Is user still holding AND is it the SAME hold attempt?
+                if is_holding.get_untracked() && generation.get_value() == current_gen {
                     on_action.run(());
                     is_holding.set(false);
                 }

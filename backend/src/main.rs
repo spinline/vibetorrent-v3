@@ -314,7 +314,7 @@ async fn main() {
             let loop_interval = if active_clients > 0 {
                 Duration::from_secs(1)
             } else {
-                Duration::from_secs(30)
+                Duration::from_secs(60)
             };
 
             // 1. Fetch Torrents

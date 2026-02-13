@@ -544,14 +544,14 @@ pub fn TorrentTable() -> impl IntoView {
                 </div>
             </div>
 
-            <div class="hidden md:flex items-center justify-between px-2 py-1 text-[11px] text-muted-foreground bg-muted/20 border rounded-md">
-                <div class="flex gap-4">
+            <div class="flex items-center justify-between px-2 py-1.5 text-[10px] md:text-[11px] text-muted-foreground bg-muted/20 border rounded-md">
+                <div class="flex gap-3 md:gap-4">
                     <span>{move || format!("Toplam: {} torrent", filtered_hashes.get().len())}</span>
                     <Show when=move || has_selection.get()>
-                        <span class="text-primary font-medium">{move || format!("{} torrent seçili", selected_count.get())}</span>
+                        <span class="text-primary font-bold">{move || format!("{} seçili", selected_count.get())}</span>
                     </Show>
                 </div>
-                <div>"VibeTorrent v3"</div>
+                <div class="opacity-50">"VibeTorrent v3"</div>
             </div>
         </div>
     }.into_any()

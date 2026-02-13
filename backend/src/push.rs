@@ -192,10 +192,22 @@ pub async fn send_push_notification(
                                             }
                                             Err(e) => {
                                                 tracing::error!("Failed to send push notification to {}: {}", subscription.endpoint, e);
+                                                // If subscription is invalid/expired (Gone or Unauthorized), remove it
+                                                if format!("{:?}", e).contains("Unauthorized") || format!("{:?}", e).contains("Gone") {
+                                                    tracing::info!("Removing invalid subscription: {}", subscription.endpoint);
+                                                    let _ = store.remove_subscription(&subscription.endpoint).await;
+                                                }
                                             }
                                         }
                                     }
-                                    Err(e) => tracing::error!("Failed to build push message: {}", e),
+                                    Err(e) => {
+                                        tracing::error!("Failed to build push message: {}", e);
+                                        // Specific handling for encryption errors - often means invalid keys
+                                        if format!("{:?}", e).contains("encrypting") {
+                                            tracing::warn!("Encryption error for subscriber {}, removing suspect subscription", subscription.endpoint);
+                                            let _ = store.remove_subscription(&subscription.endpoint).await;
+                                        }
+                                    }
                                 }
                             }
                             Err(e) => tracing::error!("Failed to build VAPID signature: {}", e),

@@ -201,10 +201,11 @@ pub async fn send_push_notification(
                                         }
                                     }
                                     Err(e) => {
-                                        tracing::error!("Failed to build push message: {}", e);
-                                        // Specific handling for encryption errors - often means invalid keys
-                                        if format!("{:?}", e).contains("encrypting") {
-                                            tracing::warn!("Encryption error for subscriber {}, removing suspect subscription", subscription.endpoint);
+                                        let err_msg = format!("{:?}", e);
+                                        tracing::error!("Failed to build push message for {}: {}", subscription.endpoint, err_msg);
+                                        // Broaden error matching to catch various encryption and auth failures
+                                        if err_msg.contains("encrypting") || err_msg.contains("Vapid") || err_msg.contains("Unauthorized") {
+                                            tracing::warn!("Critical push error for subscriber {}, removing invalid subscription", subscription.endpoint);
                                             let _ = store.remove_subscription(&subscription.endpoint).await;
                                         }
                                     }

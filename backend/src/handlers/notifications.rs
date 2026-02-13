@@ -16,9 +16,15 @@ pub async fn torrent_finished_handler(
     State(state): State<AppState>,
     Query(params): Query<TorrentFinishedQuery>,
 ) -> StatusCode {
-    tracing::info!("Torrent finished notification received: {} ({})", params.name, params.hash);
+    tracing::info!("WEBHOOK: Received notification from rTorrent. Name: {:?}, Hash: {:?}", params.name, params.hash);
 
-    let message = format!("Torrent tamamlandı: {}", params.name);
+    let name = if params.name.is_empty() || params.name == "$d.name=" {
+        "Bilinmeyen Torrent".to_string()
+    } else {
+        params.name
+    };
+
+    let message = format!("Torrent tamamlandı: {}", name);
 
     // 1. Send to active SSE clients (for Toast)
     let notification = SystemNotification {

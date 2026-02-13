@@ -191,30 +191,20 @@ pub async fn send_push_notification(
                                                 tracing::debug!("Push notification sent to: {}", subscription.endpoint);
                                             }
                                             Err(e) => {
-                                                tracing::error!("Failed to send push notification to {}: {}", subscription.endpoint, e);
-                                                // If subscription is invalid/expired (Gone or Unauthorized), remove it
-                                                if format!("{:?}", e).contains("Unauthorized") || format!("{:?}", e).contains("Gone") {
-                                                    tracing::info!("Removing invalid subscription: {}", subscription.endpoint);
-                                                    let _ = store.remove_subscription(&subscription.endpoint).await;
-                                                }
+                                                let err_msg = format!("{:?}", e);
+                                                tracing::error!("Delivery failed for {}: {}", subscription.endpoint, err_msg);
+                                                // Always remove on delivery failure (Gone, Unauthorized, etc.)
+                                                tracing::info!("Removing problematic subscription after delivery failure: {}", subscription.endpoint);
+                                                let _ = store.remove_subscription(&subscription.endpoint).await;
                                             }
                                         }
                                     }
                                     Err(e) => {
-                                        let err_debug = format!("{:?}", e);
-                                        let err_display = format!("{}", e);
-                                        tracing::error!("Failed to build push message for {}: (Debug: {}) (Display: {})", subscription.endpoint, err_debug, err_display);
-                                        
-                                        // Broaden error matching to catch various encryption and auth failures
-                                        let is_critical_error = err_debug.to_lowercase().contains("encrypt") 
-                                            || err_debug.to_lowercase().contains("vapid") 
-                                            || err_debug.to_lowercase().contains("unauthorized")
-                                            || err_debug.to_lowercase().contains("unknown error");
-
-                                        if is_critical_error {
-                                            tracing::warn!("Critical push error detected, removing invalid subscription: {}", subscription.endpoint);
-                                            let _ = store.remove_subscription(&subscription.endpoint).await;
-                                        }
+                                        let err_msg = format!("{:?}", e);
+                                        tracing::error!("Encryption/Build failed for {}: {}", subscription.endpoint, err_msg);
+                                        // Always remove on encryption failure
+                                        tracing::info!("Removing problematic subscription after encryption failure: {}", subscription.endpoint);
+                                        let _ = store.remove_subscription(&subscription.endpoint).await;
                                     }
                                 }
                             }

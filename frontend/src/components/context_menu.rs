@@ -24,10 +24,16 @@ pub fn TorrentContextMenu(
                 {children()}
             </ContextMenuTrigger>
             <ContextMenuContent class="w-56 p-1.5">
-                <ContextMenuItem on:click={let h = hash_c1; move |_| on_action_stored.get_value().run(("start".to_string(), h.clone()))}>
+                <ContextMenuItem on:click={let h = hash_c1; move |_| {
+                    on_action_stored.get_value().run(("start".to_string(), h.clone()));
+                    crate::components::ui::context_menu::close_context_menu();
+                }}>
                     "Başlat"
                 </ContextMenuItem>
-                <ContextMenuItem on:click={let h = hash_c2; move |_| on_action_stored.get_value().run(("stop".to_string(), h.clone()))}>
+                <ContextMenuItem on:click={let h = hash_c2; move |_| {
+                    on_action_stored.get_value().run(("stop".to_string(), h.clone()));
+                    crate::components::ui::context_menu::close_context_menu();
+                }}>
                     "Durdur"
                 </ContextMenuItem>
                 

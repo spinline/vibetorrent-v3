@@ -33,9 +33,13 @@ pub async fn torrent_finished_handler(
         let push_store = state.push_store.clone();
         let title = "Torrent Tamamlandı".to_string();
         let body = message;
+        let torrent_name = params.name.clone();
+        
         tokio::spawn(async move {
-            if let Err(e) = crate::push::send_push_notification(&push_store, &title, &body).await {
-                tracing::error!("Failed to send push notification from webhook: {}", e);
+            tracing::info!("Attempting to send Web Push notification for torrent: {}", torrent_name);
+            match crate::push::send_push_notification(&push_store, &title, &body).await {
+                Ok(_) => tracing::info!("Web Push notification sent successfully for: {}", torrent_name),
+                Err(e) => tracing::error!("Failed to send Web Push notification for {}: {:?}", torrent_name, e),
             }
         });
     }

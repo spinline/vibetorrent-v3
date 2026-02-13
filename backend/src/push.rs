@@ -201,11 +201,18 @@ pub async fn send_push_notification(
                                         }
                                     }
                                     Err(e) => {
-                                        let err_msg = format!("{:?}", e);
-                                        tracing::error!("Failed to build push message for {}: {}", subscription.endpoint, err_msg);
+                                        let err_debug = format!("{:?}", e);
+                                        let err_display = format!("{}", e);
+                                        tracing::error!("Failed to build push message for {}: (Debug: {}) (Display: {})", subscription.endpoint, err_debug, err_display);
+                                        
                                         // Broaden error matching to catch various encryption and auth failures
-                                        if err_msg.contains("encrypting") || err_msg.contains("Vapid") || err_msg.contains("Unauthorized") {
-                                            tracing::warn!("Critical push error for subscriber {}, removing invalid subscription", subscription.endpoint);
+                                        let is_critical_error = err_debug.to_lowercase().contains("encrypt") 
+                                            || err_debug.to_lowercase().contains("vapid") 
+                                            || err_debug.to_lowercase().contains("unauthorized")
+                                            || err_debug.to_lowercase().contains("unknown error");
+
+                                        if is_critical_error {
+                                            tracing::warn!("Critical push error detected, removing invalid subscription: {}", subscription.endpoint);
                                             let _ = store.remove_subscription(&subscription.endpoint).await;
                                         }
                                     }

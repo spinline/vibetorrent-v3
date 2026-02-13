@@ -2,6 +2,9 @@
 members = ["backend", "frontend", "shared"]
 resolver = "2"
 
+[[workspace.metadata.leptos]]
+tailwind-input-file = "frontend/input.css"
+
 [profile.release]
 # En küçük binary boyutu
 opt-level = "z"

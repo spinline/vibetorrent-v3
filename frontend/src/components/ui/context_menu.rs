@@ -78,72 +78,6 @@ pub fn ContextMenuAction(
     }
 }
 
-#[component]
-pub fn ContextMenuHoldAction(
-    children: Children,
-    #[prop(into)] on_hold_complete: Callback<()>,
-    #[prop(optional, into)] class: String,
-    #[prop(default = 1000)] hold_duration: u64,
-) -> impl IntoView {
-    let is_holding = RwSignal::new(false);
-    
-    let on_mousedown = move |_| {
-        is_holding.set(true);
-    };
-    
-    let on_mouseup = move |_| {
-        is_holding.set(false);
-    };
-
-    Effect::new(move |_| {
-        if is_holding.get() {
-            leptos::task::spawn_local(async move {
-                gloo_timers::future::TimeoutFuture::new(hold_duration as u32).await;
-                if is_holding.get_untracked() {
-                    on_hold_complete.run(());
-                    is_holding.set(false);
-                    close_context_menu();
-                }
-            });
-        }
-    });
-
-    let class = tw_merge!(
-        "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors overflow-hidden",
-        class
-    );
-
-    view! {
-        <style>
-            "@keyframes hold-progress {
-                from { width: 0%; }
-                to { width: 100%; }
-            }
-            .animate-hold {
-                animation: hold-progress var(--hold-duration) linear forwards;
-            }"
-        </style>
-        <div
-            class=class
-            attr:style=format!("--hold-duration: {}ms", hold_duration)
-            on:mousedown=on_mousedown
-            on:mouseup=on_mouseup
-            on:mouseleave=on_mouseup
-            on:touchstart=move |_| on_mousedown(web_sys::MouseEvent::new("mousedown").unwrap())
-            on:touchend=move |_| on_mouseup(web_sys::MouseEvent::new("mouseup").unwrap())
-        >
-            // Progress background
-            <Show when=move || is_holding.get()>
-                <div class="absolute inset-y-0 left-0 bg-destructive/20 pointer-events-none animate-hold" />
-            </Show>
-            
-            <span class="relative z-10 flex items-center gap-2 w-full">
-                {children()}
-            </span>
-        </div>
-    }.into_any()
-}
-
 #[derive(Clone)]
 struct ContextMenuContext {
     target_id: String,
@@ -393,7 +327,7 @@ pub fn ContextMenuContent(
                 target_id_for_script,
             )}
         </script>
-    }.into_any()
+    }
 }
 
 #[component]

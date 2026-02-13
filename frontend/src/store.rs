@@ -162,7 +162,7 @@ pub async fn is_push_subscribed() -> Result<bool, String> {
         .dyn_into::<web_sys::ServiceWorkerRegistration>()
         .map_err(|_| "not a registration")?;
 
-    let push_manager = registration.push_manager();
+    let push_manager = registration.push_manager().map_err(|e| format!("{:?}", e))?;
     let subscription = wasm_bindgen_futures::JsFuture::from(push_manager.get_subscription().map_err(|e| format!("{:?}", e))?)
         .await
         .map_err(|e| format!("{:?}", e))?;
@@ -181,7 +181,8 @@ pub async fn subscribe_to_push_notifications() {
     };
 
     // 1. Get Public Key from Backend
-    let public_key = match shared::server_fns::push::get_push_public_key().await {
+    let public_key_res: Result<String, _> = shared::server_fns::push::get_public_key().await;
+    let public_key = match public_key_res {
         Ok(key) => key,
         Err(e) => { log::error!("Failed to get public key: {:?}", e); return; }
     };
@@ -192,25 +193,25 @@ pub async fn subscribe_to_push_notifications() {
 
     // 3. Prepare Options
     let mut options = web_sys::PushSubscriptionOptionsInit::new();
-    options.user_visible_only(true);
-    options.application_server_key(Some(&key_array.into()));
+    options.set_user_visible_only(true);
+    options.set_application_server_key(&key_array.into());
 
     // 4. Subscribe
-    let push_manager = registration.push_manager();
+    let push_manager = registration.push_manager().expect("no push manager");
     match wasm_bindgen_futures::JsFuture::from(push_manager.subscribe_with_options(&options).expect("subscribe failed")).await {
         Ok(subscription) => {
-            let sub = subscription.dyn_into::<web_sys::PushSubscription>().expect("not a sub");
-            let json = sub.to_json().expect("sub to json failed");
+            let sub_js = subscription.clone();
             
-            // Extract keys from JSON
-            let sub_obj: serde_json::Value = serde_wasm_bindgen::from_value(json).expect("serde from value failed");
+            // Use JS to extract JSON string representation
+            let json_str = js_sys::JSON::stringify(&sub_js).expect("stringify failed").as_string().expect("not a string");
+            let sub_obj: serde_json::Value = serde_json::from_str(&json_str).expect("serde from str failed");
             
             let endpoint = sub_obj["endpoint"].as_str().expect("no endpoint").to_string();
             let p256dh = sub_obj["keys"]["p256dh"].as_str().expect("no p256dh").to_string();
             let auth = sub_obj["keys"]["auth"].as_str().expect("no auth").to_string();
 
             // 5. Save to Backend
-            match shared::server_fns::push::save_push_subscription(endpoint, p256dh, auth).await {
+            match shared::server_fns::push::subscribe_push(endpoint, p256dh, auth).await {
                 Ok(_) => {
                     log::info!("Push subscription saved successfully");
                     toast_success("Bildirimler aktif edildi");
@@ -229,7 +230,7 @@ pub async fn unsubscribe_from_push_notifications() {
     let registration = wasm_bindgen_futures::JsFuture::from(sw_container.ready().expect("sw not ready")).await
         .unwrap().dyn_into::<web_sys::ServiceWorkerRegistration>().unwrap();
 
-    let push_manager = registration.push_manager();
+    let push_manager = registration.push_manager().unwrap();
     if let Ok(sub_future) = push_manager.get_subscription() {
         if let Ok(subscription) = wasm_bindgen_futures::JsFuture::from(sub_future).await {
             if !subscription.is_null() {
@@ -240,7 +241,7 @@ pub async fn unsubscribe_from_push_notifications() {
                 let _ = wasm_bindgen_futures::JsFuture::from(sub.unsubscribe().unwrap()).await;
                 
                 // 2. Remove from Backend
-                let _ = shared::server_fns::push::remove_push_subscription(endpoint).await;
+                let _ = shared::server_fns::push::unsubscribe_push(endpoint).await;
                 log::info!("Push subscription removed");
                 show_toast(NotificationLevel::Info, "Bildirimler kapatıldı");
             }

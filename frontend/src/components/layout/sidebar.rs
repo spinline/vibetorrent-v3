@@ -146,48 +146,50 @@ pub fn Sidebar() -> impl IntoView {
             </SidenavGroup>
         </SidenavContent>
 
-        <SidenavFooter class="p-4 space-y-4">
-            // Push Notification Toggle
-            <div class="flex items-center justify-between px-2 py-1 bg-muted/20 rounded-md border border-border/50">
-                <div class="flex flex-col gap-0.5">
-                    <span class="text-[10px] font-bold uppercase tracking-wider text-foreground/70">"Bildirimler"</span>
-                    <span class="text-[9px] text-muted-foreground">"Web Push"</span>
+        <SidenavFooter>
+            <div class="flex flex-col gap-4 p-4">
+                // Push Notification Toggle
+                <div class="flex items-center justify-between px-2 py-1 bg-muted/20 rounded-md border border-border/50">
+                    <div class="flex flex-col gap-0.5">
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-foreground/70">"Bildirimler"</span>
+                        <span class="text-[9px] text-muted-foreground">"Web Push"</span>
+                    </div>
+                    <Switch 
+                        checked=Signal::from(store.push_enabled) 
+                        on_checked_change=Callback::new(on_push_toggle)
+                    />
                 </div>
-                <Switch 
-                    checked=store.push_enabled.into() 
-                    on_checked_change=Callback::new(on_push_toggle)
-                />
-            </div>
 
-            <div class="flex items-center gap-3 p-2 rounded-lg border bg-muted/30 shadow-xs overflow-hidden">
-                <div class="h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-medium shrink-0 border border-primary-foreground/10">
-                    {first_letter}
-                </div>
-                <div class="flex-1 overflow-hidden">
-                    <div class="font-medium text-[11px] truncate text-foreground leading-tight">{username}</div>
-                    <div class="text-[9px] text-muted-foreground truncate opacity-70">"Yönetici"</div>
-                </div>
-                
-                <div class="flex items-center gap-1">
-                    <ThemeToggle />
+                <div class="flex items-center gap-3 p-2 rounded-lg border bg-muted/30 shadow-xs overflow-hidden">
+                    <div class="h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-medium shrink-0 border border-primary-foreground/10">
+                        {first_letter}
+                    </div>
+                    <div class="flex-1 overflow-hidden">
+                        <div class="font-medium text-[11px] truncate text-foreground leading-tight">{username}</div>
+                        <div class="text-[9px] text-muted-foreground truncate opacity-70">"Yönetici"</div>
+                    </div>
                     
-                    <Button
-                        variant=ButtonVariant::Ghost
-                        size=ButtonSize::Icon
-                        class="size-7 text-destructive hover:bg-destructive/10"
-                        on:click=move |_| {
-                            spawn_local(async move {
-                                if shared::server_fns::auth::logout().await.is_ok() {
-                                    let window = web_sys::window().expect("window should exist");
-                                    let _ = window.location().set_href("/login");
-                                }
-                            });
-                        }
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
-                        </svg>
-                    </Button>
+                    <div class="flex items-center gap-1">
+                        <ThemeToggle />
+                        
+                        <Button
+                            variant=ButtonVariant::Ghost
+                            size=ButtonSize::Icon
+                            class="size-7 text-destructive hover:bg-destructive/10"
+                            on:click=move |_| {
+                                spawn_local(async move {
+                                    if shared::server_fns::auth::logout().await.is_ok() {
+                                        let window = web_sys::window().expect("window should exist");
+                                        let _ = window.location().set_href("/login");
+                                    }
+                                });
+                            }
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
+                            </svg>
+                        </Button>
+                    </div>
                 </div>
             </div>
         </SidenavFooter>

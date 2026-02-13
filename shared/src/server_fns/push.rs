@@ -20,3 +20,13 @@ pub async fn subscribe_push(
         .await
         .map_err(|e| ServerFnError::new(format!("Failed to save subscription: {}", e)))
 }
+
+#[server(UnsubscribePush, "/api/server_fns")]
+pub async fn unsubscribe_push(endpoint: String) -> Result<(), ServerFnError> {
+    let db_ctx = expect_context::<crate::DbContext>();
+    db_ctx
+        .db
+        .remove_push_subscription(&endpoint)
+        .await
+        .map_err(|e| ServerFnError::new(format!("Failed to remove subscription: {}", e)))
+}

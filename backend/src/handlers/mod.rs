@@ -7,6 +7,7 @@ use rust_embed::RustEmbed;
 
 pub mod auth;
 pub mod setup;
+pub mod notifications;
 
 #[derive(RustEmbed)]
 #[folder = "../frontend/dist"]

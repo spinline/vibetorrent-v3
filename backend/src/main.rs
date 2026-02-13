@@ -60,6 +60,7 @@ async fn auth_middleware(
        || path.starts_with("/api/server_fns/get_setup_status")
        || path.starts_with("/api/server_fns/Setup")
        || path.starts_with("/api/server_fns/setup")
+       || path.starts_with("/api/internal/")
        || path.starts_with("/swagger-ui")
        || path.starts_with("/api-docs")
        || !path.starts_with("/api/") 
@@ -434,6 +435,7 @@ async fn main() {
     let db_for_ctx = db.clone();
     let app = app
         .route("/api/events", get(sse::sse_handler))
+        .route("/api/internal/torrent-finished", post(handlers::notifications::torrent_finished_handler))
         .route("/api/server_fns/{*fn_name}", post({
             let scgi_path = scgi_path_for_ctx.clone();
             let db = db_for_ctx.clone();

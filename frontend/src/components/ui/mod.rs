@@ -2,6 +2,7 @@ pub mod accordion;
 pub mod alert_dialog;
 pub mod badge;
 pub mod button;
+pub mod button_action;
 pub mod card;
 pub mod checkbox;
 pub mod context_menu;

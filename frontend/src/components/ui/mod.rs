@@ -17,6 +17,7 @@ pub mod sheet;
 pub mod sidenav;
 pub mod skeleton;
 pub mod svg_icon;
+pub mod switch;
 pub mod table;
 pub mod theme_toggle;
 pub mod toast;

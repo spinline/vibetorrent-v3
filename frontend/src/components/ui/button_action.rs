@@ -12,6 +12,7 @@ pub fn ButtonAction(
 ) -> impl IntoView {
     let is_holding = RwSignal::new(false);
     
+    // Explicitly define handlers to avoid type mismatches between Mouse and Touch events
     let on_down = move |_| is_holding.set(true);
     let on_up = move |_| is_holding.set(false);
 
@@ -50,7 +51,7 @@ pub fn ButtonAction(
             on:mouseup=on_up
             on:mouseleave=on_up
             on:touchstart=move |_| is_holding.set(true)
-            on:touchend=on_up
+            on:touchend=move |_| is_holding.set(false)
         >
             // Progress Overlay
             <Show when=move || is_holding.get()>

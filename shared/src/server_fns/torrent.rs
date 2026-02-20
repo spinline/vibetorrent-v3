@@ -225,20 +225,28 @@ pub async fn set_file_priority(
     let ctx = expect_context::<crate::ServerContext>();
     let client = RtorrentClient::new(&ctx.scgi_socket_path);
 
+    tracing::info!(
+        "set_file_priority: hash={}, file_index={}, priority={}",
+        hash, file_index, priority
+    );
+
+    // rTorrent f.set_priority takes: target = "HASH:fINDEX", value = priority
+    // The target format for file commands is "HASH:f0", "HASH:f1", etc.
     let target = format!("{}:f{}", hash, file_index);
     let params = vec![
         RpcParam::from(target.as_str()),
         RpcParam::from(priority as i64),
     ];
 
-    client
-        .call("f.set_priority", &params)
-        .await
-        .map_err(|e| ServerFnError::new(format!("RPC error: {}", e)))?;
+    let result = client.call("f.set_priority", &params).await;
+    tracing::info!("f.set_priority result: {:?}", result);
+    result.map_err(|e| ServerFnError::new(format!("RPC error setting priority: {}", e)))?;
 
-    let _ = client
+    // Notify rTorrent to update its internal priority state
+    let update_result = client
         .call("d.update_priorities", &[RpcParam::from(hash.as_str())])
         .await;
+    tracing::info!("d.update_priorities result: {:?}", update_result);
 
     Ok(())
 }

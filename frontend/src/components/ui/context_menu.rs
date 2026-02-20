@@ -139,7 +139,7 @@ pub fn ContextMenuTrigger(
             class=trigger_class
             data-name="ContextMenuTrigger"
             data-context-trigger=ctx.target_id
-            on:contextmenu=move |e: web_sys::MouseEvent| {
+            on:contextmenu=move |_e: web_sys::MouseEvent| {
                 if let Some(cb) = on_open {
                     cb.run(());
                 }

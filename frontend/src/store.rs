@@ -5,8 +5,7 @@ use leptos::task::spawn_local;
 use shared::{AppEvent, GlobalStats, NotificationLevel, Torrent};
 use std::collections::HashMap;
 use struct_patch::traits::Patch;
-use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD as BASE64_URL};
-use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
+use base64::{Engine as _, engine::general_purpose::{URL_SAFE_NO_PAD as BASE64_URL, STANDARD as BASE64}};
 use wasm_bindgen::JsCast;
 
 use crate::components::ui::toast::{ToastType, toast};
@@ -192,7 +191,7 @@ pub async fn subscribe_to_push_notifications() {
     let key_array = js_sys::Uint8Array::from(&decoded_key[..]);
 
     // 3. Prepare Options
-    let mut options = web_sys::PushSubscriptionOptionsInit::new();
+    let options = web_sys::PushSubscriptionOptionsInit::new();
     options.set_user_visible_only(true);
     options.set_application_server_key(&key_array.into());
 

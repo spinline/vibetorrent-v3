@@ -16,8 +16,6 @@ mod components {
     clx! {SheetFooter, footer, "flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"}
 }
 
-pub use components::*;
-
 /* ========================================================== */
 /*                     ✨ CONTEXT ✨                          */
 /* ========================================================== */

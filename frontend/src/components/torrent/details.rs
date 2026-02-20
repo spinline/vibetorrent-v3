@@ -106,10 +106,22 @@ pub fn TorrentDetailsSheet() -> impl IntoView {
                             </TabsContent>
 
                             <TabsContent value="files" class="h-full">
-                                <div class="flex flex-col items-center justify-center h-48 opacity-60">
-                                    <icons::File class="size-12 mb-3 text-muted-foreground" />
-                                    <p class="text-sm font-medium">"Dosya listesi yakında eklenecek"</p>
-                                </div>
+                                {move || {
+                                    if let Some(t) = selected_torrent.get() {
+                                        view! {
+                                            <div class="h-full overflow-y-auto pr-2 pb-8">
+                                                <crate::components::torrent::files::TorrentFilesTab hash=t.hash />
+                                            </div>
+                                        }.into_any()
+                                    } else {
+                                        view! {
+                                            <div class="flex flex-col items-center justify-center h-48 opacity-60">
+                                                <icons::File class="size-12 mb-3 text-muted-foreground" />
+                                                <p class="text-sm font-medium">"Dosya yükleniyor..."</p>
+                                            </div>
+                                        }.into_any()
+                                    }
+                                }}
                             </TabsContent>
 
                             <TabsContent value="trackers" class="h-full">

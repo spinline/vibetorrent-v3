@@ -88,7 +88,6 @@ pub fn TorrentFilesTab(hash: String) -> impl IntoView {
 #[component]
 fn FileRow(file: TorrentFile, hash: String, refresh_action: Action<String, Vec<TorrentFile>>) -> impl IntoView {
     let f_idx = file.index;
-    let context_id = format!("file-context-{}-{}", hash, f_idx);
     let path_clone = file.path.clone();
 
     let set_priority = Action::new(|req: &(String, u32, u8)| {

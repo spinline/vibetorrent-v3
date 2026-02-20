@@ -215,12 +215,20 @@ pub fn ContextMenuContent(
 
                             // Adjust if menu would go off right edge
                             if (x + menuRect.width > viewportWidth) {{
-                                left = x - menuRect.width;
+                                left = Math.max(0, x - menuRect.width);
                             }}
 
                             // Adjust if menu would go off bottom edge
                             if (y + menuRect.height > viewportHeight) {{
-                                top = y - menuRect.height;
+                                top = Math.max(0, y - menuRect.height);
+                            }}
+                            
+                            // Adjust for CSS transformed containing block
+                            const offsetParent = menu.offsetParent;
+                            if (offsetParent && offsetParent !== document.body && offsetParent !== document.documentElement) {{
+                                const parentRect = offsetParent.getBoundingClientRect();
+                                left -= parentRect.left;
+                                top -= parentRect.top;
                             }}
 
                             menu.style.left = `${{left}}px`;
@@ -228,105 +236,105 @@ pub fn ContextMenuContent(
                             menu.style.transformOrigin = 'top left';
                         }};
 
-                        const openMenu = (x, y) => {{
-                            isOpen = true;
+                            const openMenu = (x, y) => {{
+                                isOpen = true;
 
-                            // Close any other open context menus
-                            const allMenus = document.querySelectorAll('[data-target="target__context"]');
-                            allMenus.forEach(m => {{
-                                if (m !== menu && m.getAttribute('data-state') === 'open') {{
-                                    m.setAttribute('data-state', 'closed');
-                                    m.style.pointerEvents = 'none';
+                                // Close any other open context menus
+                                const allMenus = document.querySelectorAll('[data-target="target__context"]');
+                                allMenus.forEach(m => {{
+                                    if (m !== menu && m.getAttribute('data-state') === 'open') {{
+                                        m.setAttribute('data-state', 'closed');
+                                        m.style.pointerEvents = 'none';
+                                    }}
+                                }});
+
+                                menu.setAttribute('data-state', 'open');
+                                menu.style.visibility = 'hidden';
+                                menu.style.pointerEvents = 'auto';
+
+                                // Force reflow
+                                menu.offsetHeight;
+
+                                updatePosition(x, y);
+                                menu.style.visibility = 'visible';
+
+                                // Lock scroll
+                                if (window.ScrollLock) {{
+                                    window.ScrollLock.lock();
+                                }}
+
+                                setTimeout(() => {{
+                                    document.addEventListener('click', handleClickOutside);
+                                    document.addEventListener('contextmenu', handleContextOutside);
+                                }}, 0);
+                            }};
+
+                            const closeMenu = () => {{
+                                isOpen = false;
+                                menu.setAttribute('data-state', 'closed');
+                                menu.style.pointerEvents = 'none';
+                                document.removeEventListener('click', handleClickOutside);
+                                document.removeEventListener('contextmenu', handleContextOutside);
+
+                                // Dispatch custom event for Leptos to listen to
+                                menu.dispatchEvent(new CustomEvent('contextmenuclose', {{ bubbles: false }}));
+
+                                if (window.ScrollLock) {{
+                                    window.ScrollLock.unlock(200);
+                                }}
+                            }};
+
+                            const handleClickOutside = (e) => {{
+                                if (!menu.contains(e.target)) {{
+                                    closeMenu();
+                                }}
+                            }};
+
+                            const handleContextOutside = (e) => {{
+                                if (!trigger.contains(e.target)) {{
+                                    closeMenu();
+                                }}
+                            }};
+
+                            // Right-click on trigger
+                            trigger.addEventListener('contextmenu', (e) => {{
+                                e.preventDefault();
+                                e.stopPropagation();
+
+                                if (isOpen) {{
+                                    closeMenu();
+                                }}
+                                openMenu(e.clientX, e.clientY);
+                            }});
+
+                            // Close when action is clicked
+                            const actions = menu.querySelectorAll('[data-context-close]');
+                            actions.forEach(action => {{
+                                action.addEventListener('click', () => {{
+                                    closeMenu();
+                                }});
+                            }});
+
+                            // Handle ESC key
+                            document.addEventListener('keydown', (e) => {{
+                                if (e.key === 'Escape' && isOpen) {{
+                                    e.preventDefault();
+                                    closeMenu();
                                 }}
                             }});
-
-                            menu.setAttribute('data-state', 'open');
-                            menu.style.visibility = 'hidden';
-                            menu.style.pointerEvents = 'auto';
-
-                            // Force reflow
-                            menu.offsetHeight;
-
-                            updatePosition(x, y);
-                            menu.style.visibility = 'visible';
-
-                            // Lock scroll
-                            if (window.ScrollLock) {{
-                                window.ScrollLock.lock();
-                            }}
-
-                            setTimeout(() => {{
-                                document.addEventListener('click', handleClickOutside);
-                                document.addEventListener('contextmenu', handleContextOutside);
-                            }}, 0);
                         }};
 
-                        const closeMenu = () => {{
-                            isOpen = false;
-                            menu.setAttribute('data-state', 'closed');
-                            menu.style.pointerEvents = 'none';
-                            document.removeEventListener('click', handleClickOutside);
-                            document.removeEventListener('contextmenu', handleContextOutside);
-
-                            // Dispatch custom event for Leptos to listen to
-                            menu.dispatchEvent(new CustomEvent('contextmenuclose', {{ bubbles: false }}));
-
-                            if (window.ScrollLock) {{
-                                window.ScrollLock.unlock(200);
-                            }}
-                        }};
-
-                        const handleClickOutside = (e) => {{
-                            if (!menu.contains(e.target)) {{
-                                closeMenu();
-                            }}
-                        }};
-
-                        const handleContextOutside = (e) => {{
-                            if (!trigger.contains(e.target)) {{
-                                closeMenu();
-                            }}
-                        }};
-
-                        // Right-click on trigger
-                        trigger.addEventListener('contextmenu', (e) => {{
-                            e.preventDefault();
-                            e.stopPropagation();
-
-                            if (isOpen) {{
-                                closeMenu();
-                            }}
-                            openMenu(e.clientX, e.clientY);
-                        }});
-
-                        // Close when action is clicked
-                        const actions = menu.querySelectorAll('[data-context-close]');
-                        actions.forEach(action => {{
-                            action.addEventListener('click', () => {{
-                                closeMenu();
-                            }});
-                        }});
-
-                        // Handle ESC key
-                        document.addEventListener('keydown', (e) => {{
-                            if (e.key === 'Escape' && isOpen) {{
-                                e.preventDefault();
-                                closeMenu();
-                            }}
-                        }});
-                    }};
-
-                    if (document.readyState === 'loading') {{
-                        document.addEventListener('DOMContentLoaded', setupContextMenu);
-                    }} else {{
-                        setupContextMenu();
-                    }}
-                }})();
-                "#,
-                target_id_for_script,
-                target_id_for_script,
-            )}
-        </script>
+                        if (document.readyState === 'loading') {{
+                            document.addEventListener('DOMContentLoaded', setupContextMenu);
+                        }} else {{
+                            setupContextMenu();
+                        }}
+                    }})();
+                    "#,
+                    target_id_for_script,
+                    target_id_for_script,
+                )}
+            </script>
     }
 }
 

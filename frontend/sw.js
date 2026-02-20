@@ -1,4 +1,4 @@
-const CACHE_NAME = "vibetorrent-v2";
+const CACHE_NAME = "vibetorrent-v3";
 const ASSETS_TO_CACHE = [
   "/",
   "/index.html",
@@ -51,6 +51,11 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
 
+  // Skip unsupported schemes (like chrome-extension://)
+  if (!url.protocol.startsWith("http")) {
+    return;
+  }
+
   // Network-first strategy for API calls
   if (url.pathname.startsWith("/api/")) {
     event.respondWith(
@@ -75,10 +80,12 @@ self.addEventListener("fetch", (event) => {
       fetch(event.request)
         .then((response) => {
           // Cache the latest version of the HTML
-          const responseToCache = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
+          if (response && response.status === 200) {
+            const responseToCache = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseToCache);
+            });
+          }
           return response;
         })
         .catch(() => {

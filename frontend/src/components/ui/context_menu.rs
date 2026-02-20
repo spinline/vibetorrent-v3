@@ -296,7 +296,7 @@ pub fn ContextMenuContent(
                                 }}
                             }};
 
-                            // Right-click on trigger
+                            // Right-click on trigger (desktop)
                             trigger.addEventListener('contextmenu', (e) => {{
                                 e.preventDefault();
                                 e.stopPropagation();
@@ -305,6 +305,53 @@ pub fn ContextMenuContent(
                                     closeMenu();
                                 }}
                                 openMenu(e.clientX, e.clientY);
+                            }});
+
+                            // Long-press on trigger (mobile)
+                            let touchTimer = null;
+                            let touchStartX = 0;
+                            let touchStartY = 0;
+                            const LONG_PRESS_DURATION = 500;
+                            const MOVE_THRESHOLD = 10;
+
+                            trigger.addEventListener('touchstart', (e) => {{
+                                const touch = e.touches[0];
+                                touchStartX = touch.clientX;
+                                touchStartY = touch.clientY;
+
+                                touchTimer = setTimeout(() => {{
+                                    e.preventDefault();
+                                    if (isOpen) {{
+                                        closeMenu();
+                                    }}
+                                    openMenu(touchStartX, touchStartY);
+                                }}, LONG_PRESS_DURATION);
+                            }}, {{ passive: false }});
+
+                            trigger.addEventListener('touchmove', (e) => {{
+                                if (touchTimer) {{
+                                    const touch = e.touches[0];
+                                    const dx = Math.abs(touch.clientX - touchStartX);
+                                    const dy = Math.abs(touch.clientY - touchStartY);
+                                    if (dx > MOVE_THRESHOLD || dy > MOVE_THRESHOLD) {{
+                                        clearTimeout(touchTimer);
+                                        touchTimer = null;
+                                    }}
+                                }}
+                            }});
+
+                            trigger.addEventListener('touchend', () => {{
+                                if (touchTimer) {{
+                                    clearTimeout(touchTimer);
+                                    touchTimer = null;
+                                }}
+                            }});
+
+                            trigger.addEventListener('touchcancel', () => {{
+                                if (touchTimer) {{
+                                    clearTimeout(touchTimer);
+                                    touchTimer = null;
+                                }}
                             }});
 
                             // Close when action is clicked

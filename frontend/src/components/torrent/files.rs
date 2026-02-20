@@ -85,7 +85,10 @@ fn FileRow(file: TorrentFile, hash: String, on_refresh: Callback<()>) -> impl In
     let f_idx = file.index;
     let path_clone = file.path.clone();
 
-    let set_priority = Action::new(|req: &(String, u32, u8)| {
+    // on_refresh is called AFTER the server responds, not before
+    let on_refresh_stored = StoredValue::new(on_refresh);
+
+    let set_priority = Action::new(move |req: &(String, u32, u8)| {
         let (h, idx, p) = req.clone();
         async move {
             let res = shared::server_fns::torrent::set_file_priority(h, idx, p).await;
@@ -93,6 +96,8 @@ fn FileRow(file: TorrentFile, hash: String, on_refresh: Callback<()>) -> impl In
                 crate::store::show_toast(shared::NotificationLevel::Error, format!("Öncelik değiştirilemedi: {:?}", e));
             } else {
                 crate::store::show_toast(shared::NotificationLevel::Success, "Dosya önceliği güncellendi.".to_string());
+                // Refetch AFTER the server has saved the priority
+                on_refresh_stored.get_value().run(());
             }
             res
         }
@@ -102,7 +107,6 @@ fn FileRow(file: TorrentFile, hash: String, on_refresh: Callback<()>) -> impl In
         <FileContextMenu 
             torrent_hash=hash 
             file_index=f_idx 
-            on_refresh=on_refresh
             set_priority=set_priority
         >
             <TableRow class="hover:bg-muted/50 transition-colors group">
@@ -136,7 +140,6 @@ fn FileContextMenu(
     children: Children,
     torrent_hash: String,
     file_index: u32,
-    on_refresh: Callback<()>,
     set_priority: Action<(String, u32, u8), Result<(), ServerFnError>>,
 ) -> impl IntoView {
     let hash_c1 = torrent_hash.clone();
@@ -155,10 +158,8 @@ fn FileContextMenu(
                     <ContextMenuItem on:click={
                         let h = hash_c1;
                         let sp = set_priority.clone();
-                        let ra = on_refresh.clone();
                         move |_| {
                             sp.dispatch((h.clone(), file_index, 2));
-                            ra.run(());
                             crate::components::ui::context_menu::close_context_menu();
                         }
                     }>
@@ -169,10 +170,8 @@ fn FileContextMenu(
                     <ContextMenuItem on:click={
                         let h = hash_c2;
                         let sp = set_priority.clone();
-                        let ra = on_refresh.clone();
                         move |_| {
                             sp.dispatch((h.clone(), file_index, 1));
-                            ra.run(());
                             crate::components::ui::context_menu::close_context_menu();
                         }
                     }>
@@ -183,10 +182,8 @@ fn FileContextMenu(
                     <ContextMenuItem class="text-destructive focus:bg-destructive/10" on:click={
                         let h = hash_c3;
                         let sp = set_priority.clone();
-                        let ra = on_refresh.clone();
                         move |_| {
                             sp.dispatch((h.clone(), file_index, 0));
-                            ra.run(());
                             crate::components::ui::context_menu::close_context_menu();
                         }
                     }>

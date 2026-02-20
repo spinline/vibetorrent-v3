@@ -105,29 +105,39 @@ pub fn provide_torrent_store() {
                             }
 
                             if let Some(data_str) = msg.data().as_string() {
-                                if let Ok(bytes) = BASE64.decode(&data_str) {
-                                    if let Ok(event) = rmp_serde::from_slice::<AppEvent>(&bytes) {
-                                        match event {
-                                            AppEvent::FullList(list, _) => {
-                                                torrents_for_sse.update(|map| {
-                                                    let new_hashes: std::collections::HashSet<String> = list.iter().map(|t| t.hash.clone()).collect();
-                                                    map.retain(|hash, _| new_hashes.contains(hash));
-                                                    for new_torrent in list { map.insert(new_torrent.hash.clone(), new_torrent); }
-                                                });
-                                            }
-                                            AppEvent::Update(patch) => {
-                                                if let Some(hash) = patch.hash.clone() {
-                                                    torrents_for_sse.update(|map| { if let Some(t) = map.get_mut(&hash) { t.apply(patch); } });
+                                match BASE64.decode(&data_str) {
+                                    Ok(bytes) => {
+                                        match rmp_serde::from_slice::<AppEvent>(&bytes) {
+                                            Ok(event) => {
+                                                match event {
+                                                    AppEvent::FullList(list, _) => {
+                                                        torrents_for_sse.update(|map| {
+                                                            let new_hashes: std::collections::HashSet<String> = list.iter().map(|t| t.hash.clone()).collect();
+                                                            map.retain(|hash, _| new_hashes.contains(hash));
+                                                            for new_torrent in list { map.insert(new_torrent.hash.clone(), new_torrent); }
+                                                        });
+                                                    }
+                                                    AppEvent::Update(patch) => {
+                                                        if let Some(hash) = patch.hash.clone() {
+                                                            torrents_for_sse.update(|map| { if let Some(t) = map.get_mut(&hash) { t.apply(patch); } });
+                                                        }
+                                                    }
+                                                    AppEvent::Stats(stats) => { global_stats_for_sse.set(stats); }
+                                                    AppEvent::Notification(n) => {
+                                                        show_toast(n.level.clone(), n.message.clone());
+                                                        if n.message.contains("tamamlandı") || n.level == shared::NotificationLevel::Error {
+                                                            show_browser_notification("VibeTorrent", &n.message);
+                                                        }
+                                                    }
                                                 }
-                                            }
-                                            AppEvent::Stats(stats) => { global_stats_for_sse.set(stats); }
-                                            AppEvent::Notification(n) => {
-                                                show_toast(n.level.clone(), n.message.clone());
-                                                if n.message.contains("tamamlandı") || n.level == shared::NotificationLevel::Error {
-                                                    show_browser_notification("VibeTorrent", &n.message);
-                                                }
+                                            },
+                                            Err(e) => {
+                                                log::error!("[SSE] Failed to deserialize AppEvent: {:?}", e);
                                             }
                                         }
+                                    },
+                                    Err(e) => {
+                                        log::error!("[SSE] Failed to decode base64: {:?}", e);
                                     }
                                 }
                             }

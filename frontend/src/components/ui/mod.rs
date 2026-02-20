@@ -17,6 +17,7 @@ pub mod separator;
 pub mod sheet;
 pub mod sidenav;
 pub mod skeleton;
+pub mod shimmer;
 pub mod svg_icon;
 pub mod switch;
 pub mod table;

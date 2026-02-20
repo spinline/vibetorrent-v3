@@ -135,17 +135,17 @@ fn DetailsShimmer() -> impl IntoView {
         <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
             {(0..8).map(|_| view! {
                 <div class="flex flex-col gap-2">
-                    <Skeleton class="h-3 w-16" />
-                    <Skeleton class="h-5 w-24" />
+                    <crate::components::ui::shimmer::Shimmer class="h-3 w-16" />
+                    <crate::components::ui::shimmer::Shimmer class="h-5 w-24" />
                 </div>
             }).collect_view()}
             <div class="col-span-2 md:col-span-4 flex flex-col gap-2">
-                <Skeleton class="h-3 w-20" />
-                <Skeleton class="h-5 w-full max-w-md" />
+                <crate::components::ui::shimmer::Shimmer class="h-3 w-20" />
+                <crate::components::ui::shimmer::Shimmer class="h-5 w-full max-w-md" />
             </div>
             <div class="col-span-2 md:col-span-4 flex flex-col gap-2">
-                <Skeleton class="h-3 w-12" />
-                <Skeleton class="h-5 w-full max-w-sm" />
+                <crate::components::ui::shimmer::Shimmer class="h-3 w-12" />
+                <crate::components::ui::shimmer::Shimmer class="h-5 w-full max-w-sm" />
             </div>
         </div>
     }

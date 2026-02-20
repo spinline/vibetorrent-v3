@@ -553,6 +553,8 @@ pub fn TorrentTable() -> impl IntoView {
                 </div>
                 <div class="opacity-50">"VibeTorrent v3"</div>
             </div>
+            
+            <crate::components::torrent::details::TorrentDetailsSheet />
         </div>
     }.into_any()
 }

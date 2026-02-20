@@ -20,5 +20,6 @@ pub mod skeleton;
 pub mod svg_icon;
 pub mod switch;
 pub mod table;
+pub mod tabs;
 pub mod theme_toggle;
 pub mod toast;

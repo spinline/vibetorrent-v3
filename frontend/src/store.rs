@@ -88,10 +88,13 @@ pub fn provide_torrent_store() {
         let mut disconnect_notified = false;
 
         loop {
+            log::info!("[SSE] Attempting to connect to /api/events...");
             let es_result = EventSource::new("/api/events");
             match es_result {
                 Ok(mut es) => {
+                    log::info!("[SSE] EventSource instantiated successfully.");
                     if let Ok(mut stream) = es.subscribe("message") {
+                        log::info!("[SSE] Subscribed to 'message' events.");
                         let mut got_first_message = false;
                         while let Some(Ok((_, msg))) = stream.next().await {
                             if !got_first_message {
@@ -105,6 +108,7 @@ pub fn provide_torrent_store() {
                             }
 
                             if let Some(data_str) = msg.data().as_string() {
+                                log::info!("[SSE] Received message: {:?}", data_str.chars().take(50).collect::<String>());
                                 match BASE64.decode(&data_str) {
                                     Ok(bytes) => {
                                         match rmp_serde::from_slice::<AppEvent>(&bytes) {

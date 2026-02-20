@@ -597,10 +597,12 @@ fn TorrentRow(
                                 on:click=move |_| store.selected_torrent.set(Some(stored_hash.get_value()))
                             >
                                 <DataTableCell class="w-12 px-4">
-                                    <Checkbox 
-                                        checked=is_selected 
-                                        on_checked_change=on_select 
-                                    />
+                                    <div on:click=move |e| e.stop_propagation()>
+                                        <Checkbox 
+                                            checked=is_selected 
+                                            on_checked_change=on_select 
+                                        />
+                                    </div>
                                 </DataTableCell>
                                 
                                 {move || visible_columns.get().contains("Name").then({
@@ -730,17 +732,23 @@ fn TorrentCard(
                                     }
                                 )
                                 on:click=move |_| {
-                                    let current = is_selected.get();
-                                    on_select.run(!current);
                                     store.selected_torrent.set(Some(stored_hash.get_value()));
                                 }
                             >
                                 <div class="p-4 space-y-3">
                                     <div class="flex justify-between items-start gap-3">
-                                        <div class="flex-1 min-w-0">
-                                            <h3 class="text-sm font-bold leading-tight line-clamp-2 break-all">{t_name.clone()}</h3>
+                                        <div class="flex items-start gap-3 flex-1 min-w-0">
+                                            <div on:click=move |e| e.stop_propagation() class="mt-0.5">
+                                                <Checkbox 
+                                                    checked=is_selected 
+                                                    on_checked_change=on_select 
+                                                />
+                                            </div>
+                                            <div class="flex-1 min-w-0">
+                                                <h3 class="text-sm font-bold leading-tight line-clamp-2 break-all">{t_name.clone()}</h3>
+                                            </div>
                                         </div>
-                                        <Badge variant=status_variant class="uppercase tracking-wider text-[10px]">
+                                        <Badge variant=status_variant class="uppercase tracking-wider text-[10px] shrink-0">
                                             {format!("{:?}", t.status)}
                                         </Badge>
                                     </div>

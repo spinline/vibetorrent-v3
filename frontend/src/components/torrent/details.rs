@@ -132,22 +132,24 @@ fn InfoItem(
 #[component]
 fn DetailsShimmer() -> impl IntoView {
     view! {
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {(0..8).map(|_| view! {
-                <div class="flex flex-col gap-2">
-                    <crate::components::ui::shimmer::Shimmer class="h-3 w-16" />
-                    <crate::components::ui::shimmer::Shimmer class="h-5 w-24" />
+        <crate::components::ui::shimmer::Shimmer loading=Signal::derive(move || true)>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-6 pointer-events-none">
+                {(0..8).map(|_| view! {
+                    <div class="flex flex-col gap-2">
+                        <div class="h-3 w-16 bg-muted rounded-md" />
+                        <div class="h-5 w-24 bg-muted rounded-md" />
+                    </div>
+                }).collect_view()}
+                <div class="col-span-2 md:col-span-4 flex flex-col gap-2">
+                    <div class="h-3 w-20 bg-muted rounded-md" />
+                    <div class="h-5 w-full max-w-md bg-muted rounded-md" />
                 </div>
-            }).collect_view()}
-            <div class="col-span-2 md:col-span-4 flex flex-col gap-2">
-                <crate::components::ui::shimmer::Shimmer class="h-3 w-20" />
-                <crate::components::ui::shimmer::Shimmer class="h-5 w-full max-w-md" />
+                <div class="col-span-2 md:col-span-4 flex flex-col gap-2">
+                    <div class="h-3 w-12 bg-muted rounded-md" />
+                    <div class="h-5 w-full max-w-sm bg-muted rounded-md" />
+                </div>
             </div>
-            <div class="col-span-2 md:col-span-4 flex flex-col gap-2">
-                <crate::components::ui::shimmer::Shimmer class="h-3 w-12" />
-                <crate::components::ui::shimmer::Shimmer class="h-5 w-full max-w-sm" />
-            </div>
-        </div>
+        </crate::components::ui::shimmer::Shimmer>
     }
 }
 

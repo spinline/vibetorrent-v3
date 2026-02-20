@@ -233,7 +233,7 @@ pub async fn set_file_priority(
     ];
 
     client
-        .call("f.set_priority", &params)
+        .call("f.priority.set", &params)
         .await
         .map_err(|e| ServerFnError::new(format!("RPC error setting priority: {}", e)))?;
 

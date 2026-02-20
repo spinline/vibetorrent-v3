@@ -15,10 +15,9 @@ pub fn TorrentFilesTab(hash: String) -> impl IntoView {
         |h| async move { shared::server_fns::torrent::get_files(h).await.unwrap_or_default() }
     );
 
-    // Refresh action
-    let refresh_files = Action::new(|h: &String| {
-        let h = h.clone();
-        async move { shared::server_fns::torrent::get_files(h).await.unwrap_or_default() }
+    // Callback to trigger a refetch — safe, doesn't destroy existing components
+    let on_refresh = Callback::new(move |_: ()| {
+        files_resource.refetch();
     });
 
     let stored_hash = StoredValue::new(hash);
@@ -26,10 +25,7 @@ pub fn TorrentFilesTab(hash: String) -> impl IntoView {
     view! {
         <Suspense fallback=move || view! { <FilesFallback /> }>
             {move || {
-                let files = match refresh_files.value().get() {
-                    Some(f) => f,
-                    None => files_resource.get().unwrap_or_default(),
-                };
+                let files = files_resource.get().unwrap_or_default();
 
                 if files.is_empty() {
                     return view! {
@@ -61,12 +57,11 @@ pub fn TorrentFilesTab(hash: String) -> impl IntoView {
                                         key=|f| f.index
                                         children={move |f| {
                                             let p_hash = stored_hash.get_value();
-                                            let r_files = refresh_files.clone();
                                             view! {
                                                 <FileRow 
                                                     file=f 
                                                     hash=p_hash
-                                                    refresh_action=r_files
+                                                    on_refresh=on_refresh.clone()
                                                 />
                                             }
                                         }}
@@ -86,7 +81,7 @@ pub fn TorrentFilesTab(hash: String) -> impl IntoView {
 }
 
 #[component]
-fn FileRow(file: TorrentFile, hash: String, refresh_action: Action<String, Vec<TorrentFile>>) -> impl IntoView {
+fn FileRow(file: TorrentFile, hash: String, on_refresh: Callback<()>) -> impl IntoView {
     let f_idx = file.index;
     let path_clone = file.path.clone();
 
@@ -107,7 +102,7 @@ fn FileRow(file: TorrentFile, hash: String, refresh_action: Action<String, Vec<T
         <FileContextMenu 
             torrent_hash=hash 
             file_index=f_idx 
-            refresh_action=refresh_action 
+            on_refresh=on_refresh
             set_priority=set_priority
         >
             <TableRow class="hover:bg-muted/50 transition-colors group">
@@ -141,7 +136,7 @@ fn FileContextMenu(
     children: Children,
     torrent_hash: String,
     file_index: u32,
-    refresh_action: Action<String, Vec<TorrentFile>>,
+    on_refresh: Callback<()>,
     set_priority: Action<(String, u32, u8), Result<(), ServerFnError>>,
 ) -> impl IntoView {
     let hash_c1 = torrent_hash.clone();
@@ -159,11 +154,11 @@ fn FileContextMenu(
                 <ContextMenuGroup>
                     <ContextMenuItem on:click={
                         let h = hash_c1;
-                        let ra = refresh_action.clone();
                         let sp = set_priority.clone();
+                        let ra = on_refresh.clone();
                         move |_| {
                             sp.dispatch((h.clone(), file_index, 2));
-                            ra.dispatch(h.clone());
+                            ra.run(());
                             crate::components::ui::context_menu::close_context_menu();
                         }
                     }>
@@ -173,11 +168,11 @@ fn FileContextMenu(
                     
                     <ContextMenuItem on:click={
                         let h = hash_c2;
-                        let ra = refresh_action.clone();
                         let sp = set_priority.clone();
+                        let ra = on_refresh.clone();
                         move |_| {
                             sp.dispatch((h.clone(), file_index, 1));
-                            ra.dispatch(h.clone());
+                            ra.run(());
                             crate::components::ui::context_menu::close_context_menu();
                         }
                     }>
@@ -187,11 +182,11 @@ fn FileContextMenu(
                     
                     <ContextMenuItem class="text-destructive focus:bg-destructive/10" on:click={
                         let h = hash_c3;
-                        let ra = refresh_action.clone();
                         let sp = set_priority.clone();
+                        let ra = on_refresh.clone();
                         move |_| {
                             sp.dispatch((h.clone(), file_index, 0));
-                            ra.dispatch(h.clone());
+                            ra.run(());
                             crate::components::ui::context_menu::close_context_menu();
                         }
                     }>

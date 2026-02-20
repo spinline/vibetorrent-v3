@@ -106,24 +106,19 @@ pub fn TorrentDetailsSheet() -> impl IntoView {
                             </TabsContent>
 
                             <TabsContent value="files" class="h-full">
-                                <Show 
-                                    when=move || selected_torrent.get().is_some() 
-                                    fallback=move || view! {
+                                {move || match selected_torrent.get() {
+                                    Some(t) => leptos::either::Either::Left(view! {
+                                        <div class="h-full overflow-y-auto pr-2 pb-8">
+                                            <crate::components::torrent::files::TorrentFilesTab hash=t.hash />
+                                        </div>
+                                    }),
+                                    None => leptos::either::Either::Right(view! {
                                         <div class="flex flex-col items-center justify-center h-48 opacity-60">
                                             <icons::File class="size-12 mb-3 text-muted-foreground" />
                                             <p class="text-sm font-medium">"Dosya yükleniyor..."</p>
                                         </div>
-                                    }
-                                >
-                                    {move || {
-                                        let t = selected_torrent.get().unwrap();
-                                        view! {
-                                            <div class="h-full overflow-y-auto pr-2 pb-8">
-                                                <crate::components::torrent::files::TorrentFilesTab hash=t.hash />
-                                            </div>
-                                        }
-                                    }}
-                                </Show>
+                                    }),
+                                }}
                             </TabsContent>
 
                             <TabsContent value="trackers" class="h-full">

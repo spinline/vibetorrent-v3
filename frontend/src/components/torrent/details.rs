@@ -35,13 +35,13 @@ pub fn TorrentDetailsSheet() -> impl IntoView {
                     <div class="flex flex-col gap-1 min-w-0">
                         <Show when=move || selected_torrent.get().is_some() fallback=move || view! { <Skeleton class="h-6 w-48" /> }>
                             <h2 class="font-bold text-lg truncate">
-                                {move || selected_torrent.get().unwrap().name}
+                                {move || selected_torrent.get().map(|t| t.name).unwrap_or_default()}
                             </h2>
                         </Show>
                         <Show when=move || selected_torrent.get().is_some() fallback=move || view! { <Skeleton class="h-4 w-24" /> }>
                             <p class="text-xs text-muted-foreground uppercase tracking-widest font-semibold flex items-center gap-2">
-                                {move || format!("{:?}", selected_torrent.get().unwrap().status)}
-                                <span class="bg-primary/20 text-primary px-1.5 py-0.5 rounded text-[10px] lowercase">{move || format!("{:.1}%", selected_torrent.get().unwrap().percent_complete)}</span>
+                                {move || selected_torrent.get().map(|t| format!("{:?}", t.status)).unwrap_or_default()}
+                                <span class="bg-primary/20 text-primary px-1.5 py-0.5 rounded text-[10px] lowercase">{move || selected_torrent.get().map(|t| format!("{:.1}%", t.percent_complete)).unwrap_or_default()}</span>
                             </p>
                         </Show>
                     </div>

@@ -5,3 +5,4 @@ pub mod torrent;
 pub mod auth;
 // pub mod toast; (Removed)
 pub mod ui;
+pub mod demos;

@@ -243,12 +243,14 @@ async fn main() {
     let socket_path = std::path::Path::new(&args.socket);
     if !socket_path.exists() {
         tracing::error!("CRITICAL: rTorrent socket not found at {:?}.", socket_path);
-        tracing::warn!(
+        tracing::error!(
             "HINT: Make sure rTorrent is running and the SCGI socket is enabled in .rtorrent.rc"
         );
-        tracing::warn!(
+        tracing::error!(
             "HINT: You can configure the socket path via --socket ARG or RTORRENT_SOCKET ENV."
         );
+        tracing::error!("FATAL: VibeTorrent cannot start without a running rTorrent instance. Exiting.");
+        std::process::exit(1);
     } else {
         tracing::info!("Socket file exists. Testing connection...");
         let client = xmlrpc::RtorrentClient::new(&args.socket);
@@ -259,7 +261,11 @@ async fn main() {
                 let version = xmlrpc::parse_string_response(&xml).unwrap_or(xml);
                 tracing::info!("Connected to rTorrent successfully. Version: {}", version);
             }
-            Err(e) => tracing::error!("Socket exists but failed to connect to rTorrent: {}", e),
+            Err(e) => {
+                tracing::error!("CRITICAL: Socket exists but failed to connect to rTorrent: {}", e);
+                tracing::error!("FATAL: Ensure rTorrent is fully started and the socket has correct permissions. Exiting.");
+                std::process::exit(1);
+            }
         }
     }
 

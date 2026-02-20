@@ -105,41 +105,67 @@ fn FileRow(file: TorrentFile, hash: String, refresh_action: Action<String, Vec<T
     });
 
     view! {
+        <FileContextMenu 
+            torrent_hash=hash 
+            file_index=f_idx 
+            refresh_action=refresh_action 
+            set_priority=set_priority
+        >
+            <TableRow class="hover:bg-muted/50 transition-colors group">
+                <TableCell class="text-center text-xs text-muted-foreground">{file.index}</TableCell>
+                <TableCell class="font-medium text-xs break-all max-w-[200px] md:max-w-md" attr:title=move || path_clone.clone()>
+                    {file.path.clone()}
+                </TableCell>
+                <TableCell class="text-right text-xs text-muted-foreground whitespace-nowrap">
+                    {format_bytes(file.size)}
+                </TableCell>
+                <TableCell class="text-right text-xs whitespace-nowrap">
+                    <span class="text-primary font-medium">{format_bytes(file.completed_chunks)}</span>
+                </TableCell>
+                <TableCell class="text-center">
+                    {
+                        let (variant, label) = match file.priority {
+                            0 => (BadgeVariant::Destructive, "İndirme"),
+                            2 => (BadgeVariant::Success, "Yüksek"),
+                            _ => (BadgeVariant::Secondary, "Normal"),
+                        };
+                        view! { <Badge variant=variant class="text-[10px] uppercase">{label}</Badge> }
+                    }
+                </TableCell>
+            </TableRow>
+        </FileContextMenu>
+    }
+}
+
+#[component]
+fn FileContextMenu(
+    children: Children,
+    torrent_hash: String,
+    file_index: u32,
+    refresh_action: Action<String, Vec<TorrentFile>>,
+    set_priority: Action<(String, u32, u8), Result<(), ServerFnError>>,
+) -> impl IntoView {
+    let hash_c1 = torrent_hash.clone();
+    let hash_c2 = torrent_hash.clone();
+    let hash_c3 = torrent_hash.clone();
+
+    view! {
         <ContextMenu>
-            <ContextMenuTrigger attr:id=context_id.clone()>
-                <TableRow class="hover:bg-muted/50 transition-colors group">
-                    <TableCell class="text-center text-xs text-muted-foreground">{file.index}</TableCell>
-                    <TableCell class="font-medium text-xs break-all max-w-[200px] md:max-w-md" attr:title=move || path_clone.clone()>
-                        {file.path.clone()}
-                    </TableCell>
-                    <TableCell class="text-right text-xs text-muted-foreground whitespace-nowrap">
-                        {format_bytes(file.size)}
-                    </TableCell>
-                    <TableCell class="text-right text-xs whitespace-nowrap">
-                        <span class="text-primary font-medium">{format_bytes(file.completed_chunks)}</span>
-                    </TableCell>
-                    <TableCell class="text-center">
-                        {
-                            let (variant, label) = match file.priority {
-                                0 => (BadgeVariant::Destructive, "İndirme"),
-                                2 => (BadgeVariant::Success, "Yüksek"),
-                                _ => (BadgeVariant::Secondary, "Normal"),
-                            };
-                            view! { <Badge variant=variant class="text-[10px] uppercase">{label}</Badge> }
-                        }
-                    </TableCell>
-                </TableRow>
+            <ContextMenuTrigger>
+                {children()}
             </ContextMenuTrigger>
 
             <ContextMenuContent class="w-48">
                 <ContextMenuLabel>"Dosya Önceliği"</ContextMenuLabel>
                 <ContextMenuGroup>
                     <ContextMenuItem on:click={
-                        let h = hash.clone();
+                        let h = hash_c1;
                         let ra = refresh_action.clone();
+                        let sp = set_priority.clone();
                         move |_| {
-                            set_priority.dispatch((h.clone(), f_idx, 2));
+                            sp.dispatch((h.clone(), file_index, 2));
                             ra.dispatch(h.clone());
+                            crate::components::ui::context_menu::close_context_menu();
                         }
                     }>
                         <icons::ChevronsUp class="text-green-500" />
@@ -147,11 +173,13 @@ fn FileRow(file: TorrentFile, hash: String, refresh_action: Action<String, Vec<T
                     </ContextMenuItem>
                     
                     <ContextMenuItem on:click={
-                        let h = hash.clone();
+                        let h = hash_c2;
                         let ra = refresh_action.clone();
+                        let sp = set_priority.clone();
                         move |_| {
-                            set_priority.dispatch((h.clone(), f_idx, 1));
+                            sp.dispatch((h.clone(), file_index, 1));
                             ra.dispatch(h.clone());
+                            crate::components::ui::context_menu::close_context_menu();
                         }
                     }>
                         <icons::Minus class="text-blue-500" />
@@ -159,11 +187,13 @@ fn FileRow(file: TorrentFile, hash: String, refresh_action: Action<String, Vec<T
                     </ContextMenuItem>
                     
                     <ContextMenuItem class="text-destructive focus:bg-destructive/10" on:click={
-                        let h = hash.clone();
+                        let h = hash_c3;
                         let ra = refresh_action.clone();
+                        let sp = set_priority.clone();
                         move |_| {
-                            set_priority.dispatch((h.clone(), f_idx, 0));
+                            sp.dispatch((h.clone(), file_index, 0));
                             ra.dispatch(h.clone());
+                            crate::components::ui::context_menu::close_context_menu();
                         }
                     }>
                         <icons::X />

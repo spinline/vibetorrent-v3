@@ -70,9 +70,27 @@ pub fn TorrentDetailsSheet() -> impl IntoView {
 
                         <div class="flex-1 overflow-y-auto mt-4 pb-12">
                             <TabsContent value="general" class="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                                <Show when=move || selected_torrent.get().is_some() fallback=|| view! { <DetailsShimmer /> }>
+                                <crate::components::ui::shimmer::Shimmer 
+                                    loading=Signal::derive(move || selected_torrent.get().is_none())
+                                    shimmer_color="rgba(0,0,0,0.06)"
+                                    background_color="rgba(0,0,0,0.04)"
+                                >
                                     {move || {
-                                        let t = selected_torrent.get().unwrap();
+                                        let t = selected_torrent.get().unwrap_or_else(|| shared::Torrent {
+                                            hash: "----------------------------------------".to_string(),
+                                            name: "Yükleniyor...".to_string(),
+                                            size: 0,
+                                            completed: 0,
+                                            down_rate: 0,
+                                            up_rate: 0,
+                                            eta: 0,
+                                            percent_complete: 0.0,
+                                            status: shared::TorrentStatus::Downloading,
+                                            error_message: "".to_string(),
+                                            added_date: 0,
+                                            label: None,
+                                        });
+
                                         view! {
                                             <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
                                                 <InfoItem label="İndirilen / Toplam" value=format!("{} / {}", format_bytes(t.completed), format_bytes(t.size)) />
@@ -84,7 +102,7 @@ pub fn TorrentDetailsSheet() -> impl IntoView {
                                             </div>
                                         }
                                     }}
-                                </Show>
+                                </crate::components::ui::shimmer::Shimmer>
                             </TabsContent>
 
                             <TabsContent value="files" class="h-full">
@@ -126,30 +144,6 @@ fn InfoItem(
             <span class="text-xs font-semibold text-muted-foreground uppercase opacity-80">{label}</span>
             <span class="text-sm font-medium">{value}</span>
         </div>
-    }
-}
-
-#[component]
-fn DetailsShimmer() -> impl IntoView {
-    view! {
-        <crate::components::ui::shimmer::Shimmer loading=Signal::derive(move || true)>
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-6 pointer-events-none">
-                {(0..8).map(|_| view! {
-                    <div class="flex flex-col gap-2">
-                        <div class="h-3 w-16 bg-muted rounded-md" />
-                        <div class="h-5 w-24 bg-muted rounded-md" />
-                    </div>
-                }).collect_view()}
-                <div class="col-span-2 md:col-span-4 flex flex-col gap-2">
-                    <div class="h-3 w-20 bg-muted rounded-md" />
-                    <div class="h-5 w-full max-w-md bg-muted rounded-md" />
-                </div>
-                <div class="col-span-2 md:col-span-4 flex flex-col gap-2">
-                    <div class="h-3 w-12 bg-muted rounded-md" />
-                    <div class="h-5 w-full max-w-sm bg-muted rounded-md" />
-                </div>
-            </div>
-        </crate::components::ui::shimmer::Shimmer>
     }
 }
 

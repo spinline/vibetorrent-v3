@@ -2,12 +2,7 @@ use leptos::prelude::*;
 use leptos_ui::void;
 use tw_merge::*;
 
-mod components {
-    use super::*;
-    void! {ScrollAreaThumb, div, "bg-border relative flex-1 rounded-full"}
-    void! {ScrollAreaCorner, div, "bg-border"}
-}
-pub use components::*;
+// Removed unused fake components
 
 /* ========================================================== */
 /* ✨ COMPONENTS ✨ */
@@ -18,9 +13,7 @@ pub fn ScrollArea(children: Children, #[prop(into, optional)] class: String) -> 
     let merged_class = tw_merge!("relative overflow-hidden", class);
     view! {
         <div data-name="ScrollArea" class=merged_class>
-            <ScrollAreaViewport>{children()}</ScrollAreaViewport>
-            <ScrollBar />
-            <ScrollAreaCorner />
+            <ScrollAreaViewport class="pr-3 pb-3 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-border/60 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-border/80">{children()}</ScrollAreaViewport>
         </div>
     }
 }
@@ -42,29 +35,7 @@ pub fn ScrollAreaViewport(children: Children, #[prop(into, optional)] class: Str
 /* 🧬 ENUMS 🧬 */
 /* ========================================================== */
 
-#[derive(Clone, Copy, Default)]
-pub enum ScrollBarOrientation {
-    #[default]
-    Vertical,
-    Horizontal,
-}
-
-#[component]
-pub fn ScrollBar(
-    #[prop(default = ScrollBarOrientation::default())] orientation: ScrollBarOrientation,
-    #[prop(into, optional)] class: String,
-) -> impl IntoView {
-    let orientation_class = match orientation {
-        ScrollBarOrientation::Vertical => "h-full w-2.5 border-l border-l-transparent",
-        ScrollBarOrientation::Horizontal => "h-2.5 flex-col border-t border-t-transparent",
-    };
-    let merged_class = tw_merge!("flex touch-none p-px transition-colors select-none", orientation_class, class);
-    view! {
-        <div data-name="ScrollBar" class=merged_class>
-            <ScrollAreaThumb />
-        </div>
-    }
-}
+// Real scrollbars are now utilized in the viewport directly.
 
 /* ========================================================== */
 /* 🧬 STRUCT 🧬 */

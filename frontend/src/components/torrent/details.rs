@@ -165,10 +165,19 @@ pub fn TorrentDetailsSheet() -> impl IntoView {
                             </TabsContent>
 
                             <TabsContent value="trackers" class="h-full">
-                                <div class="flex flex-col items-center justify-center h-48 opacity-60">
-                                    <icons::Settings2 class="size-12 mb-3 text-muted-foreground" />
-                                    <p class="text-sm font-medium">"İzleyici listesi yakında eklenecek"</p>
-                                </div>
+                                {move || match selected_torrent.get() {
+                                    Some(t) => leptos::either::Either::Left(view! {
+                                        <div class="h-full overflow-y-auto pr-2 pb-8">
+                                            <crate::components::torrent::trackers::TorrentTrackersTab hash=t.hash />
+                                        </div>
+                                    }),
+                                    None => leptos::either::Either::Right(view! {
+                                        <div class="flex flex-col items-center justify-center h-48 opacity-60">
+                                            <icons::Settings2 class="size-12 mb-3 text-muted-foreground" />
+                                            <p class="text-sm font-medium">"İzleyici yükleniyor..."</p>
+                                        </div>
+                                    }),
+                                }}
                             </TabsContent>
 
                             <TabsContent value="peers" class="h-full">

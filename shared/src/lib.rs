@@ -126,6 +126,13 @@ pub struct TorrentTracker {
     pub url: String,
     pub status: String,
     pub message: String,
+    pub is_enabled: bool,
+    pub group: i64,
+    pub seeders: i64,
+    pub peers: i64,
+    pub downloaded: i64,
+    pub last_updated: i64,
+    pub interval: i64,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]

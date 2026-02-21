@@ -193,7 +193,13 @@ pub async fn get_trackers(hash: String) -> Result<Vec<TorrentTracker>, ServerFnE
         RpcParam::from(hash.as_str()),
         RpcParam::from(""),
         RpcParam::from("t.url="),
+        RpcParam::from("t.is_enabled="),
+        RpcParam::from("t.group="),
+        RpcParam::from("t.scrape_complete="),
+        RpcParam::from("t.scrape_incomplete="),
+        RpcParam::from("t.scrape_downloaded="),
         RpcParam::from("t.activity_date_last="),
+        RpcParam::from("t.normal_interval="),
         RpcParam::from("t.message="),
     ];
 
@@ -209,8 +215,15 @@ pub async fn get_trackers(hash: String) -> Result<Vec<TorrentTracker>, ServerFnE
         .into_iter()
         .map(|row| TorrentTracker {
             url: row.get(0).cloned().unwrap_or_default(),
-            status: "Unknown".to_string(),
-            message: row.get(2).cloned().unwrap_or_default(),
+            is_enabled: row.get(1).and_then(|s| s.parse::<i64>().ok()).unwrap_or(0) != 0,
+            group: row.get(2).and_then(|s| s.parse().ok()).unwrap_or(0),
+            seeders: row.get(3).and_then(|s| s.parse().ok()).unwrap_or(0),
+            peers: row.get(4).and_then(|s| s.parse().ok()).unwrap_or(0),
+            downloaded: row.get(5).and_then(|s| s.parse().ok()).unwrap_or(0),
+            last_updated: row.get(6).and_then(|s| s.parse().ok()).unwrap_or(0),
+            interval: row.get(7).and_then(|s| s.parse().ok()).unwrap_or(0),
+            status: "Unknown".to_string(), // Can derive from message or activity later, or keep unknown
+            message: row.get(8).cloned().unwrap_or_default(),
         })
         .collect())
 }

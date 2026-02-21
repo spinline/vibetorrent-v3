@@ -28,7 +28,7 @@ pub fn TorrentDetailsPanel() -> impl IntoView {
         <div class=move || {
             if is_open.get() {
                 // Açık: masaüstünde görünür, mobilde sağdan gelir
-                "w-[85vw] md:w-[380px] md:min-w-[380px] shrink-0 \
+                "w-full md:w-[380px] md:min-w-[380px] shrink-0 \
                  flex flex-col border-l border-border bg-card \
                  fixed top-0 right-0 bottom-0 z-40 \
                  translate-x-0 \
@@ -36,7 +36,7 @@ pub fn TorrentDetailsPanel() -> impl IntoView {
                  transition-transform duration-300 ease-out shadow-2xl md:shadow-none"
             } else {
                 // Kapalı: masaüstünde gizli, mobilde sağa kayar
-                "w-[85vw] md:w-0 shrink-0 overflow-hidden border-none \
+                "w-full md:w-0 shrink-0 overflow-hidden border-none \
                  fixed top-0 right-0 bottom-0 z-40 \
                  translate-x-full \
                  md:static md:z-auto md:translate-x-0 \

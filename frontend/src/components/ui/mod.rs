@@ -14,6 +14,7 @@ pub mod input;
 pub mod multi_select;
 pub mod select;
 pub mod separator;
+pub mod scroll_area;
 pub mod sheet;
 pub mod sidenav;
 pub mod skeleton;

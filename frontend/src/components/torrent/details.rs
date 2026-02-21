@@ -68,7 +68,7 @@ pub fn TorrentDetailsSheet() -> impl IntoView {
                             </TabsTrigger>
                         </TabsList>
 
-                        <div class="flex-1 overflow-y-auto min-h-0 mt-4 pb-12 pr-2">
+                        <crate::components::ui::scroll_area::ScrollArea class="flex-1 min-h-0 mt-4 pb-12 pr-4">
                             <TabsContent value="general" class="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
                                 <crate::components::ui::shimmer::Shimmer 
                                     loading=Signal::derive(move || selected_torrent.get().is_none())
@@ -186,7 +186,7 @@ pub fn TorrentDetailsSheet() -> impl IntoView {
                                     <p class="text-sm font-medium">"Eş listesi yakında eklenecek"</p>
                                 </div>
                             </TabsContent>
-                        </div>
+                        </crate::components::ui::scroll_area::ScrollArea>
                     </Tabs>
                 </div>
             </SheetContent>

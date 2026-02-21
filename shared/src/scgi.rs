@@ -83,12 +83,19 @@ impl ScgiRequest {
 
 pub async fn send_request(socket_path: &str, request: ScgiRequest) -> Result<Bytes, ScgiError> {
     let perform_request = async {
-        let mut stream = UnixStream::connect(socket_path).await?;
         let data = request.encode();
-        stream.write_all(&data).await?;
-
         let mut response = Vec::new();
-        stream.read_to_end(&mut response).await?;
+
+        if socket_path.contains(':') {
+            let mut stream = tokio::net::TcpStream::connect(socket_path).await?;
+            stream.write_all(&data).await?;
+            stream.read_to_end(&mut response).await?;
+        } else {
+            let mut stream = tokio::net::UnixStream::connect(socket_path).await?;
+            stream.write_all(&data).await?;
+            stream.read_to_end(&mut response).await?;
+        }
+        
         Ok::<Vec<u8>, std::io::Error>(response)
     };
 

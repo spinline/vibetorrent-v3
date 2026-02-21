@@ -198,9 +198,7 @@ pub async fn get_trackers(hash: String) -> Result<Vec<TorrentTracker>, ServerFnE
         RpcParam::from("t.scrape_complete="),
         RpcParam::from("t.scrape_incomplete="),
         RpcParam::from("t.scrape_downloaded="),
-        RpcParam::from("t.activity_date_last="),
         RpcParam::from("t.normal_interval="),
-        RpcParam::from("t.message="),
     ];
 
     let xml = client
@@ -211,7 +209,7 @@ pub async fn get_trackers(hash: String) -> Result<Vec<TorrentTracker>, ServerFnE
     let rows = parse_multicall_response(&xml)
         .map_err(|e| ServerFnError::new(format!("Parse error: {}", e)))?;
 
-    Ok(rows
+    let result: Vec<TorrentTracker> = rows
         .into_iter()
         .map(|row| TorrentTracker {
             url: row.get(0).cloned().unwrap_or_default(),
@@ -220,12 +218,14 @@ pub async fn get_trackers(hash: String) -> Result<Vec<TorrentTracker>, ServerFnE
             seeders: row.get(3).and_then(|s| s.parse().ok()).unwrap_or(0),
             peers: row.get(4).and_then(|s| s.parse().ok()).unwrap_or(0),
             downloaded: row.get(5).and_then(|s| s.parse().ok()).unwrap_or(0),
-            last_updated: row.get(6).and_then(|s| s.parse().ok()).unwrap_or(0),
-            interval: row.get(7).and_then(|s| s.parse().ok()).unwrap_or(0),
-            status: "Unknown".to_string(), // Can derive from message or activity later, or keep unknown
-            message: row.get(8).cloned().unwrap_or_default(),
+            interval: row.get(6).and_then(|s| s.parse().ok()).unwrap_or(0),
+            last_updated: 0,
+            status: "Unknown".to_string(), // Can derive from activity later, or keep unknown
+            message: "".to_string(),
         })
-        .collect())
+        .collect();
+    
+    Ok(result)
 }
 
 #[server(SetFilePriority, "/api/server_fns")]

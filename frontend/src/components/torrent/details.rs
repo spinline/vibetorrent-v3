@@ -15,26 +15,32 @@ pub fn TorrentDetailsPanel() -> impl IntoView {
 
     view! {
         // Mobil overlay backdrop
-        <Show when=move || is_open.get()>
-            <div
-                class="fixed inset-0 bg-black/40 z-30 md:hidden backdrop-blur-sm"
-                on:click=move |_| store.selected_torrent.set(None)
-            />
-        </Show>
+        <div
+            class=move || if is_open.get() {
+                "fixed inset-0 bg-black/40 z-30 md:hidden backdrop-blur-sm transition-opacity duration-300 opacity-100"
+            } else {
+                "fixed inset-0 bg-black/0 z-30 md:hidden pointer-events-none transition-opacity duration-300 opacity-0"
+            }
+            on:click=move |_| store.selected_torrent.set(None)
+        />
 
-        // Panel — masaüstünde sağ kolonda sabit, mobilde fixed overlay
+        // Panel — masaüstünde sağ kolonda sabit, mobilde sağdan açılan overlay
         <div class=move || {
             if is_open.get() {
-                // Açık: masaüstünde görünür, mobilde fixed full-screen panel
-                "w-full md:w-[380px] md:min-w-[380px] shrink-0 \
+                // Açık: masaüstünde görünür, mobilde sağdan gelir
+                "w-[85vw] md:w-[380px] md:min-w-[380px] shrink-0 \
                  flex flex-col border-l border-border bg-card \
-                 fixed inset-0 z-40 \
-                 md:static md:z-auto md:inset-auto \
-                 transition-all duration-300"
+                 fixed top-0 right-0 bottom-0 z-40 \
+                 translate-x-0 \
+                 md:static md:z-auto md:translate-x-0 \
+                 transition-transform duration-300 ease-out shadow-2xl md:shadow-none"
             } else {
-                // Kapalı: masaüstünde gizli, mobilde görünmez
-                "w-0 md:w-0 shrink-0 overflow-hidden border-none \
-                 transition-all duration-300"
+                // Kapalı: masaüstünde gizli, mobilde sağa kayar
+                "w-[85vw] md:w-0 shrink-0 overflow-hidden border-none \
+                 fixed top-0 right-0 bottom-0 z-40 \
+                 translate-x-full \
+                 md:static md:z-auto md:translate-x-0 \
+                 transition-transform duration-300 ease-in pointer-events-none"
             }
         }>
             // İpucu: panel kapalıyken içeriği render etme

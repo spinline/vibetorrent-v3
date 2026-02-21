@@ -42,6 +42,11 @@ pub struct Torrent {
     pub error_message: String,
     pub added_date: i64,
     pub label: Option<String>,
+    pub ratio: f64,
+    pub uploaded: i64,
+    pub wasted: i64,
+    pub save_path: String,
+    pub free_disk_space: i64,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, ToSchema)]

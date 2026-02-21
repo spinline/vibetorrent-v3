@@ -89,16 +89,59 @@ pub fn TorrentDetailsSheet() -> impl IntoView {
                                             error_message: "".to_string(),
                                             added_date: 0,
                                             label: None,
+                                            ratio: 0.0,
+                                            uploaded: 0,
+                                            wasted: 0,
+                                            save_path: "Yükleniyor...".to_string(),
+                                            free_disk_space: 0,
                                         });
 
                                         view! {
-                                            <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
-                                                <InfoItem label="İndirilen / Toplam" value=format!("{} / {}", format_bytes(t.completed), format_bytes(t.size)) />
-                                                <InfoItem label="İndirme Hızı" value=format_speed(t.down_rate) class="text-blue-500" />
-                                                <InfoItem label="Gönderme Hızı" value=format_speed(t.up_rate) class="text-green-500" />
-                                                <InfoItem label="Eklenme Tarihi" value=format_date(t.added_date) />
-                                                <InfoItem label="Kalan Süre" value=format_duration(t.eta) />
-                                                <InfoItem label="Hash" value=t.hash class="col-span-2 md:col-span-4 break-all font-mono text-xs" />
+                                            <div class="flex flex-col gap-6">
+                                                // Aktarım
+                                                <div>
+                                                    <h3 class="text-sm font-bold border-b pb-2 mb-4">"Aktarım"</h3>
+                                                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                                        <InfoItem label="Geçen Süre" value="N/A".to_string() />
+                                                        <InfoItem label="Kalan" value=format_duration(t.eta) />
+                                                        <InfoItem label="Paylaşım Oranı" value=format!("{:.3}", t.ratio) />
+                                                        <div class="hidden md:block"></div>
+                                                        
+                                                        <InfoItem label="İndirilen" value=format_bytes(t.completed) />
+                                                        <InfoItem label="İndirme Hızı" value=format_speed(t.down_rate) class="text-blue-500" />
+                                                        <InfoItem label="Boşa Giden" value=format_bytes(t.wasted) />
+                                                        <div class="hidden md:block"></div>
+                                                        
+                                                        <InfoItem label="Gönderilen" value=format_bytes(t.uploaded) />
+                                                        <InfoItem label="Gönderme Hızı" value=format_speed(t.up_rate) class="text-green-500" />
+                                                        <div class="hidden md:block"></div>
+                                                        <div class="hidden md:block"></div>
+                                                        
+                                                        <InfoItem label="Ortaklar" value="0 / 0 bağlı".to_string() />
+                                                        <InfoItem label="Eşler" value="0 / 0 bağlı".to_string() />
+                                                    </div>
+                                                </div>
+
+                                                // İzleyici
+                                                <div>
+                                                    <h3 class="text-sm font-bold border-b pb-2 mb-4">"İzleyici"</h3>
+                                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                        <InfoItem label="İzleyici URL'si" value="İzleyiciler sekmesine bakınız".to_string() class="col-span-1 md:col-span-2 break-all text-xs" />
+                                                        <InfoItem label="İzleyici Durumu" value="N/A".to_string() />
+                                                    </div>
+                                                </div>
+
+                                                // Genel
+                                                <div>
+                                                    <h3 class="text-sm font-bold border-b pb-2 mb-4">"Genel"</h3>
+                                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                        <InfoItem label="Kaydedilen Yer" value=t.save_path class="col-span-1 md:col-span-2 break-all font-mono text-xs" />
+                                                        <InfoItem label="Boş Disk Alanı" value=format_bytes(t.free_disk_space) />
+                                                        <InfoItem label="Oluşturulma Tarihi" value=format_date(t.added_date) />
+                                                        <InfoItem label="Hash" value=t.hash class="col-span-1 md:col-span-2 break-all font-mono text-xs" />
+                                                        <InfoItem label="Yorum" value="Yok".to_string() class="col-span-1 md:col-span-2 break-words text-xs" />
+                                                    </div>
+                                                </div>
                                             </div>
                                         }
                                     }}

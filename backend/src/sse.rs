@@ -51,6 +51,21 @@ mod fields {
 
     pub const IDX_LABEL: usize = 12;
     pub const CMD_LABEL: &str = "d.custom1=";
+
+    pub const IDX_RATIO: usize = 13;
+    pub const CMD_RATIO: &str = "d.ratio=";
+
+    pub const IDX_UPLOADED: usize = 14;
+    pub const CMD_UPLOADED: &str = "d.up.total=";
+
+    pub const IDX_WASTED: usize = 15;
+    pub const CMD_WASTED: &str = "d.skip.total=";
+
+    pub const IDX_SAVE_PATH: usize = 16;
+    pub const CMD_SAVE_PATH: &str = "d.base_path=";
+
+    pub const IDX_FREE_DISK: usize = 17;
+    pub const CMD_FREE_DISK: &str = "d.free_diskspace=";
 }
 
 use fields::*;
@@ -72,6 +87,11 @@ const RTORRENT_FIELDS: &[&str] = &[
     CMD_CREATION_DATE,
     CMD_HASHING,
     CMD_LABEL,
+    CMD_RATIO,
+    CMD_UPLOADED,
+    CMD_WASTED,
+    CMD_SAVE_PATH,
+    CMD_FREE_DISK,
 ];
 
 fn parse_long(s: Option<&String>) -> i64 {
@@ -98,6 +118,11 @@ fn from_rtorrent_row(row: Vec<String>) -> Torrent {
     let added_date = parse_long(row.get(IDX_CREATION_DATE));
     let is_hashing = parse_long(row.get(IDX_HASHING));
     let label_raw = parse_string(row.get(IDX_LABEL));
+    let ratio = parse_long(row.get(IDX_RATIO)) as f64 / 1000.0;
+    let uploaded = parse_long(row.get(IDX_UPLOADED));
+    let wasted = parse_long(row.get(IDX_WASTED));
+    let save_path = parse_string(row.get(IDX_SAVE_PATH));
+    let free_disk_space = parse_long(row.get(IDX_FREE_DISK));
 
     let label = if label_raw.is_empty() {
         None
@@ -144,6 +169,11 @@ fn from_rtorrent_row(row: Vec<String>) -> Torrent {
         error_message: message,
         added_date,
         label,
+        ratio,
+        uploaded,
+        wasted,
+        save_path,
+        free_disk_space,
     }
 }
 

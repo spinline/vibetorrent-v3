@@ -51,8 +51,8 @@ pub fn TorrentDetailsSheet() -> impl IntoView {
                     </SheetClose>
                 </div>
 
-                <div class="flex-1 overflow-hidden p-6">
-                    <Tabs default_value="general" class="h-full flex flex-col">
+                <div class="flex-1 min-h-0 overflow-hidden p-6 flex flex-col">
+                    <Tabs default_value="general" class="flex-1 min-h-0 flex flex-col">
                         <TabsList class="w-full justify-start rounded-none border-b bg-transparent p-0">
                             <TabsTrigger value="general" class="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none">
                                 "Genel"
@@ -68,7 +68,7 @@ pub fn TorrentDetailsSheet() -> impl IntoView {
                             </TabsTrigger>
                         </TabsList>
 
-                        <div class="flex-1 overflow-y-auto mt-4 pb-12">
+                        <div class="flex-1 min-h-0 overflow-y-auto mt-4 pb-12 pr-2">
                             <TabsContent value="general" class="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
                                 <crate::components::ui::shimmer::Shimmer 
                                     loading=Signal::derive(move || selected_torrent.get().is_none())
@@ -151,7 +151,7 @@ pub fn TorrentDetailsSheet() -> impl IntoView {
                             <TabsContent value="files" class="h-full">
                                 {move || match selected_torrent.get() {
                                     Some(t) => leptos::either::Either::Left(view! {
-                                        <div class="h-full overflow-y-auto pr-2 pb-8">
+                                        <div class="h-full">
                                             <crate::components::torrent::files::TorrentFilesTab hash=t.hash />
                                         </div>
                                     }),
@@ -167,7 +167,7 @@ pub fn TorrentDetailsSheet() -> impl IntoView {
                             <TabsContent value="trackers" class="h-full">
                                 {move || match selected_torrent.get() {
                                     Some(t) => leptos::either::Either::Left(view! {
-                                        <div class="h-full overflow-y-auto pr-2 pb-8">
+                                        <div class="h-full">
                                             <crate::components::torrent::trackers::TorrentTrackersTab hash=t.hash />
                                         </div>
                                     }),

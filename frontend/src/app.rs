@@ -49,14 +49,10 @@ fn InnerApp() -> impl IntoView {
 
     Effect::new(move |_| {
         spawn_local(async move {
-            log::info!("App initialization started...");
-            gloo_console::log!("APP INIT: Checking setup status...");
-
             // Check if setup is needed via Server Function
             match shared::server_fns::auth::get_setup_status().await {
                 Ok(status) => {
                     if !status.completed {
-                        log::info!("Setup not completed");
                         needs_setup.1.set(true);
                         is_loading.1.set(false);
                         return;
@@ -68,15 +64,12 @@ fn InnerApp() -> impl IntoView {
             // Check authentication via GetUser Server Function
             match shared::server_fns::auth::get_user().await {
                 Ok(Some(user_info)) => {
-                    log::info!("Authenticated as {}", user_info.username);
                     if let Some(s) = store {
                         s.user.set(Some(user_info.username));
                     }
                     is_authenticated.1.set(true);
                 }
-                Ok(None) => {
-                    log::info!("Not authenticated");
-                }
+                Ok(None) => {}
                 Err(e) => {
                     log::error!("Auth check failed: {:?}", e);
                 }
@@ -111,7 +104,6 @@ fn InnerApp() -> impl IntoView {
                             let navigate = use_navigate();
                             navigate("/setup", Default::default());
                         } else if authenticated {
-                            log::info!("Already authenticated, redirecting to home");
                             let navigate = use_navigate();
                             navigate("/", Default::default());
                         }
@@ -135,10 +127,8 @@ fn InnerApp() -> impl IntoView {
                     Effect::new(move |_| {
                         if !is_loading.0.get() {
                             if needs_setup.0.get() {
-                                log::info!("Setup not completed, redirecting to setup");
                                 navigate("/setup", Default::default());
                             } else if !is_authenticated.0.get() {
-                                log::info!("Not authenticated, redirecting to login");
                                 navigate("/login", Default::default());
                             }
                         }

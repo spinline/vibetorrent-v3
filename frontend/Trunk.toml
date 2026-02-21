@@ -7,6 +7,11 @@ stage = "build"
 command = "sh"
 command_arguments = ["-c", "npx @tailwindcss/cli -i input.css -o public/tailwind.css"]
 
+[[hooks]]
+stage = "post_build"
+command = "sh"
+command_arguments = ["-c", "sed -i '' -e 's/<link rel=\"modulepreload\"[^>]*>//g' -e 's/<link rel=\"preload\"[^>]*>//g' \"$TRUNK_STAGING_DIR/index.html\" || sed -i -e 's/<link rel=\"modulepreload\"[^>]*>//g' -e 's/<link rel=\"preload\"[^>]*>//g' \"$TRUNK_STAGING_DIR/index.html\""]
+
 [build]
 target = "index.html"
 dist = "dist"

@@ -1,76 +1,109 @@
 use leptos::prelude::*;
-use crate::components::ui::sheet::*;
 use crate::components::ui::tabs::*;
 use crate::components::ui::skeleton::*;
-use shared::Torrent;
 
 #[component]
-pub fn TorrentDetailsSheet() -> impl IntoView {
+pub fn TorrentDetailsPanel() -> impl IntoView {
     let store = use_context::<crate::store::TorrentStore>().expect("store not provided");
-
-    // Setup an effect to open the sheet when a torrent is selected
-    Effect::new(move |_| {
-        if store.selected_torrent.get().is_some() {
-            if let Some(trigger) = document().get_element_by_id("torrent-details-trigger") {
-                use wasm_bindgen::JsCast;
-                let _ = trigger.dyn_into::<web_sys::HtmlElement>().map(|el| el.click());
-            }
-        }
-    });
 
     let selected_torrent = Memo::new(move |_| {
         let hash = store.selected_torrent.get()?;
         store.torrents.with(|map| map.get(&hash).cloned())
     });
 
+    let is_open = Signal::derive(move || store.selected_torrent.get().is_some());
+
     view! {
-        <Sheet>
-            <SheetTrigger attr:id="torrent-details-trigger" class="hidden">""</SheetTrigger>
-            <SheetContent 
-                direction=SheetDirection::Bottom 
-                class="h-[80vh] sm:h-[60vh] rounded-t-xl sm:rounded-t-2xl p-0 flex flex-col gap-0 border-t border-border shadow-2xl" 
-                hide_close_button=true
-            >
-                <div class="px-6 py-4 border-b flex items-center justify-between sticky top-0 bg-card z-10">
-                    <div class="flex flex-col gap-1 min-w-0">
-                        <Show when=move || selected_torrent.get().is_some() fallback=move || view! { <Skeleton class="h-6 w-48" /> }>
-                            <h2 class="font-bold text-lg truncate">
+        // Mobil overlay backdrop
+        <Show when=move || is_open.get()>
+            <div
+                class="fixed inset-0 bg-black/40 z-30 md:hidden backdrop-blur-sm"
+                on:click=move |_| store.selected_torrent.set(None)
+            />
+        </Show>
+
+        // Panel — masaüstünde sağ kolonda sabit, mobilde fixed overlay
+        <div class=move || {
+            if is_open.get() {
+                // Açık: masaüstünde görünür, mobilde fixed full-screen panel
+                "w-full md:w-[380px] md:min-w-[380px] shrink-0 \
+                 flex flex-col border-l border-border bg-card \
+                 fixed inset-0 z-40 \
+                 md:static md:z-auto md:inset-auto \
+                 transition-all duration-300"
+            } else {
+                // Kapalı: masaüstünde gizli, mobilde görünmez
+                "w-0 md:w-0 shrink-0 overflow-hidden border-none \
+                 transition-all duration-300"
+            }
+        }>
+            // İpucu: panel kapalıyken içeriği render etme
+            <Show when=move || is_open.get()>
+                // Başlık
+                <div class="px-4 py-3 border-b flex items-center justify-between shrink-0 bg-card">
+                    <div class="flex flex-col gap-0.5 min-w-0 flex-1">
+                        <Show
+                            when=move || selected_torrent.get().is_some()
+                            fallback=move || view! { <Skeleton class="h-5 w-40" /> }
+                        >
+                            <h2 class="font-bold text-sm truncate leading-tight">
                                 {move || selected_torrent.get().map(|t| t.name).unwrap_or_default()}
                             </h2>
                         </Show>
-                        <Show when=move || selected_torrent.get().is_some() fallback=move || view! { <Skeleton class="h-4 w-24" /> }>
-                            <p class="text-xs text-muted-foreground uppercase tracking-widest font-semibold flex items-center gap-2">
+                        <Show
+                            when=move || selected_torrent.get().is_some()
+                            fallback=move || view! { <Skeleton class="h-3 w-20 mt-1" /> }
+                        >
+                            <p class="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold flex items-center gap-1.5">
                                 {move || selected_torrent.get().map(|t| format!("{:?}", t.status)).unwrap_or_default()}
-                                <span class="bg-primary/20 text-primary px-1.5 py-0.5 rounded text-[10px] lowercase">{move || selected_torrent.get().map(|t| format!("{:.1}%", t.percent_complete)).unwrap_or_default()}</span>
+                                <span class="bg-primary/20 text-primary px-1 py-0.5 rounded text-[9px] lowercase">
+                                    {move || selected_torrent.get().map(|t| format!("{:.1}%", t.percent_complete)).unwrap_or_default()}
+                                </span>
                             </p>
                         </Show>
                     </div>
-                    // Custom close button that also resets store.selected_torrent
-                    <SheetClose class="rounded-full p-2 hover:bg-muted transition-colors border-none shadow-none cursor-pointer">
-                        <icons::X class="size-5 opacity-70" on:click=move |_| store.selected_torrent.set(None) />
-                    </SheetClose>
+                    // Kapat butonu
+                    <button
+                        class="rounded-full p-1.5 hover:bg-muted transition-colors text-muted-foreground hover:text-foreground shrink-0 ml-2"
+                        on:click=move |_| store.selected_torrent.set(None)
+                    >
+                        <icons::X class="size-4" />
+                    </button>
                 </div>
 
-                <div class="flex-1 overflow-hidden flex flex-col pt-4 px-6 pb-0">
+                // Sekmeler + içerik
+                <div class="flex-1 overflow-hidden flex flex-col min-h-0">
                     <Tabs default_value="general" class="flex-1 h-full min-h-0 flex flex-col">
-                        <TabsList class="w-full justify-start rounded-none border-b bg-transparent p-0 shrink-0">
-                            <TabsTrigger value="general" class="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none">
+                        <TabsList class="w-full justify-start rounded-none border-b bg-transparent p-0 shrink-0 px-2">
+                            <TabsTrigger
+                                value="general"
+                                class="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none text-xs h-9"
+                            >
                                 "Genel"
                             </TabsTrigger>
-                            <TabsTrigger value="files" class="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none">
+                            <TabsTrigger
+                                value="files"
+                                class="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none text-xs h-9"
+                            >
                                 "Dosyalar"
                             </TabsTrigger>
-                            <TabsTrigger value="trackers" class="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none">
+                            <TabsTrigger
+                                value="trackers"
+                                class="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none text-xs h-9"
+                            >
                                 "İzleyiciler"
                             </TabsTrigger>
-                            <TabsTrigger value="peers" class="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none">
+                            <TabsTrigger
+                                value="peers"
+                                class="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none text-xs h-9"
+                            >
                                 "Eşler"
                             </TabsTrigger>
                         </TabsList>
 
-                        <crate::components::ui::scroll_area::ScrollArea class="flex-1 min-h-0 mt-4 pb-12 pr-4">
-                            <TabsContent value="general" class="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                                <crate::components::ui::shimmer::Shimmer 
+                        <crate::components::ui::scroll_area::ScrollArea class="flex-1 min-h-0">
+                            <TabsContent value="general" class="p-4 space-y-5 animate-in fade-in duration-200">
+                                <crate::components::ui::shimmer::Shimmer
                                     loading=Signal::derive(move || selected_torrent.get().is_none())
                                     shimmer_color="rgba(0,0,0,0.06)"
                                     background_color="rgba(0,0,0,0.04)"
@@ -97,49 +130,31 @@ pub fn TorrentDetailsSheet() -> impl IntoView {
                                         });
 
                                         view! {
-                                            <div class="flex flex-col gap-6">
+                                            <div class="flex flex-col gap-5">
                                                 // Aktarım
                                                 <div>
-                                                    <h3 class="text-sm font-bold border-b pb-2 mb-4">"Aktarım"</h3>
-                                                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                                        <InfoItem label="Geçen Süre" value="N/A".to_string() />
+                                                    <h3 class="text-[10px] font-bold border-b pb-1.5 mb-3 uppercase tracking-widest text-muted-foreground">"Aktarım"</h3>
+                                                    <div class="grid grid-cols-2 gap-3">
                                                         <InfoItem label="Kalan" value=format_duration(t.eta) />
                                                         <InfoItem label="Paylaşım Oranı" value=format!("{:.3}", t.ratio) />
-                                                        <div class="hidden md:block"></div>
-                                                        
                                                         <InfoItem label="İndirilen" value=format_bytes(t.completed) />
                                                         <InfoItem label="İndirme Hızı" value=format_speed(t.down_rate) class="text-blue-500" />
-                                                        <InfoItem label="Boşa Giden" value=format_bytes(t.wasted) />
-                                                        <div class="hidden md:block"></div>
-                                                        
                                                         <InfoItem label="Gönderilen" value=format_bytes(t.uploaded) />
                                                         <InfoItem label="Gönderme Hızı" value=format_speed(t.up_rate) class="text-green-500" />
-                                                        <div class="hidden md:block"></div>
-                                                        <div class="hidden md:block"></div>
-                                                        
-                                                        <InfoItem label="Ortaklar" value="0 / 0 bağlı".to_string() />
-                                                        <InfoItem label="Eşler" value="0 / 0 bağlı".to_string() />
-                                                    </div>
-                                                </div>
-
-                                                // İzleyici
-                                                <div>
-                                                    <h3 class="text-sm font-bold border-b pb-2 mb-4">"İzleyici"</h3>
-                                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                        <InfoItem label="İzleyici URL'si" value="İzleyiciler sekmesine bakınız".to_string() class="col-span-1 md:col-span-2 break-all text-xs" />
-                                                        <InfoItem label="İzleyici Durumu" value="N/A".to_string() />
+                                                        <InfoItem label="Boşa Giden" value=format_bytes(t.wasted) />
                                                     </div>
                                                 </div>
 
                                                 // Genel
                                                 <div>
-                                                    <h3 class="text-sm font-bold border-b pb-2 mb-4">"Genel"</h3>
-                                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                        <InfoItem label="Kaydedilen Yer" value=t.save_path class="col-span-1 md:col-span-2 break-all font-mono text-xs" />
-                                                        <InfoItem label="Boş Disk Alanı" value=format_bytes(t.free_disk_space) />
-                                                        <InfoItem label="Oluşturulma Tarihi" value=format_date(t.added_date) />
-                                                        <InfoItem label="Hash" value=t.hash class="col-span-1 md:col-span-2 break-all font-mono text-xs" />
-                                                        <InfoItem label="Yorum" value="Yok".to_string() class="col-span-1 md:col-span-2 break-words text-xs" />
+                                                    <h3 class="text-[10px] font-bold border-b pb-1.5 mb-3 uppercase tracking-widest text-muted-foreground">"Genel"</h3>
+                                                    <div class="flex flex-col gap-3">
+                                                        <InfoItem label="Kaydedilen Yer" value=t.save_path class="break-all font-mono text-xs" />
+                                                        <div class="grid grid-cols-2 gap-3">
+                                                            <InfoItem label="Boş Disk Alanı" value=format_bytes(t.free_disk_space) />
+                                                            <InfoItem label="Oluşturulma Tarihi" value=format_date(t.added_date) />
+                                                        </div>
+                                                        <InfoItem label="Hash" value=t.hash class="break-all font-mono text-[10px]" />
                                                     </div>
                                                 </div>
                                             </div>
@@ -156,8 +171,8 @@ pub fn TorrentDetailsSheet() -> impl IntoView {
                                         </div>
                                     }),
                                     None => leptos::either::Either::Right(view! {
-                                        <div class="flex flex-col items-center justify-center h-48 opacity-60">
-                                            <icons::File class="size-12 mb-3 text-muted-foreground" />
+                                        <div class="flex flex-col items-center justify-center h-48 opacity-60 gap-2">
+                                            <icons::File class="size-10 text-muted-foreground" />
                                             <p class="text-sm font-medium">"Dosya yükleniyor..."</p>
                                         </div>
                                     }),
@@ -172,8 +187,8 @@ pub fn TorrentDetailsSheet() -> impl IntoView {
                                         </div>
                                     }),
                                     None => leptos::either::Either::Right(view! {
-                                        <div class="flex flex-col items-center justify-center h-48 opacity-60">
-                                            <icons::Settings2 class="size-12 mb-3 text-muted-foreground" />
+                                        <div class="flex flex-col items-center justify-center h-48 opacity-60 gap-2">
+                                            <icons::Settings2 class="size-10 text-muted-foreground" />
                                             <p class="text-sm font-medium">"İzleyici yükleniyor..."</p>
                                         </div>
                                     }),
@@ -181,29 +196,29 @@ pub fn TorrentDetailsSheet() -> impl IntoView {
                             </TabsContent>
 
                             <TabsContent value="peers" class="h-full">
-                                <div class="flex flex-col items-center justify-center h-48 opacity-60">
-                                    <icons::Users class="size-12 mb-3 text-muted-foreground" />
+                                <div class="flex flex-col items-center justify-center h-48 opacity-60 gap-2">
+                                    <icons::Users class="size-10 text-muted-foreground" />
                                     <p class="text-sm font-medium">"Eş listesi yakında eklenecek"</p>
                                 </div>
                             </TabsContent>
                         </crate::components::ui::scroll_area::ScrollArea>
                     </Tabs>
                 </div>
-            </SheetContent>
-        </Sheet>
+            </Show>
+        </div>
     }
 }
 
 #[component]
 fn InfoItem(
-    label: &'static str, 
-    value: String, 
+    label: &'static str,
+    value: String,
     #[prop(optional)] class: &'static str
 ) -> impl IntoView {
     view! {
-        <div class=tailwind_fuse::tw_merge!("flex flex-col gap-1", class)>
-            <span class="text-xs font-semibold text-muted-foreground uppercase opacity-80">{label}</span>
-            <span class="text-sm font-medium">{value}</span>
+        <div class=tailwind_fuse::tw_merge!("flex flex-col gap-0.5", class)>
+            <span class="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider opacity-70">{label}</span>
+            <span class="text-xs font-medium leading-tight">{value}</span>
         </div>
     }
 }

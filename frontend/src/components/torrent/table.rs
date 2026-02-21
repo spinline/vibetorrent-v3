@@ -218,7 +218,9 @@ pub fn TorrentTable() -> impl IntoView {
     });
 
     view! {
-        <div class="h-full bg-background relative flex flex-col overflow-hidden px-4 py-4 gap-4">
+        <div class="h-full bg-background flex flex-row overflow-hidden">
+        // Sol: liste alanı
+        <div class="flex-1 min-w-0 flex flex-col overflow-hidden px-4 py-4 gap-4">
             // --- TOPBAR ---
             <div class="flex items-center justify-between gap-4">
                 <div class="flex items-center gap-2 flex-1 max-w-md">
@@ -249,7 +251,6 @@ pub fn TorrentTable() -> impl IntoView {
                                         
                                         <div class="my-1 h-px bg-border" />
                                         
-                                        // Trigger the hidden AlertDialog from this menu item
                                         <DropdownMenuItem class="text-destructive focus:bg-destructive/10 cursor-pointer" on:click=move |_| {
                                             if let Some(trigger) = document().get_element_by_id("bulk-delete-trigger") {
                                                 let _ = trigger.dyn_into::<web_sys::HtmlElement>().map(|el: web_sys::HtmlElement| el.click());
@@ -261,7 +262,6 @@ pub fn TorrentTable() -> impl IntoView {
                                 </DropdownMenuContent>
                             </DropdownMenu>
 
-                            // Hidden AlertDialog moved outside the DropdownMenuContent to ensure proper centering
                             <AlertDialog>
                                 <AlertDialogTrigger attr:id="bulk-delete-trigger" class="hidden">""</AlertDialogTrigger>
                                 <AlertDialogContent class="sm:max-w-[425px]">
@@ -553,9 +553,11 @@ pub fn TorrentTable() -> impl IntoView {
                 </div>
                 <div class="opacity-50">"VibeTorrent v3"</div>
             </div>
-            
-            <crate::components::torrent::details::TorrentDetailsSheet />
         </div>
+
+        // Sağ: sabit detay paneli
+        <crate::components::torrent::details::TorrentDetailsPanel />
+    </div>
     }.into_any()
 }
 
